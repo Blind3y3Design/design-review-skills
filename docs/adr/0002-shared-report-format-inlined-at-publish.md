@@ -6,3 +6,4 @@ Every Review Skill and the Orchestrator produce Findings in the same shape: a Ma
 
 - The repo holds the source for each skill, not just the file that gets published. Contributors edit the source and the shared section, never the build output.
 - **The build step must stay removable.** It does nothing except copy the shared section into each skill, with no other templating or logic. If Figma's agent turns out to support chaining skills ([issue #14](https://github.com/Blind3y3Design/design-review-skills/issues/14)), the shared section becomes a standalone report skill, each Review Skill's copy is replaced with an instruction to use that skill, and the build step is deleted.
+- Inlining here is a stopgap, not the design: see ADR 0004, which prefers separate skills with nested invocation.

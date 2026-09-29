@@ -9,3 +9,4 @@ Figma's agent may not be able to fetch a linked document, so a publisher can cho
 - The skill keeps only the review procedure. Criterion-specific knowledge (triggers, thresholds, markers, default Severity) belongs in the Reference Document.
 - Every report lists the Reference Documents it used (name, version, location, and whether the copy was inlined), so reviews run against different versions can be compared.
 - The design system and research axes can use the same pattern for their standards content.
+- The optional inlining is a stopgap for runtimes that can't fetch or chain (ADR 0004). Where a skill can read the Reference Document at its location, that is preferred.

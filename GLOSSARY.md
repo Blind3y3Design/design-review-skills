@@ -49,6 +49,10 @@ _Avoid_: Config, settings, ruleset
 A document of standards content, such as the WCAG criteria and how to judge each from a design, that a Review Skill reads from a location it is pointed to rather than carrying inside itself.
 _Avoid_: Reference file, knowledge base, ruleset
 
+**Research Insight**:
+A synthesised, citable statement from research about what users need or do, which the research alignment axis judges a design against. Individual quotes and raw research data are not Research Insights; they can only support one.
+_Avoid_: Research finding, highlight, doc, learning
+
 **Design System Layer**:
 One design system in an ordered stack of systems that build on each other, from a slow-changing foundation to fast-changing product libraries (pace layers). A more specific layer overrides a more general one unless the general layer has locked the rule.
 _Avoid_: Tier, level, theme
