@@ -21,8 +21,16 @@ One issue a Review Skill reports: what is wrong, the evidence for it, the standa
 _Avoid_: Issue, violation, comment, flag
 
 **Severity**:
-The fixed, machine-readable rank of a Finding's importance.
+How much a Finding matters, on a fixed scale: critical, serious, moderate, minor, or advisory. Advisory Findings break no standard.
 _Avoid_: Priority, impact level
+
+**Certainty**:
+How sure a Review Skill is of a Finding: confirmed, likely, or needs-review. Independent of Severity.
+_Avoid_: Confidence, accuracy
+
+**Root Cause**:
+The single thing to fix behind a Finding, such as a shared text style. Each Finding has one Root Cause but may list many locations.
+_Avoid_: Occurrence, instance
 
 **Supporting Evidence**:
 Material that strengthens a Finding by pointing to another source of the same problem, such as user research that reports it.
