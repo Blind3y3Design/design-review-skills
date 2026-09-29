@@ -32,6 +32,10 @@ _Avoid_: Confidence, accuracy
 The single thing to fix behind a Finding, such as a shared text style. Each Finding has one Root Cause but may list many locations.
 _Avoid_: Occurrence, instance
 
+**Coverage**:
+The record of what a Review Skill did and did not assess in a review, and why each unassessed standard was left out. An empty set of Findings is not a pass unless Coverage shows the standards were judged.
+_Avoid_: Scope, checklist, results
+
 **Supporting Evidence**:
 Material that strengthens a Finding by pointing to another source of the same problem, such as user research that reports it.
 
@@ -40,6 +44,10 @@ Material that strengthens a Finding by pointing to another source of the same pr
 **Review Profile**:
 A reusable document, shareable across files and teams, naming the standards a review is judged against: its Design System Layers, research sources, accessibility target, product context and any Severity overrides. A review uses exactly one Review Profile.
 _Avoid_: Config, settings, ruleset
+
+**Reference Document**:
+A document of standards content, such as the WCAG criteria and how to judge each from a design, that a Review Skill reads from a location it is pointed to rather than carrying inside itself.
+_Avoid_: Reference file, knowledge base, ruleset
 
 **Design System Layer**:
 One design system in an ordered stack of systems that build on each other, from a slow-changing foundation to fast-changing product libraries (pace layers). A more specific layer overrides a more general one unless the general layer has locked the rule.
