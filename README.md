@@ -12,7 +12,7 @@ Each review skill evaluates a design along one Review Axis and returns structure
 
 - **Design system adherence**: components, tokens, variables and detached instances, checked against one or more layered design systems (pace layers)
 - **Research alignment**: whether the design addresses, or contradicts, what users have said in research (for example, Dovetail)
-- **Accessibility**: WCAG conformance, such as contrast, target size, focus order and text alternatives
+- **Accessibility**: a design-stage WCAG review (not a conformance evaluation) covering criteria such as contrast, target size and use of colour, plus annotated items like text alternatives and focus order. It also reports which criteria it couldn't assess.
 
 Visual hierarchy, content and UX writing, and interaction states are candidates for later. Terms are defined in [GLOSSARY.md](GLOSSARY.md); architecture decisions live in [docs/adr/](docs/adr/).
 

@@ -4,5 +4,5 @@ Review Skills and the Orchestrator are standalone `SKILL.md` files following the
 
 ## Consequences
 
-- Standards can't be bundled with a skill. They come from a Review Profile or from sources the user names when running it.
+- Organisation-specific standards can't be bundled with a skill. They come from a Review Profile or from sources the user names when running it. Public standards content, such as the WCAG criteria, lives in Reference Documents the skill is pointed to (ADR 0003), which can be inlined at publish only as a stopgap (ADR 0004).
 - Capabilities that need scripts, such as running axe, can only be optional additions for external agents. A skill must still produce useful Findings without them.
