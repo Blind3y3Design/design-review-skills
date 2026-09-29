@@ -38,7 +38,7 @@ Material that strengthens a Finding by pointing to another source of the same pr
 ## Standards
 
 **Review Profile**:
-A reusable document naming the standards a team reviews against: its Design System Layers, research sources, and accessibility target.
+A reusable document, shareable across files and teams, naming the standards a review is judged against: its Design System Layers, research sources, accessibility target, product context and any Severity overrides. A review uses exactly one Review Profile.
 _Avoid_: Config, settings, ruleset
 
 **Design System Layer**:
