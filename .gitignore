@@ -1,0 +1,28 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.vscode/
+.idea/
+*.swp
+
+# Local agent state
+.claude/settings.local.json
+.claude/worktrees/
+.scratch/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Node (in case skill tooling or evals add it)
+node_modules/
+npm-debug.log*
+pnpm-debug.log*
+
+# Review output and exported design assets
+out/
+reports/
+*.fig
