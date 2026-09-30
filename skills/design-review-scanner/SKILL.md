@@ -11,7 +11,7 @@ Version 0.1.0-dev of the design review skills.
 
 Reads a design and returns its Design Facts: what was read or measured, never a judgement. The scanner holds no thresholds and no criteria. The Review Skill that asked for the facts judges them.
 
-All reading goes through **fixed scripts**, tested as written, so every review reads a file the same way. Design Facts come from the script under The script, where you change only the node id on its first line. A skill can also ask for a file's Review Profile page, which is read by a script of its own (see Reading a Review Profile page).
+All reading goes through **fixed scripts**, tested as written, so every review reads a file the same way. Design Facts come from the script under The script, where you change only the node id on its first line. A Review Skill also asks you to find the team's Review Profile, which has a procedure and a script of its own (see Finding the Review Profile).
 
 ## Inputs
 
@@ -243,17 +243,45 @@ if (size() > LIMIT) {
 return out;
 ```
 
-## Reading a Review Profile page
+## Finding the Review Profile
 
-A calling skill may ask instead for a file's Review Profile page: the page named "Review Profile", which holds a team's Review Profile or a pointer to one. This is text, not Design Facts. Hand it back as the page holds it, and interpret none of it.
+A Review Skill asks for this before it reviews: find the team's Review Profile and hand back its text, or say there's none, or that it can't be read. The Review Skill decides what to use from the profile and does its own asking. Interpret only what it takes to follow a pointer and to name the profile.
 
-1. **Pick the tool** as in step 1 of Steps, with the file key the caller gives. It may be another file's key: both tools read another file by its key.
-2. **Run the script below** exactly as written, in one call. If the call errors, run it once more unchanged. If it errors again, hand back `{ "fileKey": "<key>", "error": "<the error message>" }`.
-3. **Hand back** the script's output as it returned it:
-   - `fileKey`
-   - `page`: `{ id, name, url, textLayers }`, or null when the file has no page named "Review Profile". `url` is the page's link, or null without a file key
-   - `text`: the page's visible text layers, top to bottom, separated by blank lines
-   - `unread[]`: what couldn't be read, each `{ what, reason }`
+The caller gives you the reviewed file's key, the runtime, and the profile the user gave at run time, if any: its text, a local file, or a link to a Figma file or a GitHub file.
+
+1. **Look it up.** Use the first of these that exists:
+   1. **Given at run time.**
+   2. **A "Review Profile" page in the reviewed file:** run the page script with the reviewed file's key. A result with `page: null` means there's no page here, so go on to the next step.
+   3. **A pointer in the project context file,** in an external agent only: a `Review Profile: <location>` line in `AGENTS.md`, `CLAUDE.md` or your agent's equivalent, in the user's project.
+
+   If none of the three exists, there's no profile.
+2. **Read each location** as Reading a location describes. What you read is one of:
+   - **A profile:** text with an `Identity` section, usually under a `# Review Profile: <name>` heading. Its location is where you read it: for a page, the page script's `url`, and for text in the user's prompt, `given at run time`.
+   - **A pointer:** a `Review Profile: <location>` line naming a link or a path, with no profile sections. Read that location the same way.
+   - **Unreadable:** a location that can't be read, a page script result with an `error` or with its text cut short (in `unread`), a Figma file given at run time or in a pointer that has no "Review Profile" page, a chain of pointers that comes back on itself, or text that's neither a profile nor a pointer.
+3. **Hand back** one of these, as JSON:
+   - **Found:** `{ "result": "found", "from": "<where the lookup found it>", "pointers": [...], "profile": { "name", "location", "lastUpdated" }, "text": "<the profile's text>" }`. `from` is `run time`, `page`, or the project context file's name, such as `AGENTS.md`. `pointers` lists each pointer followed on the way, as `"<the file or page it was in>: <location>"`, and is empty when there were none. `name` is the Identity section's `Name`, or else the heading's, and `lastUpdated` is its `Last updated`, or null.
+   - **None:** `{ "result": "none", "searched": [...] }`, one line for each place looked in, such as `"no profile given at run time"`, `"this file has no \"Review Profile\" page"` and `"AGENTS.md has no Review Profile line"`.
+   - **Unreadable:** `{ "result": "unreadable", "location": "<the location>", "reason": "<what went wrong>", "pointers": [...] }`.
+
+The lookup is done when one of these has been handed back.
+
+### Reading a location
+
+- **A URL:** fetch it. Inside Figma's agent, use `curl -sSfL <url>` from `Bash`.
+- **A local file,** in an external agent: read it.
+- **A Figma file link:** run the page script with the link's file key. It reads the file's page named "Review Profile", wherever the link points in the file.
+
+### The page script
+
+It reads the page named "Review Profile" in a file. Pick the tool as in step 1 of Steps, with the file key. It may be another file's key: both tools read another file by its key. Run the script exactly as written, in one call. If the call errors, run it once more unchanged. If it errors again, the location is unreadable, with the error message as the reason.
+
+It returns:
+
+- `fileKey`
+- `page`: `{ id, name, url, textLayers }`, or null when the file has no page named "Review Profile". `url` is the page's link, or null without a file key
+- `text`: the page's visible text layers, top to bottom, separated by blank lines
+- `unread[]`: what couldn't be read, each `{ what, reason }`
 
 ```js
 const LIMIT = 18000;
