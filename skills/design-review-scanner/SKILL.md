@@ -11,7 +11,7 @@ Version 0.1.0-dev of the design review skills.
 
 Reads a design and returns its Design Facts: what was read or measured, never a judgement. The scanner holds no thresholds and no criteria. The Review Skill that asked for the facts judges them.
 
-All reading goes through one **fixed script**, tested as written, so every review reads a file the same way. You change only the node id on its first line. A skill can also ask the scanner for a file's Review Profile page, which has a fixed script of its own (see Reading a Review Profile page).
+All reading goes through **fixed scripts**, tested as written, so every review reads a file the same way. Design Facts come from the script under The script, where you change only the node id on its first line. A skill can also ask for a file's Review Profile page, which is read by a script of its own (see Reading a Review Profile page).
 
 ## Inputs
 
@@ -251,7 +251,7 @@ A calling skill may ask instead for a file's Review Profile page: the page named
 2. **Run the script below** exactly as written, in one call. If the call errors, run it once more unchanged. If it errors again, hand back `{ "fileKey": "<key>", "error": "<the error message>" }`.
 3. **Hand back** the script's output as it returned it:
    - `fileKey`
-   - `page`: `{ id, name, textLayers }`, or null when the file has no page named "Review Profile"
+   - `page`: `{ id, name, url, textLayers }`, or null when the file has no page named "Review Profile". `url` is the page's link, or null without a file key
    - `text`: the page's visible text layers, top to bottom, separated by blank lines
    - `unread[]`: what couldn't be read, each `{ what, reason }`
 
@@ -263,11 +263,12 @@ if (named.length) {
   const page = named[0];
   if (named.length > 1) out.unread.push({ what: 'pages', reason: `${named.length} pages are named "Review Profile": only the first was read` });
   await page.loadAsync();
-  const shown = (n) => { for (let x = n; x && x.type !== 'PAGE'; x = x.parent) if (x.visible === false) return false; return true; };
-  const texts = page.findAllWithCriteria({ types: ['TEXT'] }).filter(shown).filter((t) => t.characters.trim());
-  const at = (t) => t.absoluteBoundingBox || { x: t.x, y: t.y };
-  texts.sort((a, b) => at(a).y - at(b).y || at(a).x - at(b).x);
-  out.page = { id: page.id, name: page.name, textLayers: texts.length };
+  const visible = (n) => { for (let x = n; x && x.type !== 'PAGE'; x = x.parent) if (x.visible === false) return false; return true; };
+  const texts = page.findAllWithCriteria({ types: ['TEXT'] }).filter(visible).filter((t) => t.characters.trim());
+  const position = (t) => t.absoluteBoundingBox || { x: t.x, y: t.y };
+  texts.sort((a, b) => position(a).y - position(b).y || position(a).x - position(b).x);
+  const url = out.fileKey ? `https://www.figma.com/design/${out.fileKey}/?node-id=${page.id.replace(/:/g, '-')}` : null;
+  out.page = { id: page.id, name: page.name, url, textLayers: texts.length };
   out.text = texts.map((t) => t.characters.trim()).join('\n\n');
   if (out.text.length > LIMIT) {
     out.text = out.text.slice(0, LIMIT);

@@ -50,7 +50,7 @@ The report is done when the chat shows the Markdown and its JSON block, and ever
 | minor | A small deviation with little effect on users |
 | advisory | Breaks no standard: a good-practice suggestion, with no `standard` |
 
-A Review Skill may move a Finding one level from its default Severity, and says why in the evidence.
+A Review Skill may move a Finding one level from its default Severity, and says why in the evidence. A Review Profile's Severity Overrides may set a different starting Severity, within their limits: none lowers a Locked Rule breach below serious, or sets critical without a core task.
 
 ## Certainty
 
