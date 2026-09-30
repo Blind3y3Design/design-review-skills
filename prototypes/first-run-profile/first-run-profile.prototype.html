@@ -74,6 +74,7 @@
       <li>A library the ordering rule can't place is asked about, not guessed.</li>
       <li>The profile is written for agents: fixed headings, one setting per line, and one plain sentence per section for the people who maintain it.</li>
       <li>In Figma, the profile is always saved as a "Review Profile" page in the file. The custom skill option is gone. A shared profile hosted on GitHub is a later enhancement.</li>
+      <li>Match hints are name prefixes only. Collection names are dropped, because two libraries can share them, and variables are looked up by library instead (#21).</li>
     </ul>
   </div>
 
@@ -521,7 +522,7 @@ const FirstRun = (() => {
       L.push('## Design System Layers', '', 'The design systems this work is checked against, most general first. A more specific layer overrides a more general one, unless the general layer locked the rule.', '');
       s.stack.layers.forEach((layer, i) => {
         const libs = layer.libs.map(lib);
-        const hints = libs.flatMap(x => [...x.collections.map(c => `collection \`${c}\``), ...x.prefixes.map(p => `prefix \`${p}\``)]);
+        const hints = libs.flatMap(x => x.prefixes.map(p => `prefix \`${p}\``));
         L.push(`### ${i + 1}. ${layer.name}`, '', `- Libraries: ${libs.map(x => `${x.name} (${x.link})`).join(', ')}`, `- Match hints: ${hints.join(', ')}`, `- Rules document: ${layer.rulesDoc || 'none (Design system baseline only)'}`, '');
       });
       if (s.stack.unplaced.length) L.push(`<!-- not placed yet: ${s.stack.unplaced.map(id => lib(id).name).join(', ')} -->`, '');
@@ -589,7 +590,7 @@ const FirstRun = (() => {
         const noRules = st.layers.filter(L => !L.rulesDoc).length;
         if (noRules) notes.push(`${noRules} of ${st.layers.length} layers have no rules document: built-in checks only, with no Locked Rules.`);
         notes.push('Findings name the layer they belong to, such as "Web Platform", so the designer knows which team to talk to.');
-        notes.push(s.runtime === 'figma' ? 'Inside Figma, assets are attributed to layers by match hints (likely).' : 'Assets are attributed by library lookup (confirmed), with match hints as a fallback.');
+        notes.push(s.runtime === 'figma' ? 'Inside Figma, variables are attributed to their library by lookup (confirmed); components and styles by name-prefix hints (likely).' : 'Assets are attributed by library lookup (confirmed), with name-prefix hints as a fallback.');
         if (st.excluded.length) notes.push(`Assets from ${list(st.excluded.map(id => lib(id).name))} will be flagged as outside the stack.`);
         return { axis: AXES.ds, status: st.unplaced.length ? 'partial' : 'ready', notes };
       }
