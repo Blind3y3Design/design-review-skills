@@ -27,7 +27,9 @@ Settle everything before judging starts, asking for what's missing in as few mes
 - **Scope:** the node ids of the frames to review, from the user's selection, the frames they name, or the `node-id` in a Figma link. For a page, use its top-level frames. In an external agent, the file key comes from the file's link.
 - **Runtime:** `figma-agent` inside Figma Design's agent, `external-agent` anywhere else.
 - **Given at run time,** when the user names them: a Review Profile (its text, a local file, or a link to a Figma file or a GitHub file), the Design System Layers, or a baseline location (a URL or a local file). What's given at run time takes the place of the profile's for this run.
-- **What to check against:** find the Review Profile, then settle the Design System Layers from it or by asking, as Review Profile below describes. A question about which libraries to use waits for the scan in step 3, so that it can be pre-filled from the file.
+- **What to check against:** find the Review Profile, then settle the Design System Layers from it or by asking, as Review Profile below describes.
+
+The inputs are settled when the scope, runtime and anything given at run time are known, and the layers are settled or wait to be asked after the scan, or the run has stopped.
 
 ## 2. Read the baseline
 
@@ -57,12 +59,12 @@ Each Finding its How to judge calls for is written this way:
 - **Root Cause** and **evidence,** as the check's How to judge says. A Root Cause is written `node:<id>` for a layer, or `variable:<key>`, `style:<key>` or `component:<key>` for a library asset. Give one Finding per Root Cause per check, with every layer it covers in `locations`.
 - **Severity:** the check's Default Severity.
 - **Certainty:** the check's Certainty line.
-- **Title:** one line naming the layer and what's wrong.
+- **Title:** one line naming the layer or component and what's wrong.
 - **Fix:** as the check's How to judge says, with tokens only from Token suggestions below.
-- **Locations:** `{ "kind": "node", "fileKey", "nodeId", "layerPath" }` for each layer in the facts.
+- **Locations:** `{ "kind": "node", "fileKey", "nodeId", "layerPath" }` for each layer in the facts. A component goes first as `{ "kind": "component", "key", "name", "library" }`, with `library` null when the facts don't give it.
 - **Standard:** `{ "source": "Design system baseline", "ref": "<check id>", "url": "<the baseline's location>" }`, leaving out `url` when the location isn't a link.
 
-Judging is done when every check in the baseline has one Coverage entry, and every Finding its How to judge calls for is written: for `raw-value`, one for each layer in the facts' `raw` list.
+Judging is done when every check in the baseline has one Coverage entry, and every Finding that each check's How to judge calls for is written.
 
 ## 5. Report
 

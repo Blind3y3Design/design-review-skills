@@ -29,9 +29,10 @@ Under the lines, **How to judge** gives the test, what's a Finding, its Root Cau
 - Default Severity: moderate
 - Certainty: confirmed
 
-**How to judge.** Every raw value in the bindings facts is part of a Finding. A raw value is set on a layer where a variable or style could be bound, and is bound to neither: a solid fill or stroke, an effect, a corner radius above 0, auto-layout padding or a gap above 0, or text with no text style.
+**How to judge.** Every raw value in the bindings facts is part of a Finding: a value set where a variable or style could be bound, and bound to neither.
 
-- **Inside an instance,** the facts list only the values the instance overrides. A raw value that the instance takes unchanged from its component belongs to the component, so it isn't a Finding here.
-- **Root Cause:** the layer. Give one Finding per layer, covering every raw value on it.
-- **Evidence:** each raw value as `<property> <value>`, such as `fill #E0115F`, then "bound to no variable or style". For a layer inside an instance, add "overridden in the instance <name>".
-- **Fix:** for each raw value, "Bind the <property> to <token>", naming the token that the skill's token suggestions found, with its library. With several, name every one and ask the designer to pick. With none, "Bind the <property> to a variable or style from your design system", naming no token.
+- **Root Cause:**
+  - For a layer in the facts' `raw` list, the layer. Give one Finding per layer, covering every raw value on it. This includes a value an instance overrides.
+  - For a component in the facts' `inherited` list, the component (`component:<key>`), since its instances take the raw values from it unchanged. Give one Finding per component, with the component first in its locations and then the layers the facts list.
+- **Evidence:** each raw value as `<property> <value>`, such as `fill #E0115F`, then "bound to no variable or style". For a layer inside an instance, add "overridden in the instance <name>". For a component, add how many raw values its instances hold, and in how many instances.
+- **Fix:** for each raw value, "Bind the <property> to <token>", naming the token that the skill's token suggestions found, with its library. With several, name every one and ask the designer to pick. With none, "Bind the <property> to a variable or style from your design system", naming no token. For a component, the fix is made in the component: say so, and for a library's component (`remote`), that its library's owner makes it.

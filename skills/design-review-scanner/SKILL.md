@@ -28,7 +28,7 @@ The calling skill gives you:
 3. **Follow `scanInstead`.** A result whose `unread` lists `scanInstead` ids (for a page, or a frame too large for one call's output) is replaced by the results of running the same script on each of those ids.
 4. **Record groups you can't read.** For each fact group the caller asked for that has no script here, add `{ "what": "<group>", "reason": "not read by this version of the scanner" }` to every result's `unread`.
 
-The scan is done when every id in the scope has a result, and every result has been handed back.
+The scan is done when every id in the scope has a result for every fact group asked for, and every result has been handed back.
 
 ## Hand back
 
@@ -66,14 +66,14 @@ How each visible layer in the scope uses variables and styles, and the raw value
 - `layers`: how many layers were read.
 - `raw[]`: each layer with a raw value, as `{ node: { id, path }, instance, values[] }`:
   - `values[]`: each `{ property, field, value }`. `property` is `fill`, `stroke`, `effect`, `radius`, `spacing` or `text`. `field` names the Figma field for a radius or spacing: `cornerRadius` or `padding` when all four are the same, otherwise one such as `topLeftRadius`, `paddingLeft` or `itemSpacing`. `value` is written as Values below.
-  - A radius or spacing of 0 counts as not set, and isn't listed. An image fill can't be bound, so it isn't listed either. Gradient paints aren't read: `unread` counts them.
-  - `instance`: `{ id, name }` of the outermost instance the layer sits in, when there is one. Inside an instance, only the values the instance overrides are listed. Raw values it takes unchanged from its component are counted in `inheritedRawValues`.
+  - A radius or spacing of 0 is Figma's default for a layer with none set, so it isn't listed. An image fill can't be bound, so it isn't listed either. Gradient paints aren't read: `unread` counts them.
+  - `instance`: `{ id, name }` of the outermost instance the layer sits in, when there is one. Inside an instance, `raw` lists only the values the instance overrides.
+- `inherited[]`: the raw values that instances take unchanged from their components, grouped by the component of the nearest instance each layer sits in: `{ component: { key, name, remote }, count, values[], instances, nodes[] }`. `count` is how many raw values, `values` up to 10 distinct ones, `instances` how many instances hold them, and `nodes` up to 10 of the layers, each `{ id, path }`.
 - `variables[]`: each variable bound in the scope, and each one reached from those through an alias, once: `{ key, name, type, collection: { key, name }, library, remote, value, alias, uses, properties }`.
   - `library` is the library's name, found by the collection's key through `figma.teamLibrary`. It's null for a local variable (`remote` is false), or for a library variable whose library can't be named, and `unread` then says so.
   - `value` is the resolved value in the mode of the first layer that uses the variable. `alias` is the key of the variable it points to, or null.
   - `uses` counts the bindings to it in the scope, 0 for one reached only through an alias. `properties` lists the properties bound to it.
 - `styles[]`: each style used in the scope, once: `{ key, name, type, remote, value, uses, properties }`. A paint style with anything but one solid paint gives its paint count as `value`.
-- `inheritedRawValues`: how many raw values sit unchanged inside instances.
 
 **Values.** A colour is `#RRGGBB`, or `#RRGGBBAA` below full opacity. A radius or spacing is a number in px. Text is `<family> <style> <size>/<line height>`, such as `Inter Regular 16/24`, with any letter spacing after it. An effect is `<type> <colour> <x> <y> <blur> <spread>` for a shadow, or `<type> <blur>` for a blur.
 
@@ -268,6 +268,7 @@ const NODE_ID = 'NODE_ID';
 
 const FACTS_VERSION = '0.2';
 const LIMIT = 18000;
+const SAMPLES = 10;
 const out = { factsVersion: FACTS_VERSION, fileKey: figma.fileKey || null, scope: null, groups: ['bindings'], unread: [], bindings: null };
 const childIds = (n) => ('children' in n ? n.children.map(c => c.id) : []);
 
@@ -307,7 +308,7 @@ const effectValue = (e) => (e.type === 'DROP_SHADOW' || e.type === 'INNER_SHADOW
 
 // Variables and styles used in the scope, each read once. Aliases are followed to the end of the chain.
 const variables = new Map(), collections = new Map(), styles = new Map();
-let unnamed = 0;
+let unnamedLibraryVariables = 0;
 const collectionOf = async (id) => {
   if (!collections.has(id)) collections.set(id, await figma.variables.getVariableCollectionByIdAsync(id));
   return collections.get(id);
@@ -319,17 +320,24 @@ const useVariable = async (id, consumer, property, direct = true) => {
     else {
       const collection = await collectionOf(v.variableCollectionId);
       const mode = (consumer.resolvedVariableModes || {})[v.variableCollectionId] || (collection && collection.defaultModeId) || Object.keys(v.valuesByMode)[0];
-      const own = v.valuesByMode[mode];
+      const modeValue = v.valuesByMode[mode];
+      const aliasId = modeValue && modeValue.type === 'VARIABLE_ALIAS' ? modeValue.id : null;
       let value = null;
-      try { value = valueOf(v.resolveForConsumer(consumer).value); } catch (e) { value = own && own.type === 'VARIABLE_ALIAS' ? null : valueOf(own); }
+      try { value = valueOf(v.resolveForConsumer(consumer).value); } catch (e) { value = aliasId ? null : valueOf(modeValue); }
       const library = v.remote ? (collection && libraries.get(collection.key)) || null : null;
-      if (v.remote && !library) unnamed++;
-      const entry = { key: v.key, name: v.name, type: v.resolvedType, collection: collection ? { key: collection.key, name: collection.name } : null, library, remote: v.remote, value, aliasId: own && own.type === 'VARIABLE_ALIAS' ? own.id : null, uses: 0, properties: new Set() };
+      if (v.remote && !library) unnamedLibraryVariables++;
+      const entry = { key: v.key, name: v.name, type: v.resolvedType, collection: collection ? { key: collection.key, name: collection.name } : null, library, remote: v.remote, value, aliasId, uses: 0, properties: new Set() };
       variables.set(id, entry);
-      if (entry.aliasId) await useVariable(entry.aliasId, consumer, property, false);
+      if (aliasId) await useVariable(aliasId, consumer, property, false);
     }
   }
   if (direct) { const entry = variables.get(id); entry.uses++; entry.properties.add(property); }
+};
+// Variables bound on a text run or an effect. True when any is bound.
+const useAliases = async (boundVariables, consumer, property) => {
+  const aliases = Object.values(boundVariables || {}).filter(a => a && a.id);
+  for (const a of aliases) await useVariable(a.id, consumer, property);
+  return aliases.length > 0;
 };
 const styleValue = (s) => {
   if (s.type === 'PAINT') {
@@ -350,7 +358,7 @@ const useStyle = async (id, property) => {
   entry.properties.add(property);
 };
 
-// Raw values: set on a layer, bound to no variable or style. A radius or spacing of 0 counts as not set.
+// Raw values: set on a layer, bound to no variable or style. A radius or spacing of 0 is Figma's unset default, so it isn't listed.
 let gradients = 0;
 const readPaints = async (list, styleId, property, consumer, values) => {
   if (!Array.isArray(list)) return;
@@ -365,59 +373,52 @@ const readPaints = async (list, styleId, property, consumer, values) => {
     } else if (p.type.startsWith('GRADIENT')) gradients++;
   }
 };
+// Number fields: a bound one is a use, and the unbound ones above 0 are returned.
+const unboundNumbers = async (n, fields, property) => {
+  const bound = n.boundVariables || {};
+  const unbound = [];
+  for (const f of fields) {
+    if (bound[f]) await useVariable(bound[f].id, n, property);
+    else if (n[f] > 0) unbound.push(f);
+  }
+  return unbound;
+};
 const CORNERS = ['topLeftRadius', 'topRightRadius', 'bottomRightRadius', 'bottomLeftRadius'];
 const PADDING = ['paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft'];
 const rawValuesOf = async (n) => {
   const values = [];
-  const bv = n.boundVariables || {};
   if (n.type === 'TEXT') {
     for (const s of n.getStyledTextSegments(['fills', 'fillStyleId', 'textStyleId', 'fontName', 'fontSize', 'lineHeight', 'letterSpacing', 'boundVariables'])) {
       await readPaints(s.fills, s.fillStyleId, 'fill', n, values);
       if (typeof s.textStyleId === 'string' && s.textStyleId) await useStyle(s.textStyleId, 'text');
-      else {
-        const aliases = Object.values(s.boundVariables || {}).filter(a => a && a.id);
-        if (aliases.length) for (const a of aliases) await useVariable(a.id, n, 'text');
-        else values.push({ property: 'text', value: textValue(s) });
-      }
+      else if (!(await useAliases(s.boundVariables, n, 'text'))) values.push({ property: 'text', value: textValue(s) });
     }
   } else if ('fills' in n) await readPaints(n.fills, n.fillStyleId, 'fill', n, values);
   if ('strokes' in n && (n.strokeWeight === figma.mixed || n.strokeWeight > 0)) await readPaints(n.strokes, n.strokeStyleId, 'stroke', n, values);
   if ('effects' in n && Array.isArray(n.effects)) {
     const effects = n.effects.filter(e => e.visible !== false);
     if (effects.length && typeof n.effectStyleId === 'string' && n.effectStyleId) await useStyle(n.effectStyleId, 'effect');
-    else for (const e of effects) {
-      const aliases = Object.values(e.boundVariables || {}).filter(a => a && a.id);
-      if (aliases.length) for (const a of aliases) await useVariable(a.id, n, 'effect');
-      else values.push({ property: 'effect', value: effectValue(e) });
-    }
+    else for (const e of effects) if (!(await useAliases(e.boundVariables, n, 'effect'))) values.push({ property: 'effect', value: effectValue(e) });
   }
   if ('topLeftRadius' in n) {
-    const raw = [];
-    for (const c of CORNERS) {
-      if (bv[c]) await useVariable(bv[c].id, n, 'radius');
-      else if (n[c] > 0) raw.push(c);
-    }
-    if (raw.length === 4 && CORNERS.every(c => n[c] === n.topLeftRadius)) values.push({ property: 'radius', field: 'cornerRadius', value: round(n.topLeftRadius) });
-    else for (const c of raw) values.push({ property: 'radius', field: c, value: round(n[c]) });
+    const unbound = await unboundNumbers(n, CORNERS, 'radius');
+    if (unbound.length === 4 && CORNERS.every(c => n[c] === n.topLeftRadius)) values.push({ property: 'radius', field: 'cornerRadius', value: round(n.topLeftRadius) });
+    else for (const c of unbound) values.push({ property: 'radius', field: c, value: round(n[c]) });
   }
   if ('layoutMode' in n && (n.layoutMode === 'HORIZONTAL' || n.layoutMode === 'VERTICAL')) {
     const fields = [...PADDING];
     if (n.primaryAxisAlignItems !== 'SPACE_BETWEEN') fields.push('itemSpacing');
     if (n.layoutWrap === 'WRAP' && typeof n.counterAxisSpacing === 'number') fields.push('counterAxisSpacing');
-    const raw = [];
-    for (const f of fields) {
-      if (bv[f]) await useVariable(bv[f].id, n, 'spacing');
-      else if (n[f] > 0) raw.push(f);
-    }
-    const samePadding = PADDING.every(f => raw.includes(f) && n[f] === n.paddingTop);
+    const unbound = await unboundNumbers(n, fields, 'spacing');
+    const samePadding = PADDING.every(f => unbound.includes(f) && n[f] === n.paddingTop);
     if (samePadding) values.push({ property: 'spacing', field: 'padding', value: round(n.paddingTop) });
-    for (const f of raw) if (!(samePadding && PADDING.includes(f))) values.push({ property: 'spacing', field: f, value: round(n[f]) });
+    for (const f of unbound) if (!(samePadding && PADDING.includes(f))) values.push({ property: 'spacing', field: f, value: round(n[f]) });
   }
   return values;
 };
 
-// Inside an instance, a raw value belongs to the layer only where the outermost instance overrides it.
-// Every other raw value there comes unchanged from the component, and is only counted.
+// Inside an instance, a raw value is the layer's where the outermost instance overrides it.
+// Every other raw value there comes unchanged from the component of the nearest instance, and is listed under that component.
 const OVERRIDE_FIELDS = {
   fill: ['fills', 'fillStyleId'],
   stroke: ['strokes', 'strokeStyleId', 'strokeWeight'],
@@ -433,46 +434,68 @@ const noteOverrides = (instance) => {
     for (const f of o.overriddenFields) overridden.get(o.id).add(f);
   }
 };
+const mainComponents = new Map(), inherited = new Map();
+const noteInherited = async (instance, n, path, values) => {
+  if (!mainComponents.has(instance.id)) mainComponents.set(instance.id, await instance.getMainComponentAsync());
+  const main = mainComponents.get(instance.id);
+  const id = main ? main.key : `instance:${instance.id}`;
+  if (!inherited.has(id)) {
+    const set = main && main.parent && main.parent.type === 'COMPONENT_SET' ? main.parent : null;
+    inherited.set(id, { component: main ? { key: main.key, name: set ? `${set.name}, ${main.name}` : main.name, remote: main.remote } : null, count: 0, values: [], instances: new Set(), nodes: [] });
+  }
+  const entry = inherited.get(id);
+  entry.count += values.length;
+  entry.instances.add(instance.id);
+  for (const v of values) if (entry.values.length < SAMPLES && !entry.values.some(w => w.property === v.property && w.field === v.field && w.value === v.value)) entry.values.push(v);
+  if (entry.nodes.length < SAMPLES) entry.nodes.push({ id: n.id, path });
+};
 const raw = [];
-let layers = 0, inherited = 0;
-const walk = async (n, instance, parentPath) => {
+let layers = 0;
+const walk = async (n, outerInstance, nearestInstance, parentPath) => {
   if (n.visible === false || ('opacity' in n && n.opacity === 0)) return;
   layers++;
   const path = parentPath ? `${parentPath} / ${n.name}` : n.name;
-  if (!instance && n.type === 'INSTANCE') { instance = n; noteOverrides(n); }
-  let values = await rawValuesOf(n);
-  if (instance) {
-    const fields = overridden.get(n.id) || new Set();
-    const kept = values.filter(v => fields.has('boundVariables') || OVERRIDE_FIELDS[v.property].some(f => fields.has(f)));
-    inherited += values.length - kept.length;
-    values = kept;
+  if (n.type === 'INSTANCE') {
+    if (!outerInstance) { outerInstance = n; noteOverrides(n); }
+    nearestInstance = n;
   }
-  if (values.length) raw.push({ node: { id: n.id, path }, ...(instance ? { instance: { id: instance.id, name: instance.name } } : {}), values });
-  if ('children' in n) for (const c of n.children) await walk(c, instance, path);
+  let values = await rawValuesOf(n);
+  if (outerInstance) {
+    const fields = overridden.get(n.id) || new Set();
+    const isOverridden = (v) => fields.has('boundVariables') || OVERRIDE_FIELDS[v.property].some(f => fields.has(f));
+    const fromComponent = values.filter(v => !isOverridden(v));
+    if (fromComponent.length) await noteInherited(nearestInstance, n, path, fromComponent);
+    values = values.filter(isOverridden);
+  }
+  if (values.length) raw.push({ node: { id: n.id, path }, ...(outerInstance ? { instance: { id: outerInstance.id, name: outerInstance.name } } : {}), values });
+  if ('children' in n) for (const c of n.children) await walk(c, outerInstance, nearestInstance, path);
 };
-let outer = null, parentPath = '';
+// A scanned node inside an instance starts with the instances above it.
+let outerAbove = null, nearestAbove = null, parentPath = '';
 for (let x = node.parent; x && x.type !== 'PAGE'; x = x.parent) {
-  if (x.type === 'INSTANCE') outer = x;
+  if (x.type === 'INSTANCE') { outerAbove = x; if (!nearestAbove) nearestAbove = x; }
   parentPath = parentPath ? `${x.name} / ${parentPath}` : x.name;
 }
-if (outer) noteOverrides(outer);
-await walk(node, outer, parentPath);
+if (outerAbove) noteOverrides(outerAbove);
+await walk(node, outerAbove, nearestAbove, parentPath);
 
 const keyOf = (id) => (variables.get(id) || {}).key || id;
 out.bindings = {
   layers,
   raw,
+  inherited: [...inherited.values()].map(({ instances, ...i }) => ({ ...i, instances: instances.size })),
   variables: [...variables.values()].map(({ aliasId, properties, ...v }) => ({ ...v, alias: aliasId ? keyOf(aliasId) : null, properties: [...properties] })),
   styles: [...styles.values()].map(({ properties, ...s }) => ({ ...s, properties: [...properties] })),
-  inheritedRawValues: inherited,
 };
-if (unnamed) out.unread.push({ what: 'library names', reason: `no library name for ${unnamed} library variables: their collections aren't among figma.teamLibrary's` });
+if (unnamedLibraryVariables) out.unread.push({ what: 'library names', reason: `no library name for ${unnamedLibraryVariables} library variables: their collections aren't among figma.teamLibrary's` });
 if (gradients) out.unread.push({ what: 'gradient paints', reason: `${gradients} gradient paints weren't read: this version reads solid paints only` });
 
 // Keep the output under the smaller runtime limit (about 20 kB through use_figma).
 const size = () => JSON.stringify(out).length;
-if (size() > LIMIT) for (const r of raw) r.node.path = r.node.path.split(' / ').slice(-3).join(' / ');
-if (size() > LIMIT) for (const r of raw) delete r.node.path;
+const located = () => [...raw.map(r => r.node), ...out.bindings.inherited.flatMap(i => i.nodes)];
+if (size() > LIMIT) for (const x of located()) x.path = x.path.split(' / ').slice(-3).join(' / ');
+if (size() > LIMIT) for (const i of out.bindings.inherited) i.nodes = i.nodes.slice(0, 3);
+if (size() > LIMIT) for (const x of located()) delete x.path;
 if (size() > LIMIT) {
   out.bindings = null;
   out.groups = [];
