@@ -22,7 +22,7 @@ These two skills are the review's only way to read the design and to write a rep
 
 ## 1. Settle the inputs
 
-Settle everything before the review starts, asking for what's missing in as few messages as you can. Nothing is asked once the scan begins.
+Settle everything before the review starts, asking for what's missing in as few messages as you can. Nothing is asked once the scan begins. When another skill runs this review, settle the inputs from its hand-over, as Run by another skill describes.
 
 - **Scope:** the node ids of the frames to review, from the user's selection, the frames they name, or the `node-id` in a Figma link. For a page, use its top-level frames. In an external agent, the file key comes from the file's link.
 - **Runtime:** `figma-agent` inside Figma Design's agent, `external-agent` anywhere else.
@@ -45,6 +45,8 @@ From the document's header, note its name, version and location for the report, 
 ## 3. Scan
 
 Use the skill `design-review-scanner`. Give it the scope's node ids, the runtime, and the fact groups to judge from: those on the `Facts` lines of the criteria you'll judge in step 4, and those holding what each additional requirement is about. Judge from the Design Facts it hands back.
+
+When another skill handed over Design Facts, the design is already scanned: judge from those.
 
 ## 4. Judge
 
@@ -81,7 +83,8 @@ Judging is done when every criterion that applies to the target (or an uncovered
 
 Use the skill `design-review-report-writer`, handing over:
 
-- `run`: today's `date`, the `scope` (`fileKey`, and `nodes` as `{ id, name }`), the `runtime`, `setVersion` from this skill's Version line, `factsVersion` and `factGroups` from the Design Facts, and `settings`. `settings` is null when a profile's Accessibility section gave the target, `Report above target` and the additional requirements, whatever the criteria reference's location. Otherwise it's `{ "accessibility": { "standard": "WCAG", "version": "<version>", "level": "<level>", "from": "profile", "run time" or "asked", "criteriaReference": "<location>", "reportAboveTarget": "yes" or "no", "additionalRequirements": ["<id> (<Severity>): <statement>", …] } }`, where `from` says where the target came from.
+- `mode`: `json only` when the skill running this review asked for it, otherwise `full report`.
+- `run`: today's `date`, the `scope` (`fileKey`, and `nodes` as `{ id, name }`), the `runtime`, `setVersion` from this skill's Version line, `factsVersion` and `factGroups` from the Design Facts, and `settings`. `settings` is null when a profile's Accessibility section gave the target, `Report above target` and the additional requirements, whatever the criteria reference's location. Otherwise it's `{ "accessibility": { "standard": "WCAG", "version": "<version>", "level": "<level>", "from": "profile", "run time", "asked" or "default", "criteriaReference": "<location>", "reportAboveTarget": "yes" or "no", "additionalRequirements": ["<id> (<Severity>): <statement>", …] } }`, where `from` says where the target came from.
 - `profile`: `{ name, location, lastUpdated }` for the profile whose section you used, otherwise null.
 - `references`: the criteria reference's name, version and location.
 - `findings`, each with its `rootCause`, and `coverage`.
@@ -89,7 +92,22 @@ Use the skill `design-review-report-writer`, handing over:
 - `reportSettings`: the profile's Report settings you noted, as `{ "<key>": "<value>" }`, or null.
 - `saveRequest`: "don't save" or "save to <location>" when the user said so, otherwise null.
 
-The review is done when the Report Writer has delivered the report.
+The review is done when the Report Writer has delivered the report. In `json only` mode, it's done when you've handed the Report Writer's reply, its notes and JSON block, back to the skill that ran this review.
+
+## Run by another skill
+
+Another skill, such as `design-review`, can run this review as one part of a larger one. It settles the run first, asks the user everything, and hands over:
+
+- the scope, the runtime, and the `mode` for step 5
+- the Review Profile it found, as the scanner's `found` result
+- the Design Facts, from one scan for every review in the run. It scans for the fact groups this review judges from, the groups the criteria reference's `Facts` lines name.
+- anything the user gave at run time for this review, such as a criteria reference location or a WCAG target
+
+**Fact groups:** `colourPairs`, `text`, `structure`, `components`, `annotations`.
+
+A fact group you need that the handed-over facts neither read nor list in `unread` counts as unread, with the reason "not in the Design Facts handed over".
+
+In `json only` mode, the user has been asked everything already, so ask nothing. Where you'd ask what to check against, use what the question is pre-filled with, set `from` to `default`, and keep the note you'd keep for the report.
 
 ## Review Profile
 
@@ -97,7 +115,7 @@ A team's Review Profile names the standards its reviews are judged against. This
 
 ### Finding the profile
 
-Use the skill `design-review-scanner` to find the Review Profile, as its Finding the Review Profile describes. Give it the reviewed file's key, the runtime, and the profile given at run time, if any. It hands back one of three results:
+Use the skill `design-review-scanner` to find the Review Profile, as its Finding the Review Profile describes. Give it the reviewed file's key, the runtime, and the profile given at run time, if any. When another skill hands over the profile it found, that's the result, and there's no lookup. It hands back one of three results:
 
 - **found:** the profile's `text`, where the lookup found it (`from`), and the `profile` to name in the report.
 - **none:** where it looked (`searched`).
@@ -116,7 +134,7 @@ The Accessibility section holds this skill's settings, one `Key: value` per line
 
 Settle the settings by what the lookup found:
 
-- **A profile given at run time (`from` is `run time`), with an Accessibility section:** use the section without asking. Giving the profile is the user's agreement.
+- **A profile given at run time (`from` is `run time`), or handed over by another skill, with an Accessibility section:** use the section without asking. Giving the profile is the user's agreement.
 - **A profile found on the page or through a pointer in a project file, with an Accessibility section:** ask before using it, with any other question still open. For example: "I found the Review Profile "<name>" on the "Review Profile" page in this file. Use its Accessibility section for this review? It sets WCAG 2.2 AA with the default criteria reference, and the Severity Override "WCAG AA failures: serious". I'll use only that and where it saves reports, and I won't change it." Name where it saves reports from its Report settings, if it has them, and any Severity Override you'll refuse, and why. On yes, use the section. On no, go on as below.
 - **No profile, no Accessibility section, or the user said no:** say why you're asking, from the lookup's `searched` when there's no profile, then ask what to check against, each setting pre-filled with its default. For example: "I couldn't find a Review Profile: none was given, this file has no "Review Profile" page, and AGENTS.md has no pointer to one. What should I check against? I'll use WCAG 2.2 AA with the default criteria reference unless you name others. Your answer is for this run only, and isn't saved to a profile." With the target already given at run time, there's nothing to ask. For a profile without the section, keep a note for the report: "The Review Profile "<name>" has no Accessibility section, so this run used the settings below."
 

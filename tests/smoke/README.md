@@ -20,6 +20,8 @@ It must pass before every release, and after Figma changes its agent or its help
 2. Ask for the review, giving the test profile at run time, such as: "Run design-review-accessibility on https://www.figma.com/design/MavZEc8FpIpNX0bagnQQ33/?node-id=5-3 with the Review Profile at https://www.figma.com/design/MavZEc8FpIpNX0bagnQQ33/?node-id=16-2." A profile given at run time counts as agreeing to use it, so the run doesn't stop to ask. Until the Reference Documents are on `main`, also give the one the review reads, such as "Use the criteria reference at reference-documents/wcag-2.2-criteria.md." For a design system adherence case, run `design-review-library` in the same way, with "Use the Design system baseline at reference-documents/design-system-baseline.md."
 
    End the prompt with "Don't save the report." unless the case checks saving. A run saves its report by default, as a frame on the file's **Design review** page, so smoke runs would otherwise pile up frames there. The comparison is the same either way.
+
+   For a case run through the Orchestrator, such as X-01, ask for `/design-review` in the same way, naming the reviews to run ("all reviews", or "just accessibility") so the run doesn't stop to ask, and giving every Reference Document the chosen reviews read.
 3. Save the reply, or just its JSON block, to a file and compare it:
 
    ```
@@ -39,6 +41,12 @@ It must pass before every release, and after Figma changes its agent or its help
 - each Coverage entry's `status`, matched by axis and `ref`, and each whole-axis entry, matched by axis
 
 A missing, extra or duplicate Finding or Coverage entry fails. It prints `PASS <case>` and exits with 0, or `FAIL <case>` and one line per difference and exits with 1. It exits with 2 when it can't run.
+
+With `--axis <axis>`, such as `--axis accessibility`, it compares only that axis's Findings and Coverage entries, and leaves out `relatedFindings`, which only link to other axes. That checks a merged `/design-review` report against a one-axis case (see Orchestrator checks):
+
+```
+node tests/smoke/compare.mjs A11Y-01 reply.md --axis accessibility
+```
 
 Its own tests: `node --test tests/smoke/compare.test.mjs`. The Design Scanner's report frame script has tests too, run against a fake of the Plugin API: `node --test tests/scripts/report-frame.test.mjs`.
 
@@ -72,16 +80,26 @@ Each built case has a frame on the Cases page and, if its result is a report, an
 | DS-12 | The same resize where a rules document sets the size | | Finding citing that rule |
 | DS-13 | Direct fill override replacing a bound variable with a raw value | | One Finding |
 | DS-14 | Two libraries sharing collection names, both used | | Each variable attributed correctly, `confirmed` inside Figma |
-| X-01 | Raw fill that also fails contrast | | Two Findings, one per axis, linked by `relatedFindings` |
+| X-01 | Raw fill that also fails contrast: `/design-review` with all reviews, on a frame bound to `color/surface/default` holding a `Title` bound to `color/text/default` and a `Body` in the `Test Foundation/Body` text style, filled a raw `#8A8A8A` (3.45:1) | `62:6` | [`X-01.json`](expected/X-01.json): two Findings on the body text (`62:8`), `design-system/raw-value` and `accessibility/1.4.3`, both `moderate` and `confirmed`, each listing the other in `relatedFindings`. Coverage: `raw-value` `judged`, and the accessibility entries as for A11Y-01. Checked by hand: the report's Fixes by Root Cause has one item clearing both |
 | RES-01 | Frame that follows a known Insight | | Coverage `judged`; listed under "Research this design follows" |
 | RES-02 | Frame contradicting an Insight that reports task failure | | Finding at `serious`, citing the Insight; no participant details |
 | RES-03 | Frame showing a screen an Insight names, doing nothing about it | | Finding at `minor` |
 | RES-04 | Orchestrator run with no research topic | | Axis-level `skipped`, "no topic given" |
 | RES-05 | Insight older than `Research current for` | | Coverage `stale`; not judged |
-| RUN-01 | Orchestrator run | | Each chosen Review Skill loads (chaining) |
+| RUN-01 | Orchestrator run: `/design-review` on X-01 with the test profile and no reviews named, so it asks | `62:6` | Asks once, before the scan, with Design system adherence and Accessibility ticked and Research alignment "not set up". Then passes `X-01` (`node tests/smoke/compare.mjs X-01 reply.md`), which only both Review Skills together can give. Checked by hand: each chosen Review Skill loaded, and the scanner ran once for both |
 | RUN-02 | Reading the public Reference Documents | | Read from GitHub through `curl` |
 | RUN-03 | Orchestrator run with one Review Skill not installed | | Axis-level `skipped` naming the skill; other axes run |
 | RUN-05 | `/design-review` after a release | | The same version for all six skills |
+
+## Orchestrator checks
+
+`/design-review` runs the Review Skills in JSON-only mode from one shared scan, then merges their reports. These checks show that gives each axis the same results as its Review Skill on its own.
+
+| Check | Set-up | Expected |
+|---|---|---|
+| Every case through `/design-review` | Each case above that has an expected file, run as `/design-review` with all reviews, the case's profile and its Reference Documents | Each passes its case with `--axis` set to the case's axis. The other axis's results on the frame aren't compared |
+| One review named | A11Y-01 as `/design-review` with "just accessibility", and DS-01 with "just design system adherence" | Hands off to the Review Skill in full-report mode, so each passes its case without `--axis`, as the Review Skill on its own does |
+| One scan | Every run with two reviews | The scanner is used once for the run, one call per node and fact group, and no Review Skill scans |
 
 ## Review Profile checks
 
