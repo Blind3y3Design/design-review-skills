@@ -21,7 +21,7 @@ The skill that writes a review's Findings and Coverage in the shared report form
 _Avoid_: Documentation skill, formatter, output skill
 
 **Design Scanner**:
-The skill that reads a design and returns its Design Facts, without judging them.
+The skill that reads a design and returns its Design Facts, without judging them. It also finds the Review Profile for the Review Skills, handing back the profile's text for each skill to use as it needs.
 _Avoid_: Inspector, crawler, collector
 
 **Design Facts**:

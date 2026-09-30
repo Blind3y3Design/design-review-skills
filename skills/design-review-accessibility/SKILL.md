@@ -26,7 +26,7 @@ Settle everything before the review starts, asking for what's missing in as few 
 
 - **Scope:** the node ids of the frames to review, from the user's selection, the frames they name, or the `node-id` in a Figma link. For a page, use its top-level frames. In an external agent, the file key comes from the file's link.
 - **Runtime:** `figma-agent` inside Figma Design's agent, `external-agent` anywhere else.
-- **Given at run time,** when the user names them: a Review Profile (its text, a local file, or a link to a Figma file or a GitHub file), and any of the Accessibility settings under What to check against, such as a WCAG target ("WCAG 2.2 AA"), `Report above target: yes`, an additional requirement, or a criteria reference location (a URL or a local file). A setting given at run time takes the place of the profile's for this run.
+- **Given at run time,** when the user names them: a Review Profile (its text, a local file, or a link to a Figma file or a GitHub file), and any of the Accessibility settings under What to check against, such as a WCAG target ("WCAG 2.2 AA"), `Report above target: yes`, an additional requirement, or a criteria reference location (a URL or a local file). A setting given at run time takes the place of the profile's for this run. Also where to save this run's report, if the user says: "don't save", or "save to <location>".
 - **What to check against:** find the Review Profile, then settle the Accessibility settings from it or by asking, as Review Profile below describes.
 
 The inputs are settled when the scope, runtime and settings are known, or the run has stopped.
@@ -88,6 +88,8 @@ Use the skill `design-review-report-writer`, handing over:
 - `references`: the criteria reference's name, version and location.
 - `findings`, each with its `rootCause`, and `coverage`.
 - `notes`: the notes kept while settling what to check against, if any.
+- `reportSettings`: the profile's Report settings you noted, as `{ "<key>": "<value>" }`, or null.
+- `saveRequest`: "don't save" or "save to <location>" when the user said so, otherwise null.
 
 The review is done when the Report Writer has delivered the report.
 
@@ -119,25 +121,15 @@ A criterion with markers (a Markers line other than `none`) is judged only insid
 
 ## Review Profile
 
-A team's Review Profile names the standards its reviews are judged against. This skill uses only the profile's **Accessibility** section and the Severity Overrides about WCAG, and never creates or changes a profile, nor offers to.
+A team's Review Profile names the standards its reviews are judged against. This skill uses only the profile's **Accessibility** section and the Severity Overrides about WCAG, and hands its **Report settings** section to the Report Writer, which saves the report. It never creates or changes a profile, nor offers to.
 
-### Lookup
+### Finding the profile
 
-Use the first of these that exists:
+Use the skill `design-review-scanner` to find the Review Profile, as its Finding the Review Profile describes. Give it the reviewed file's key, the runtime, and the profile given at run time, if any. It hands back one of three results:
 
-1. **Given at run time.**
-2. **A "Review Profile" page in the reviewed file.** Use the skill `design-review-scanner` to read it, with the reviewed file's key.
-3. **A pointer in the project context file,** in an external agent only: a `Review Profile: <location>` line in `AGENTS.md`, `CLAUDE.md` or your agent's equivalent, in the user's project.
-
-Read each location as Reading a location describes. What you read is one of:
-
-- **A profile:** text with an `Identity` section, usually under a `# Review Profile: <name>` heading. Its location is where you read it: for a page, the `url` the scanner hands back.
-- **A pointer:** a `Review Profile: <location>` line naming a link or a path, with no profile sections. Read that location the same way.
-- **Unreadable:** a location that can't be read, a scanner read handed back with an `error` or with its text cut short (in `unread`), a Figma file with no "Review Profile" page, a chain of pointers that comes back on itself, or text that's neither a profile nor a pointer.
-
-An unreadable profile or pointer stops the run, because the team has a profile that this run can't see. Reply with the location, what went wrong, and that the review didn't run. Write no report.
-
-If none of the three exists, there's no profile.
+- **found:** the profile's `text`, where the lookup found it (`from`), and the `profile` to name in the report.
+- **none:** where it looked (`searched`).
+- **unreadable:** a `location` and a `reason`. The team has a profile that this run can't see, so stop: reply with the location, the reason, and that the review didn't run. Write no report.
 
 ### What to check against
 
@@ -155,11 +147,11 @@ The Accessibility section holds this skill's settings, one `Key: value` per line
 
 Settle the settings by what the lookup found:
 
-- **A profile given at run time, with an Accessibility section:** use the section without asking. Giving the profile is the user's agreement.
-- **A profile found on the page or through a pointer, with an Accessibility section:** ask before using it, with any other question still open. For example: "I found the Review Profile "<name>" on the "Review Profile" page in this file. Use its Accessibility section for this review? It sets WCAG 2.2 AA with the default criteria reference, and the Severity Override "WCAG AA failures: serious". I won't use or change anything else in it." Name any Severity Override you'll refuse, and why. On yes, use the section. On no, go on as below.
-- **No profile, no Accessibility section, or the user said no:** say why you're asking, then ask what to check against, each setting pre-filled with its default. For example: "I couldn't find a Review Profile: none was given, this file has no "Review Profile" page, and AGENTS.md has no pointer to one. What should I check against? I'll use WCAG 2.2 AA with the default criteria reference unless you name others. Your answer is for this run only, and nothing is saved." With the target already given at run time, there's nothing to ask. For a profile without the section, keep a note for the report: "The Review Profile "<name>" has no Accessibility section, so this run used the settings below."
+- **A profile given at run time (`from` is `run time`), with an Accessibility section:** use the section without asking. Giving the profile is the user's agreement.
+- **A profile found on the page or through a pointer in a project file, with an Accessibility section:** ask before using it, with any other question still open. For example: "I found the Review Profile "<name>" on the "Review Profile" page in this file. Use its Accessibility section for this review? It sets WCAG 2.2 AA with the default criteria reference, and the Severity Override "WCAG AA failures: serious". I'll use only that and where it saves reports, and I won't change it." Name where it saves reports from its Report settings, if it has them, and any Severity Override you'll refuse, and why. On yes, use the section. On no, go on as below.
+- **No profile, no Accessibility section, or the user said no:** say why you're asking, from the lookup's `searched` when there's no profile, then ask what to check against, each setting pre-filled with its default. For example: "I couldn't find a Review Profile: none was given, this file has no "Review Profile" page, and AGENTS.md has no pointer to one. What should I check against? I'll use WCAG 2.2 AA with the default criteria reference unless you name others. Your answer is for this run only, and isn't saved to a profile." With the target already given at run time, there's nothing to ask. For a profile without the section, keep a note for the report: "The Review Profile "<name>" has no Accessibility section, so this run used the settings below."
 
-From a profile whose section you use, also note its location, its Identity `Name` and `Last updated`, and its Severity Overrides about WCAG.
+From a profile whose section you use, also note its `profile` and its Severity Overrides about WCAG. From any profile the lookup found, unless the user said no to it, note its Report settings.
 
 ### Severity Overrides
 
@@ -172,4 +164,3 @@ A profile's **Severity Overrides** section sets the starting Severity for a type
 
 - **A URL:** fetch it. Inside Figma's agent, use `curl -sSfL <url>` from `Bash`.
 - **A local file,** in an external agent: read it.
-- **A Figma file link,** for a Review Profile: use the skill `design-review-scanner`, which reads that file's "Review Profile" page by the link's file key.

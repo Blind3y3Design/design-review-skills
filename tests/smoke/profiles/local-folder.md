@@ -1,4 +1,4 @@
-# Review Profile: Smoke test, serious override
+# Review Profile: Smoke test, local folder
 
 Profile version: 0.1
 
@@ -6,7 +6,7 @@ Profile version: 0.1
 
 What this profile is called and who maintains it.
 
-- Name: Smoke test, serious override
+- Name: Smoke test, local folder
 - Owner: Design review skills maintainers
 - Last updated: 2026-09-30
 
@@ -37,8 +37,9 @@ The accessibility standard designs are judged against.
 - Level: AA
 - Criteria reference: the skill's default
 
-## Severity Overrides
+## Report settings
 
-The starting Severity this team sets for a type of rule, in place of the review's default. No override lowers a Locked Rule breach below serious, and one that sets critical names the core task it's tied to.
+Where reports are saved, and whether Findings are marked on layers.
 
-- WCAG AA failures: serious
+- Report location: reports/smoke-test
+- Annotate layers: off

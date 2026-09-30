@@ -1,0 +1,15 @@
+{
+  "case": "DS-02",
+  "findings": [
+    {
+      "id": "design-system/raw-value/node:45:21",
+      "axis": "design-system",
+      "severity": "moderate",
+      "certainty": "confirmed",
+      "relatedFindings": []
+    }
+  ],
+  "coverage": [
+    { "axis": "design-system", "ref": "raw-value", "status": "judged" }
+  ]
+}

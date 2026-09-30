@@ -59,12 +59,13 @@ Nothing is built or edited before publishing: a published skill is the release f
 
 ## Repository layout
 
-`skills/`, `reference-documents/` and `tests/smoke/` are being built; `docs/setup/` and `docs/publishing.md` are planned.
+`skills/`, `reference-documents/` and `tests/` are being built; `docs/setup/` and `docs/publishing.md` are planned.
 
 ```
 skills/<name>/SKILL.md     The six design review skills, one folder each, holding only SKILL.md
 reference-documents/       WCAG 2.2 criteria reference and the Design system baseline
 tests/smoke/               Smoke test: case list, expected Findings JSON, comparison script, link to the Figma test file
+tests/scripts/             Tests for the scripts in the skills, run against a fake of the Figma Plugin API
 docs/adr/                  Architecture decisions
 docs/agents/               Issue tracker, triage labels and domain docs for agents
 docs/setup/                Setup guides, starting with research tools
