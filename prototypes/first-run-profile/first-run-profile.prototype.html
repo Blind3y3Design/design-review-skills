@@ -1,0 +1,579 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>First-run Review Profile (prototype)</title>
+<style>
+  :root {
+    --bg: #fafaf8; --panel: #ffffff; --ink: #1d1d1b; --muted: #6b6b66; --line: #e4e3de;
+    --accent: #2f5bd3; --accent-soft: #e8eefc; --ok: #1f7a4a; --warn: #9a6400; --bad: #b3261e;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 1180px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 10px; }
+  .banner { background: #fff4e0; border: 1px solid #f0d9a8; border-radius: 8px; padding: 10px 14px; font-size: 13px; margin: 12px 0 20px; }
+  .intro { color: var(--muted); max-width: 820px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 860px) { .grid { grid-template-columns: 1fr; } }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; }
+  .facts { display: grid; grid-template-columns: max-content 1fr; gap: 4px 14px; font-size: 14px; }
+  .facts dt { color: var(--muted); }
+  .facts dd { margin: 0; }
+  .changed { background: var(--accent-soft); border-radius: 4px; padding: 0 4px; }
+  .transcript { max-height: 420px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+  .msg { padding: 8px 12px; border-radius: 10px; max-width: 92%; font-size: 14px; white-space: pre-wrap; }
+  .msg.agent { background: #f1f0ec; align-self: flex-start; }
+  .msg.user { background: var(--accent); color: #fff; align-self: flex-end; }
+  .msg.note { background: none; color: var(--muted); font-size: 12px; align-self: center; padding: 0; }
+  pre.profile { margin: 0; white-space: pre-wrap; font: 12.5px/1.5 ui-monospace, "SF Mono", Menlo, monospace; max-height: 420px; overflow-y: auto; }
+  .ready { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; font-size: 14px; }
+  .tag { display: inline-block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; padding: 1px 7px; border-radius: 999px; margin-right: 6px; }
+  .tag.ready { background: #e3f3ea; color: var(--ok); }
+  .tag.partial { background: #fbefd9; color: var(--warn); }
+  .tag.skip { background: #f8e1df; color: var(--bad); }
+  .sub { color: var(--muted); font-size: 13px; margin: 2px 0 0 0; padding-left: 18px; }
+  .buttons { display: flex; flex-wrap: wrap; gap: 8px; }
+  button { font: inherit; font-size: 14px; border: 1px solid var(--accent); background: #fff; color: var(--accent); border-radius: 8px; padding: 6px 12px; cursor: pointer; }
+  button:hover:not(:disabled) { background: var(--accent-soft); }
+  button:disabled { border-color: var(--line); color: #b2b1ab; cursor: not-allowed; }
+  button.primary { background: var(--accent); color: #fff; }
+  .reason { font-size: 12px; color: var(--muted); }
+  .disabled-list { margin-top: 10px; font-size: 13px; color: var(--muted); }
+  .start { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 12px; font-size: 14px; }
+  .start label { display: flex; gap: 6px; align-items: center; }
+  select { font: inherit; font-size: 14px; padding: 4px 6px; border-radius: 6px; border: 1px solid var(--line); }
+  .tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+  .tabs button { border-color: var(--line); color: var(--ink); }
+  .tabs button.on { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+  .scenario p { margin: 0 0 10px; }
+  .steps { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+  .steps button.done { border-color: var(--line); color: var(--muted); text-decoration: line-through; }
+  .questions ol { margin: 0; padding-left: 20px; }
+  .questions li { margin-bottom: 6px; }
+  section { margin-top: 16px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>First-run Review Profile: a prototype</h1>
+  <div class="banner"><strong>Throwaway prototype</strong> for <a href="https://github.com/Blind3y3Design/design-review-skills/issues/12">issue #12</a>. The file, its libraries and the answers are made up. Nothing here is saved anywhere.</div>
+  <p class="intro"><strong>The question:</strong> when a review runs and there's no Review Profile, what should the conversation that creates one ask, in what order, and with what defaults? Is it quick for a designer, and does it produce a profile complete enough for each Review Skill? Pick how the review was started, then step through the conversation. Watch the transcript, the profile being written, the readiness check for each Review Skill and the question counter.</p>
+
+  <section class="panel">
+    <h2>Start a run</h2>
+    <div class="start">
+      <label>Started by <select id="trigger">
+        <option value="orchestrator">the Orchestrator (all reviews)</option>
+        <option value="a11y">the accessibility skill on its own</option>
+        <option value="ds">the design system skill on its own</option>
+        <option value="research">the research skill on its own</option>
+      </select></label>
+      <label>Running in <select id="runtime">
+        <option value="figma">Figma Design's agent</option>
+        <option value="external">an external agent (Claude Code, Cursor)</option>
+      </select></label>
+      <label><input type="checkbox" id="compact"> Compact: confirm all the defaults in one step</label>
+      <button class="primary" id="restart">Start over</button>
+    </div>
+  </section>
+
+  <div class="grid">
+    <section class="panel">
+      <h2>Conversation</h2>
+      <div class="transcript" id="transcript"></div>
+    </section>
+    <section class="panel">
+      <h2>What the agent can do next</h2>
+      <div class="buttons" id="freeplay"></div>
+      <div class="disabled-list" id="disabled"></div>
+    </section>
+  </div>
+
+  <div class="grid">
+    <section class="panel">
+      <h2>Current state</h2>
+      <dl class="facts" id="facts"></dl>
+    </section>
+    <section class="panel">
+      <h2>Is it enough for each review?</h2>
+      <ul class="ready" id="readiness"></ul>
+    </section>
+  </div>
+
+  <section class="panel">
+    <h2>The Review Profile as written so far</h2>
+    <pre class="profile" id="profile"></pre>
+  </section>
+
+  <section class="panel">
+    <h2>Guided walkthroughs</h2>
+    <div class="tabs" id="tabs"></div>
+    <div class="scenario" id="scenario"></div>
+  </section>
+
+  <section class="panel questions">
+    <h2>Questions this prototype raises</h2>
+    <ol>
+      <li><strong>Compact or step by step?</strong> Compare walkthroughs 1 and 2. Compact asks fewer questions, but tucks the accessibility target into a list of defaults.</li>
+      <li><strong>Should "Not now" exist?</strong> It lets accessibility run on WCAG 2.2 AA defaults without saving anything. Is that a helpful escape, or a way to never set a profile up?</li>
+      <li><strong>Where does the pointer to a profile live in a Figma file?</strong> This prototype writes a one-line "Review Profile" page. Shared plugin data on the file is another option, but people can't see it.</li>
+      <li><strong>Is a private custom skill a real team option?</strong> Only its creator can use it until it's shared with the org, and whether the agent can share it is untested.</li>
+      <li><strong>Who owns each layer?</strong> The file can't tell, so owners start as "unknown". Findings blamed on a layer then name nobody. Should first run insist on an owner for each layer?</li>
+      <li><strong>Should a skill run on its own set up only its own section?</strong> See walkthrough 5. The Orchestrator later runs only what the profile covers, so a profile first made by the accessibility skill never gets the other reviews until someone adds them.</li>
+      <li><strong>Should the Report Writer write the profile?</strong> The profile is read by agents, and the report by people. The text here is written plainly for an agent.</li>
+    </ol>
+  </section>
+</main>
+
+<script>
+// ---------------------------------------------------------------------------
+// Pure logic: the first-run conversation as a state machine.
+// No DOM in here. The page below only calls initial(), reduce(), legalActions(),
+// profileMarkdown(), readiness() and stats().
+// ---------------------------------------------------------------------------
+const FirstRun = (() => {
+  const TODAY = '2026-09-30';
+
+  // A made-up file, as the agent would scan it (libraries used, frame widths, connectors).
+  const FILE = {
+    name: 'Checkout redesign',
+    libraries: [
+      { id: 'foundation', name: 'Foundation Tokens', link: 'figma.com/design/F0und/Foundation-Tokens', collections: ['Primitives', 'Theme'], prefixes: ['Foundation/'], aliasesInto: [], uses: 412 },
+      { id: 'web', name: 'Web Platform Kit', link: 'figma.com/design/W3b/Web-Platform-Kit', collections: ['Web Theme'], prefixes: ['Web/'], aliasesInto: ['foundation'], uses: 188 },
+      { id: 'checkout', name: 'Checkout Library', link: 'figma.com/design/Ch3ck/Checkout-Library', collections: ['Checkout Theme'], prefixes: ['Checkout/'], aliasesInto: ['web', 'foundation'], uses: 96 },
+      { id: 'old', name: 'Old Marketing Kit', link: 'figma.com/design/0ld/Old-Marketing-Kit', collections: [], prefixes: ['Promo/'], aliasesInto: [], uses: 3 },
+    ],
+    frameWidths: [375, 768, 1440],
+    researchConnector: 'Dovetail',
+  };
+  const RARE_USES = 10;
+  const AXIS_NAMES = { a11y: 'Accessibility', ds: 'Design system adherence', research: 'Research alignment' };
+  const QUESTION_STEPS = ['found-none', 'axes', 'identity', 'layers', 'accessibility', 'research', 'product', 'defaults', 'review', 'save'];
+
+  function initial({ trigger = 'orchestrator', runtime = 'figma', compact = false } = {}) {
+    const axes = trigger === 'orchestrator'
+      ? { a11y: true, ds: true, research: true }
+      : { a11y: trigger === 'a11y', ds: trigger === 'ds', research: trigger === 'research' };
+    const s = {
+      trigger, runtime, compact, step: null, outcome: null, axes,
+      identity: { name: `${FILE.name} review profile`, owner: 'You' },
+      layers: null,
+      a11y: { version: '2.2', level: 'AA' },
+      research: { sources: [], currentFor: 12, skipped: false },
+      product: { platforms: null, widths: null, skipped: false },
+      report: { location: null, annotate: false },
+      saved: null, pointer: null,
+      log: [], asked: 0, changed: 0, lastChange: null,
+    };
+    return enter(s, 'found-none');
+  }
+
+  function order(s) {
+    const full = ['found-none', 'axes', 'identity', 'layers', 'accessibility', 'research', 'product', 'review', 'save', 'done'];
+    const compact = ['found-none', 'axes', 'layers', 'research', 'defaults', 'save', 'done'];
+    return (s.compact ? compact : full).filter(step => {
+      if (step === 'axes') return s.trigger === 'orchestrator';
+      if (step === 'layers') return s.axes.ds;
+      if (step === 'research') return s.axes.research;
+      if (step === 'accessibility') return s.axes.a11y;
+      return true;
+    });
+  }
+
+  function proposeLayers() {
+    // Most general first: a library whose variables point at no other library's comes first.
+    const libs = [...FILE.libraries].sort((a, b) => a.aliasesInto.length - b.aliasesInto.length);
+    return libs.map(lib => ({
+      libId: lib.id, name: lib.name.replace(/ (Tokens|Kit|Library)$/, ''), owner: null, rulesDoc: null,
+      include: lib.uses >= RARE_USES,
+    }));
+  }
+
+  function lib(id) { return FILE.libraries.find(l => l.id === id); }
+  function included(s) { return (s.layers || []).filter(l => l.include); }
+  function list(xs) { return xs.length <= 1 ? xs.join('') : xs.slice(0, -1).join(', ') + ' and ' + xs[xs.length - 1]; }
+
+  function say(s, who, text) { s.log.push({ who, text }); }
+
+  function prompt(s, step) {
+    const inFigma = s.runtime === 'figma';
+    switch (step) {
+      case 'found-none':
+        return `I couldn't find a Review Profile. I checked for one given with this run, a pointer in this file${inFigma ? '' : ', your project context file (AGENTS.md or CLAUDE.md)'} and this skill's default.\n\nShall I set one up with you? Most answers are already filled in from this file, so it's a few clicks. Or point me to a profile that already exists.`;
+      case 'axes':
+        return `Which reviews should this profile cover? All three are selected: ${list(Object.values(AXIS_NAMES))}.`;
+      case 'identity':
+        return `I'll call it "${s.identity.name}", owned by you. Change either?`;
+      case 'layers': {
+        const inc = included(s), out = s.layers.filter(l => !l.include);
+        let t = `This file uses ${FILE.libraries.length} libraries. Here's how I think they stack, most general first. I worked the order out from which libraries' variables point at which:\n` +
+          inc.map((l, i) => `  ${i + 1}. ${lib(l.libId).name}`).join('\n');
+        if (out.length) t += `\n\nI've left out ${list(out.map(l => lib(l.libId).name))}. It's used only ${lib(out[0].libId).uses} times and doesn't connect to the others. Anything from it will be flagged as coming from outside the stack.`;
+        t += `\n\nI don't know who owns each library or whether it has a rules document, so those are blank. The built-in checks still run. Does the order look right?`;
+        return t;
+      }
+      case 'accessibility':
+        return `Accessibility: judge against WCAG ${s.a11y.version} level ${s.a11y.level}?`;
+      case 'research':
+        return `Research alignment needs somewhere to find research. You have ${FILE.researchConnector} connected: which project should it use? You can skip this, and research alignment won't run until a source is added.\n\n(The topic for each review is asked each time, never stored here.)`;
+      case 'product':
+        return `From your frames, this looks like a web product at ${list(FILE.frameWidths.map(w => w + 'px'))} wide. Use that as the product context?`;
+      case 'defaults':
+        return `I've filled in the rest with defaults:\n  • Name: "${s.identity.name}", owned by you\n  • Accessibility: WCAG ${s.a11y.version} ${s.a11y.level}\n  • Product: web, ${list(FILE.frameWidths.map(w => w + 'px'))}\n  • Reports: saved as a page in this file; no annotations on layers\nChange anything?`;
+      case 'review':
+        return `Here's the whole profile (on the right). Save it?`;
+      case 'save':
+        return inFigma
+          ? `Where should I save it? Reviews in other files can use it too, if they point to wherever it's saved.`
+          : `Where should I save it?`;
+    }
+    return '';
+  }
+
+  function enter(s, step) {
+    s.step = step;
+    if (QUESTION_STEPS.includes(step)) {
+      if (step === 'layers' && !s.layers) s.layers = proposeLayers();
+      if (step === 'defaults') { s.product.platforms = ['Web']; s.product.widths = FILE.frameWidths; }
+      s.asked += 1;
+      say(s, 'agent', prompt(s, step));
+    }
+    return s;
+  }
+
+  function advance(s) {
+    const steps = order(s);
+    return enter(s, steps[steps.indexOf(s.step) + 1]);
+  }
+
+  function change(s, what) { s.changed += 1; s.lastChange = what; }
+
+  function reduce(prev, action) {
+    const s = structuredClone(prev);
+    s.lastChange = null;
+    const legal = legalActions(prev).find(a => a.enabled && sameAction(a.action, action));
+    if (!legal) { say(s, 'note', `Not allowed here: ${action.type}`); return s; }
+    say(s, 'user', legal.label);
+
+    switch (action.type) {
+      case 'CREATE': return advance(s);
+      case 'POINT_OK':
+        s.step = 'done'; s.outcome = 'existing';
+        say(s, 'agent', `Found it: "Checkout team profile". I'll use that and add a pointer to it in this file, so next time I find it straight away. Running the review now.`);
+        return s;
+      case 'POINT_BROKEN':
+        s.step = 'stopped'; s.outcome = 'stopped';
+        say(s, 'agent', `I couldn't read that profile. The link may be wrong, or you may not have access. I won't create a new one, because that would leave two profiles for the same work. Fix the link or its sharing and run the review again.`);
+        return s;
+      case 'NOT_NOW':
+        s.step = 'skipped'; s.outcome = 'not-now';
+        say(s, 'agent', s.axes.a11y
+          ? `OK. I'll run only the accessibility review this time, against WCAG 2.2 AA, and say so in the report. The other reviews need a profile, so they're skipped. I'll offer to set one up again next time.`
+          : `OK. This review needs a profile to know what to check against, so I'll stop here. Run it again when you're ready.`);
+        return s;
+
+      case 'TOGGLE_AXIS': s.axes[action.axis] = !s.axes[action.axis]; change(s, `axes.${action.axis}`); return s;
+      case 'ACCEPT': return advance(s);
+
+      case 'RENAME': s.identity.name = 'Checkout team profile'; change(s, 'identity.name'); return s;
+      case 'SET_OWNER_TEAM': s.identity.owner = 'Checkout design team'; change(s, 'identity.owner'); return s;
+
+      case 'TOGGLE_LIB': { const l = s.layers.find(x => x.libId === action.lib); l.include = !l.include; change(s, `layers.${action.lib}`); return s; }
+      case 'MOVE_UP': { const i = s.layers.findIndex(x => x.libId === action.lib); [s.layers[i - 1], s.layers[i]] = [s.layers[i], s.layers[i - 1]]; change(s, 'layers.order'); return s; }
+      case 'SET_LAYER_OWNER': { const l = s.layers.find(x => x.libId === action.lib); l.owner = action.owner; change(s, `layers.${action.lib}.owner`); return s; }
+      case 'ADD_RULES_DOC': { const l = s.layers.find(x => x.libId === action.lib); l.rulesDoc = action.doc; change(s, `layers.${action.lib}.rulesDoc`); return s; }
+
+      case 'SET_AAA': s.a11y.level = 'AAA'; change(s, 'a11y.level'); return s;
+
+      case 'ADD_SOURCE': s.research.sources.push({ tool: FILE.researchConnector, project: 'Checkout research' }); change(s, 'research.sources'); return s;
+      case 'SKIP_RESEARCH': s.research.skipped = true; change(s, 'research.skipped'); return advance(s);
+
+      case 'ACCEPT_PRODUCT': s.product.platforms = ['Web']; s.product.widths = FILE.frameWidths; return advance(s);
+      case 'SKIP_PRODUCT': s.product.skipped = true; change(s, 'product.skipped'); return advance(s);
+
+      case 'ANNOTATE_ON': s.report.annotate = true; change(s, 'report.annotate'); return s;
+
+      case 'SAVE': return save(s, action.target);
+    }
+    return s;
+  }
+
+  function slug(name) { return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''); }
+
+  function save(s, target) {
+    const skill = slug(s.identity.name);
+    const where = {
+      'page': { saved: `a "Review Profile" page in this file`, pointer: `none needed: the profile page is in this file. Other files can point here with this file's link.` },
+      'skill': { saved: `a private custom skill, /${skill}`, pointer: `a one-line "Review Profile" page in this file: "Review Profile: /${skill} (custom skill)"` },
+      'local': { saved: `review-profile.md in this project`, pointer: `a line in AGENTS.md: "Review Profile: ./review-profile.md"` },
+      'github': { saved: `review-profile.md in a GitHub repo`, pointer: `a line in AGENTS.md with the file's GitHub link` },
+    }[target];
+    s.saved = where.saved; s.pointer = where.pointer; s.step = 'done'; s.outcome = 'created';
+    const run = Object.entries(s.axes).filter(([k, v]) => v && !(k === 'research' && s.research.skipped)).map(([k]) => AXIS_NAMES[k].toLowerCase());
+    let t = `Saved as ${where.saved}. Pointer: ${where.pointer}.\n\nRunning the ${list(run)} review${run.length > 1 ? 's' : ''} now, against "${s.identity.name}".`;
+    if (target === 'skill') t += `\n\nNote: a private skill works only for you. For teammates to use it, share it with your org from the skills list.`;
+    if (target === 'page' || target === 'skill') t += `\n\nTo keep it somewhere shared instead, you can move it later and update the pointer.`;
+    say(s, 'agent', t);
+    return s;
+  }
+
+  function sameAction(a, b) { return JSON.stringify(a) === JSON.stringify(b); }
+
+  // Every action the user could take right now, including ones that aren't allowed and why.
+  function legalActions(s) {
+    const A = (action, label, enabled = true, reason = '') => ({ action, label, enabled, reason });
+    switch (s.step) {
+      case 'found-none': return [
+        A({ type: 'CREATE' }, 'Set one up with me'),
+        A({ type: 'POINT_OK' }, 'Use this profile: <working link>'),
+        A({ type: 'POINT_BROKEN' }, 'Use this profile: <broken link>'),
+        A({ type: 'NOT_NOW' }, 'Not now'),
+      ];
+      case 'axes': {
+        const any = Object.values(s.axes).some(Boolean);
+        return [
+          A({ type: 'ACCEPT' }, 'These are right', any, 'Pick at least one review.'),
+          ...Object.keys(AXIS_NAMES).map(k => A({ type: 'TOGGLE_AXIS', axis: k }, `${s.axes[k] ? 'Remove' : 'Add'} ${AXIS_NAMES[k].toLowerCase()}`)),
+        ];
+      }
+      case 'identity': return [
+        A({ type: 'ACCEPT' }, 'Looks good'),
+        A({ type: 'RENAME' }, 'Call it "Checkout team profile"', s.identity.name !== 'Checkout team profile', 'Already renamed.'),
+        A({ type: 'SET_OWNER_TEAM' }, 'Owner: Checkout design team', s.identity.owner !== 'Checkout design team', 'Already set.'),
+      ];
+      case 'layers': {
+        const inc = included(s);
+        const out = [A({ type: 'ACCEPT' }, 'That order is right', inc.length > 0, 'Include at least one library, or remove the design system review.')];
+        s.layers.forEach((l, i) => {
+          const name = lib(l.libId).name;
+          out.push(A({ type: 'TOGGLE_LIB', lib: l.libId }, `${l.include ? 'Leave out' : 'Include'} ${name}`));
+          if (l.include) {
+            const prevIncluded = s.layers.slice(0, i).some(x => x.include);
+            out.push(A({ type: 'MOVE_UP', lib: l.libId }, `Move ${name} up (more general)`, i > 0 && prevIncluded, 'Already the most general.'));
+            out.push(A({ type: 'SET_LAYER_OWNER', lib: l.libId, owner: `${l.name} team` }, `${name} is owned by the ${l.name} team`, !l.owner, 'Owner already set.'));
+            out.push(A({ type: 'ADD_RULES_DOC', lib: l.libId, doc: `github.com/acme/design-rules/${l.libId}.md` }, `${name} has a rules document`, !l.rulesDoc, 'Already added.'));
+          }
+        });
+        return out;
+      }
+      case 'accessibility': return [
+        A({ type: 'ACCEPT' }, 'Yes, WCAG 2.2 AA'),
+        A({ type: 'SET_AAA' }, 'Use level AAA instead', s.a11y.level !== 'AAA', 'Already AAA.'),
+      ];
+      case 'research': return [
+        A({ type: 'ADD_SOURCE' }, `Use the ${FILE.researchConnector} project "Checkout research"`, s.research.sources.length === 0, 'Already added.'),
+        A({ type: 'ACCEPT' }, 'Done', s.research.sources.length > 0, 'Add a source, or skip.'),
+        A({ type: 'SKIP_RESEARCH' }, 'Skip for now'),
+      ];
+      case 'product': return [
+        A({ type: 'ACCEPT_PRODUCT' }, 'Yes, use that'),
+        A({ type: 'SKIP_PRODUCT' }, 'Skip'),
+      ];
+      case 'defaults': return [
+        A({ type: 'ACCEPT' }, 'Keep all of these'),
+        A({ type: 'RENAME' }, 'Call it "Checkout team profile"', s.identity.name !== 'Checkout team profile', 'Already renamed.'),
+        A({ type: 'SET_AAA' }, 'Use WCAG level AAA', s.a11y.level !== 'AAA', 'Already AAA.'),
+        A({ type: 'ANNOTATE_ON' }, 'Also mark Findings on layers', !s.report.annotate, 'Already on.'),
+      ];
+      case 'review': return [A({ type: 'ACCEPT' }, 'Save it')];
+      case 'save': return s.runtime === 'figma' ? [
+        A({ type: 'SAVE', target: 'page' }, 'A page in this file'),
+        A({ type: 'SAVE', target: 'skill' }, 'A private custom skill'),
+        A({ type: 'SAVE', target: 'shared-file' }, 'A page in a shared Figma file', false, 'Untested: the agent can read other Figma files (#17), but writing into one isn\'t proven.'),
+        A({ type: 'SAVE', target: 'github' }, 'A file in a GitHub repo', false, 'Waiting on #19: committing through the GitHub connector isn\'t documented or tested.'),
+      ] : [
+        A({ type: 'SAVE', target: 'local' }, 'review-profile.md in this project'),
+        A({ type: 'SAVE', target: 'github' }, 'A file in a GitHub repo'),
+      ];
+    }
+    return [];
+  }
+
+  function profileMarkdown(s) {
+    const L = [];
+    L.push(`# Review Profile: ${s.identity.name}`, '', 'Profile version: 0.1', '');
+    L.push('## Identity', '', `- Name: ${s.identity.name}`, `- Owner: ${s.identity.owner}`, `- Last updated: ${TODAY}`, '');
+    if (s.axes.ds && s.layers) {
+      L.push('## Design System Layers', '', 'Listed from the most general to the most specific. A more specific layer overrides a more general one, unless the general layer locked the rule.', '');
+      included(s).forEach((l, i) => {
+        const x = lib(l.libId);
+        L.push(`### ${i + 1}. ${l.name}`, '', `- Owner: ${l.owner || 'unknown'}`, '- Libraries:', `  - ${x.name}: ${x.link}`);
+        const hints = [...x.collections.map(c => `collection \`${c}\``), ...x.prefixes.map(p => `prefix \`${p}\``)];
+        L.push(`    - Match hints: ${hints.join(', ') || 'none'}`);
+        L.push(`- Rules document: ${l.rulesDoc || 'none (Design system baseline only)'}`, '');
+      });
+    }
+    L.push('## Accessibility', '', `- Standard: WCAG ${s.a11y.version}`, `- Level: ${s.a11y.level}`, '- Criteria reference: the skill\'s default', '');
+    if (s.axes.research && (s.research.sources.length || s.research.skipped)) {
+      L.push('## Research Sources', '');
+      if (s.research.sources.length) s.research.sources.forEach(r => L.push(`- ${r.tool}: project "${r.project}"`));
+      else L.push('- None yet. Research alignment is skipped until a source is added.');
+      L.push(`- Research current for: ${s.research.currentFor} months`, '');
+    }
+    if (s.product.widths && !s.product.skipped) {
+      L.push('## Product context', '', `- Target platforms: ${s.product.platforms.join(', ')}`, `- Supported viewport widths: ${s.product.widths.map(w => w + 'px').join(', ')}`, '');
+    }
+    L.push('## Report settings', '', `- Report location: ${s.report.location || 'none (a report page in the Figma file)'}`, `- Annotate layers: ${s.report.annotate ? 'on' : 'off'}`);
+    return L.join('\n');
+  }
+
+  function readiness(s) {
+    const out = [];
+    if (s.axes.a11y || s.trigger === 'orchestrator') {
+      out.push({ axis: AXIS_NAMES.a11y, status: 'ready', notes: [`WCAG ${s.a11y.version} ${s.a11y.level}, criteria from the skill's default reference.`,
+        ...(s.product.skipped ? ['No viewport widths, so reflow (1.4.10) is reported as needing a section.'] : [])] });
+    }
+    if (s.axes.ds) {
+      const inc = included(s);
+      if (!s.layers) out.push({ axis: AXIS_NAMES.ds, status: 'partial', notes: ['Layers not set up yet.'] });
+      else if (!inc.length) out.push({ axis: AXIS_NAMES.ds, status: 'skip', notes: ['No layers, so nothing to check against.'] });
+      else {
+        const notes = [];
+        const noOwner = inc.filter(l => !l.owner).length, noRules = inc.filter(l => !l.rulesDoc).length;
+        if (noOwner) notes.push(`${noOwner} of ${inc.length} layers have no owner, so Findings blamed on them name nobody.`);
+        if (noRules) notes.push(`${noRules} of ${inc.length} layers have no rules document: built-in checks only, with no Locked Rules.`);
+        notes.push(s.runtime === 'figma' ? 'Inside Figma, assets are attributed to layers by match hints (likely).' : 'Assets attributed by library lookup (confirmed), with match hints as a fallback.');
+        const excluded = s.layers.filter(l => !l.include).map(l => lib(l.libId).name);
+        if (excluded.length) notes.push(`Assets from ${list(excluded)} will be flagged as outside the stack.`);
+        out.push({ axis: AXIS_NAMES.ds, status: noOwner || noRules ? 'partial' : 'ready', notes });
+      }
+    }
+    if (s.axes.research) {
+      if (s.research.sources.length) out.push({ axis: AXIS_NAMES.research, status: 'ready', notes: [`${s.research.sources.length} source. The topic is asked at each run.`] });
+      else out.push({ axis: AXIS_NAMES.research, status: s.research.skipped ? 'skip' : 'partial', notes: [s.research.skipped ? 'Skipped at every run until a source is added (listed in Coverage).' : 'No source yet.'] });
+    }
+    const off = Object.keys(AXIS_NAMES).filter(k => !s.axes[k] && !(k === 'a11y' && s.trigger === 'orchestrator'));
+    if (off.length && s.trigger !== 'orchestrator') out.push({ axis: 'Not covered', status: 'skip', notes: [`${list(off.map(k => AXIS_NAMES[k]))}: an Orchestrator run on this profile won't run ${off.length > 1 ? 'these' : 'this'} until someone adds ${off.length > 1 ? 'their sections' : 'its section'}.`] });
+    return out;
+  }
+
+  function stats(s) {
+    return { asked: s.asked, changed: s.changed, seconds: s.asked * 8 + s.changed * 15 };
+  }
+
+  return { initial, reduce, legalActions, profileMarkdown, readiness, stats, STEP_LABELS: {
+    'found-none': 'No profile found', axes: 'Choosing reviews', identity: 'Name and owner', layers: 'Design System Layers',
+    accessibility: 'Accessibility target', research: 'Research sources', product: 'Product context', defaults: 'Confirming defaults',
+    review: 'Reviewing the profile', save: 'Choosing where to save', done: 'Done', stopped: 'Stopped', skipped: 'Skipped for now' } };
+})();
+
+// ---------------------------------------------------------------------------
+// Scenarios: each is a starting point plus the buttons to press, in order.
+// ---------------------------------------------------------------------------
+const SCENARIOS = [
+  { title: '1. Designer, quick path', start: { trigger: 'orchestrator', runtime: 'figma' },
+    text: 'A designer runs the Orchestrator in Figma on a file with no profile and accepts every default, adding one research source. Watch the question counter: every step asks one question, even when the answer is already filled in.',
+    steps: [{ type: 'CREATE' }, { type: 'ACCEPT' }, { type: 'ACCEPT' }, { type: 'ACCEPT' }, { type: 'ACCEPT' }, { type: 'ADD_SOURCE' }, { type: 'ACCEPT' }, { type: 'ACCEPT_PRODUCT' }, { type: 'ACCEPT' }, { type: 'SAVE', target: 'page' }] },
+  { title: '2. Same, compact', start: { trigger: 'orchestrator', runtime: 'figma', compact: true },
+    text: 'The same designer, with compact mode: the name, accessibility target, product context and report settings are confirmed in one step. Compare the question counter with walkthrough 1. Is the accessibility target too easy to miss here?',
+    steps: [{ type: 'CREATE' }, { type: 'ACCEPT' }, { type: 'ACCEPT' }, { type: 'SKIP_RESEARCH' }, { type: 'ACCEPT' }, { type: 'SAVE', target: 'page' }] },
+  { title: '3. Lead sets up a team profile', start: { trigger: 'orchestrator', runtime: 'figma' },
+    text: 'A design lead renames the profile, gives it a team owner, names the Foundation owner and its rules document, and saves it as a custom skill. Watch the readiness panel as owners and rules are added, and the warning at the end that a private skill works only for its creator.',
+    steps: [{ type: 'CREATE' }, { type: 'ACCEPT' }, { type: 'RENAME' }, { type: 'SET_OWNER_TEAM' }, { type: 'ACCEPT' },
+      { type: 'SET_LAYER_OWNER', lib: 'foundation', owner: 'Foundation team' }, { type: 'ADD_RULES_DOC', lib: 'foundation', doc: 'github.com/acme/design-rules/foundation.md' }, { type: 'ACCEPT' },
+      { type: 'ACCEPT' }, { type: 'ADD_SOURCE' }, { type: 'ACCEPT' }, { type: 'ACCEPT_PRODUCT' }, { type: 'ACCEPT' }, { type: 'SAVE', target: 'skill' }] },
+  { title: '4. The rarely used library', start: { trigger: 'orchestrator', runtime: 'figma' },
+    text: 'The file uses "Old Marketing Kit" three times. It\'s left out by default, so its assets get flagged as outside the stack. Include it and watch where it lands: it points at no other library, so the ordering rule puts it second, above Web Platform, as if it were more general. That\'s wrong. Then leave it out again.',
+    steps: [{ type: 'CREATE' }, { type: 'ACCEPT' }, { type: 'ACCEPT' }, { type: 'TOGGLE_LIB', lib: 'old' }, { type: 'TOGGLE_LIB', lib: 'old' }, { type: 'ACCEPT' }] },
+  { title: '5. Accessibility skill on its own', start: { trigger: 'a11y', runtime: 'figma' },
+    text: 'The accessibility skill runs on its own. It sets up only identity and accessibility, with no layers or research. Watch the readiness panel: an Orchestrator run on this profile later runs accessibility only.',
+    steps: [{ type: 'CREATE' }, { type: 'ACCEPT' }, { type: 'ACCEPT' }, { type: 'ACCEPT_PRODUCT' }, { type: 'ACCEPT' }, { type: 'SAVE', target: 'page' }] },
+  { title: '6. A broken pointer', start: { trigger: 'orchestrator', runtime: 'figma' },
+    text: 'The designer points to an existing profile that can\'t be read. The run stops rather than creating a second profile.',
+    steps: [{ type: 'POINT_BROKEN' }] },
+  { title: '7. Not now', start: { trigger: 'orchestrator', runtime: 'figma' },
+    text: 'The designer declines to set up a profile. Accessibility runs on WCAG 2.2 AA defaults and the other reviews are skipped. Should this escape exist?',
+    steps: [{ type: 'NOT_NOW' }] },
+  { title: '8. External agent', start: { trigger: 'orchestrator', runtime: 'external' },
+    text: 'The same quick path in Claude Code or Cursor. Attribution is confirmed by library lookup, and the profile is saved as a local file with a pointer in AGENTS.md.',
+    steps: [{ type: 'CREATE' }, { type: 'ACCEPT' }, { type: 'ACCEPT' }, { type: 'ACCEPT' }, { type: 'ACCEPT' }, { type: 'SKIP_RESEARCH' }, { type: 'ACCEPT_PRODUCT' }, { type: 'ACCEPT' }, { type: 'SAVE', target: 'local' }] },
+  { title: '9. Removing every review', start: { trigger: 'orchestrator', runtime: 'figma' },
+    text: 'Try to set up a profile that covers no reviews. "These are right" becomes unavailable once all three are removed.',
+    steps: [{ type: 'CREATE' }, { type: 'TOGGLE_AXIS', axis: 'a11y' }, { type: 'TOGGLE_AXIS', axis: 'ds' }, { type: 'TOGGLE_AXIS', axis: 'research' }] },
+];
+
+// ---------------------------------------------------------------------------
+// Page shell: thin wiring over FirstRun.
+// ---------------------------------------------------------------------------
+let state, activeScenario = 0, scenarioPos = 0;
+const $ = id => document.getElementById(id);
+
+function startFromControls() {
+  state = FirstRun.initial({ trigger: $('trigger').value, runtime: $('runtime').value, compact: $('compact').checked });
+  scenarioPos = -1; render();
+}
+function startScenario(i) {
+  activeScenario = i; scenarioPos = 0;
+  const sc = SCENARIOS[i].start;
+  $('trigger').value = sc.trigger; $('runtime').value = sc.runtime; $('compact').checked = !!sc.compact;
+  state = FirstRun.initial(sc); render();
+}
+function dispatch(action) { state = FirstRun.reduce(state, action); render(); }
+
+function render() {
+  const t = $('transcript'); t.innerHTML = '';
+  state.log.forEach(m => { const d = document.createElement('div'); d.className = 'msg ' + m.who; d.textContent = m.text; t.appendChild(d); });
+  t.scrollTop = t.scrollHeight;
+
+  const fp = $('freeplay'), dis = $('disabled'); fp.innerHTML = ''; dis.innerHTML = '';
+  const acts = FirstRun.legalActions(state);
+  acts.filter(a => a.enabled).forEach(a => { const b = document.createElement('button'); b.textContent = a.label; b.onclick = () => { scenarioPos = -1; dispatch(a.action); }; fp.appendChild(b); });
+  if (!acts.length) fp.innerHTML = '<span class="reason">The conversation is over. Start over, or pick a walkthrough.</span>';
+  const blocked = acts.filter(a => !a.enabled);
+  if (blocked.length) dis.innerHTML = '<strong>Not available right now:</strong><br>' + blocked.map(a => `${a.label}: ${a.reason}`).join('<br>');
+
+  const st = FirstRun.stats(state), ch = state.lastChange || '';
+  const fact = (k, v, key) => `<dt>${k}</dt><dd>${key && ch.startsWith(key) ? `<span class="changed">${v}</span>` : v}</dd>`;
+  const reviews = Object.entries(state.axes).filter(([, v]) => v).map(([k]) => ({ a11y: 'Accessibility', ds: 'Design system', research: 'Research' }[k])).join(', ') || 'none';
+  const layers = state.layers ? state.layers.filter(l => l.include).map((l, i) => `${i + 1}. ${l.name}${l.owner ? ' (' + l.owner + ')' : ''}`).join(' → ') || 'none' : 'not set yet';
+  $('facts').innerHTML =
+    fact('Step', FirstRun.STEP_LABELS[state.step]) +
+    fact('Started by', { orchestrator: 'Orchestrator', a11y: 'Accessibility skill', ds: 'Design system skill', research: 'Research skill' }[state.trigger]) +
+    fact('Running in', state.runtime === 'figma' ? "Figma Design's agent" : 'External agent') +
+    fact('Reviews covered', reviews, 'axes') +
+    fact('Name', state.identity.name, 'identity.name') +
+    fact('Owner', state.identity.owner, 'identity.owner') +
+    fact('Layers', layers, 'layers') +
+    fact('Accessibility', `WCAG ${state.a11y.version} ${state.a11y.level}`, 'a11y') +
+    fact('Research', state.research.sources.length ? state.research.sources.map(r => r.project).join(', ') : state.research.skipped ? 'skipped' : 'none yet', 'research') +
+    fact('Annotate layers', state.report.annotate ? 'on' : 'off', 'report') +
+    fact('Saved to', state.saved || '—') +
+    fact('Pointer', state.pointer || '—') +
+    fact('Questions asked', `${st.asked} (changed ${st.changed} default${st.changed === 1 ? '' : 's'}), about ${st.seconds}s`);
+
+  $('readiness').innerHTML = FirstRun.readiness(state).map(r =>
+    `<li><span class="tag ${r.status}">${{ ready: 'ready', partial: 'partial', skip: 'won\'t run' }[r.status]}</span><strong>${r.axis}</strong>${r.notes.map(n => `<p class="sub">${n}</p>`).join('')}</li>`).join('');
+
+  $('profile').textContent = FirstRun.profileMarkdown(state);
+  renderScenario();
+}
+
+function renderScenario() {
+  const tabs = $('tabs'); tabs.innerHTML = '';
+  SCENARIOS.forEach((s, i) => { const b = document.createElement('button'); b.textContent = s.title; b.className = i === activeScenario ? 'on' : ''; b.onclick = () => startScenario(i); tabs.appendChild(b); });
+  const sc = SCENARIOS[activeScenario], box = $('scenario');
+  box.innerHTML = `<p>${sc.text}</p><div class="steps"></div>`;
+  const steps = box.querySelector('.steps');
+  if (scenarioPos < 0) {
+    const b = document.createElement('button'); b.textContent = 'Start this walkthrough'; b.className = 'primary'; b.onclick = () => startScenario(activeScenario); steps.appendChild(b); return;
+  }
+  sc.steps.forEach((a, i) => {
+    const label = (FirstRun.legalActions(state).find(x => JSON.stringify(x.action) === JSON.stringify(a)) || {}).label;
+    const b = document.createElement('button');
+    b.textContent = `${i + 1}. ${i < scenarioPos ? 'done' : label || '(not available at this point)'}`;
+    b.className = i < scenarioPos ? 'done' : '';
+    b.disabled = i !== scenarioPos || !label;
+    b.onclick = () => { scenarioPos = i + 1; dispatch(a); };
+    steps.appendChild(b);
+  });
+}
+
+$('restart').onclick = startFromControls;
+['trigger', 'runtime', 'compact'].forEach(id => $(id).onchange = startFromControls);
+startScenario(0);
+</script>
+</body>
+</html>
