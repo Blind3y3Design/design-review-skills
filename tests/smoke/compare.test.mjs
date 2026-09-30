@@ -14,7 +14,9 @@ const saved = (name, text) => {
   writeFileSync(path, text);
   return path;
 };
-// A report for A11Y-01 that matches tests/smoke/expected/A11Y-01.json.
+// A case's expected JSON, which is also a report that matches it.
+const load = (id) => JSON.parse(readFileSync(new URL(`./expected/${id}.json`, import.meta.url), 'utf8'));
+// A small report, for the tests of how the comparison works.
 const report = () => ({
   schemaVersion: '0.2',
   findings: [
@@ -161,14 +163,14 @@ test('an axis-level skipped entry is matched by its axis', () => {
 });
 
 test('the command passes a matching report for a case id, with exit code 0', () => {
-  const markdown = `# Design review\n\n\`\`\`json\n${JSON.stringify(report(), null, 2)}\n\`\`\`\n`;
+  const markdown = `# Design review\n\n\`\`\`json\n${JSON.stringify(load('A11Y-01'), null, 2)}\n\`\`\`\n`;
   const result = run(['A11Y-01', saved('report.md', markdown)]);
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /^PASS A11Y-01/);
 });
 
 test('the command lists each difference and exits with 1 when a report differs', () => {
-  const likely = report();
+  const likely = load('A11Y-01');
   likely.findings[0].certainty = 'likely';
   const result = run(['A11Y-01', '-'], JSON.stringify(likely));
   assert.equal(result.status, 1);
@@ -176,7 +178,7 @@ test('the command lists each difference and exits with 1 when a report differs',
 });
 
 test('each expected case passes against itself and fails when any compared field changes', () => {
-  const load = (id) => JSON.parse(readFileSync(new URL(`./expected/${id}.json`, import.meta.url), 'utf8'));
+  const entry = (r, ref) => r.coverage.find((c) => c.ref === ref);
   const changes = {
     'A11Y-01': [
       (r) => { r.findings[0].id = 'accessibility/1.4.3/node:5:4'; },
@@ -185,11 +187,14 @@ test('each expected case passes against itself and fails when any compared field
       (r) => { r.findings[0].certainty = 'likely'; },
       (r) => { r.findings[0].relatedFindings = ['design-system/DS-RAW/node:5:5']; },
       (r) => { r.findings = []; },
-      (r) => { r.coverage[0].status = 'not-readable'; },
+      (r) => { entry(r, '1.4.3').status = 'not-readable'; },
+      (r) => { entry(r, '4.1.2').status = 'not-applicable'; },
     ],
     'CLEAN-01': [
       (r) => { r.findings.push({ id: 'accessibility/1.4.3/node:5:8', axis: 'accessibility', severity: 'moderate', certainty: 'confirmed' }); },
-      (r) => { r.coverage[0].status = 'not-applicable'; },
+      (r) => { entry(r, '1.4.3').status = 'not-applicable'; },
+      (r) => { entry(r, '1.1.1').status = 'needs-annotation'; },
+      (r) => { r.coverage.pop(); },
       (r) => { r.coverage = []; },
     ],
   };
