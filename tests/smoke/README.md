@@ -91,4 +91,5 @@ Checked by hand in an external agent, on A11Y-01, because the JSON seam doesn't 
 | A pointer in `AGENTS.md` | Page off. The project's `AGENTS.md` has `Review Profile: <path to profiles/smoke-test-profile.md>` | Asks whether to use it. On yes, `profile` names the file |
 | No profile | Page off, and no pointer | Says why it's asking and asks what to check against. The header lists the answers under "Settings for this run", `profile` is null, and nothing is saved |
 | An unreadable pointer | Page off. `AGENTS.md` points to a file that doesn't exist | Stops with the location and the reason, and writes no report |
+| An unreadable pointer on the page | Page off. A temporary page named `Review Profile` holds only `Review Profile: <link to a file with no Review Profile page>`, such as DRS Test Unlisted. Delete it afterwards | Stops with the location and the reason, and writes no report |
 | A critical override without a core task | [`profiles/override-critical.md`](profiles/override-critical.md) given at run time | Passes `A11Y-01`, and the header's Notes say the override wasn't applied |
