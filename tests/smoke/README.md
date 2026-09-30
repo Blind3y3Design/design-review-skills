@@ -8,14 +8,16 @@ It must pass before every release, and after Figma changes its agent or its help
 
 [Design review smoke test](https://www.figma.com/design/MavZEc8FpIpNX0bagnQQ33/Design-review-smoke-test), file key `MavZEc8FpIpNX0bagnQQ33`. Link access is limited to people at Cat, because this repo is public.
 
-**Page convention.** Every case is one top-level frame on the **Cases** page (`5:2`). The frame's name is its case id, such as `A11Y-01`, and its content is made up. Each case prefix (A11Y, DS, X, RES, CLEAN, RUN) has a row of its own. Add a case at the end of its prefix's row, and start a new prefix as a row below the others. Reviews scan whole frames, so keep a case's frame free of anything the case doesn't need. Leave "Page 1", the file's original page, empty. Later tickets add the "Review Profile" page and the report page.
+**Page convention.** Every case is one top-level frame on the **Cases** page (`5:2`). The frame's name is its case id, such as `A11Y-01`, and its content is made up. Each case prefix (A11Y, DS, X, RES, CLEAN, RUN) has a row of its own. Add a case at the end of its prefix's row, and start a new prefix as a row below the others. Reviews scan whole frames, so keep a case's frame free of anything the case doesn't need. A variant of a case, such as `A11Y-01-override`, runs on its base case's frame with other settings. Leave "Page 1", the file's original page, empty. A later ticket adds the report page.
+
+**The Review Profile page** (`16:2`) holds the test profile as one text layer, a copy of [`profiles/smoke-test-profile.md`](profiles/smoke-test-profile.md). The override profiles in `profiles/` are the same profile with a Severity Overrides section. Keep them all the same otherwise: a ticket that adds a profile section, such as Design System Layers, adds it to each.
 
 ## Running a case
 
 **In an external agent** with the Figma MCP server connected:
 
 1. Make the skills in `skills/` available to the agent, by copying the folder or with `npx skills add`.
-2. Ask for the review, such as: "Run design-review-accessibility on https://www.figma.com/design/MavZEc8FpIpNX0bagnQQ33/?node-id=5-3 against WCAG 2.2 AA." Until the criteria reference is on `main`, also give its location, such as "Use the criteria reference at reference-documents/wcag-2.2-criteria.md."
+2. Ask for the review, giving the test profile at run time, such as: "Run design-review-accessibility on https://www.figma.com/design/MavZEc8FpIpNX0bagnQQ33/?node-id=5-3 with the Review Profile at https://www.figma.com/design/MavZEc8FpIpNX0bagnQQ33/?node-id=16-2." A profile given at run time counts as agreeing to use it, so the run doesn't stop to ask. Until the criteria reference is on `main`, also give its location, such as "Use the criteria reference at reference-documents/wcag-2.2-criteria.md."
 3. Save the reply, or just its JSON block, to a file and compare it:
 
    ```
@@ -45,6 +47,7 @@ Each built case has a frame on the Cases page and, if its result is a report, an
 | Id | Case | Frame | Expected |
 |---|---|---|---|
 | A11Y-01 | Body text at 3.4:1: `#8A8A8A` 16 px text on a `#FFFFFF` frame (3.45:1), under a title that passes | `5:3` | [`A11Y-01.json`](expected/A11Y-01.json): one 1.4.3 Finding on the body text (`5:5`), `moderate`, `confirmed`. Coverage has all 55 WCAG 2.2 A/AA criteria: 1.4.3 `judged`, the 8 code-only criteria `needs-code`, and the rest `not-readable` until the scanner reads their facts |
+| A11Y-01-override | A11Y-01 with [`profiles/override-serious.md`](profiles/override-serious.md) given at run time, whose Severity Override is "WCAG AA failures: serious" | `5:3` | [`A11Y-01-override.json`](expected/A11Y-01-override.json): the same Finding at `serious`. Coverage as for A11Y-01. Checked by hand: its evidence names the override |
 | CLEAN-01 | A frame that follows every rule. For now, every text pair passes 1.4.3, on a frame's fill, a nested frame's fill and a rectangle beneath the text | `5:6` | [`CLEAN-01.json`](expected/CLEAN-01.json): no Findings. Coverage as for A11Y-01 |
 | RUN-04 | A run with `design-review-report-writer` or `design-review-scanner` missing | any case frame | Checked by hand: the run stops, names the missing skill and writes no report |
 | A11Y-02 | Text over an image | | `needs-review`, or `not-readable` in Coverage |
@@ -76,3 +79,17 @@ Each built case has a frame on the Cases page and, if its result is a report, an
 | RUN-02 | Reading the public Reference Documents | | Read from GitHub through `curl` |
 | RUN-03 | Orchestrator run with one Review Skill not installed | | Axis-level `skipped` naming the skill; other axes run |
 | RUN-05 | `/design-review` after a release | | The same version for all six skills |
+
+## Review Profile checks
+
+Checked by hand in an external agent, on A11Y-01 unless the check names another case, because the JSON seam doesn't cover them. Each lookup step is reached only when the steps before it find nothing, so the checks marked "page off" rename the Review Profile page to `Review Profile (off)` for the run, and name it back afterwards.
+
+| Check | Set-up | Expected |
+|---|---|---|
+| Given at run time | The page's link, or a file in `profiles/`, in the prompt, as in A11Y-01 and CLEAN-01 runs | No question. The report's `profile` and header name the profile |
+| The file's page | No profile in the prompt | Asks whether to use the page's Accessibility section. On yes, `profile` names the page |
+| A pointer in `AGENTS.md` | Page off. The project's `AGENTS.md` has `Review Profile: <path to profiles/smoke-test-profile.md>` | Asks whether to use it. On yes, `profile` names the file |
+| No profile | Page off, and no pointer | Says why it's asking and asks what to check against. The header lists the answers under "Settings for this run", `profile` is null, and nothing is saved |
+| An unreadable pointer | Page off. `AGENTS.md` points to a file that doesn't exist | Stops with the location and the reason, and writes no report |
+| An unreadable pointer on the page | Page off. A temporary page named `Review Profile` holds only `Review Profile: <link to a file with no Review Profile page>`, such as [DRS Test Unlisted](https://www.figma.com/design/8DhePf1jHSsrvwFxpiYoQf/DRS-Test-Unlisted). Delete it afterwards | Stops with the location and the reason, and writes no report |
+| A critical override without a core task | [`profiles/override-critical.md`](profiles/override-critical.md) given at run time | Passes `A11Y-01`, and the header's Notes say the override wasn't applied |

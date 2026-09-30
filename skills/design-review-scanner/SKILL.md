@@ -11,7 +11,7 @@ Version 0.1.0-dev of the design review skills.
 
 Reads a design and returns its Design Facts: what was read or measured, never a judgement. The scanner holds no thresholds and no criteria. The Review Skill that asked for the facts judges them.
 
-All reading goes through one **fixed script**, tested as written, so every review reads a file the same way. You change only the node id on its first line.
+All reading goes through **fixed scripts**, tested as written, so every review reads a file the same way. Design Facts come from the script under The script, where you change only the node id on its first line. A skill can also ask for a file's Review Profile page, which is read by a script of its own (see Reading a Review Profile page).
 
 ## Inputs
 
@@ -239,6 +239,41 @@ if (size() > LIMIT) {
   out.colourPairs = null;
   out.groups = [];
   out.unread.push({ what: 'colourPairs', reason: `output limit: ${textLayers} text layers are too many for one call; scan each id in scanInstead`, scanInstead: childIds(node) });
+}
+return out;
+```
+
+## Reading a Review Profile page
+
+A calling skill may ask instead for a file's Review Profile page: the page named "Review Profile", which holds a team's Review Profile or a pointer to one. This is text, not Design Facts. Hand it back as the page holds it, and interpret none of it.
+
+1. **Pick the tool** as in step 1 of Steps, with the file key the caller gives. It may be another file's key: both tools read another file by its key.
+2. **Run the script below** exactly as written, in one call. If the call errors, run it once more unchanged. If it errors again, hand back `{ "fileKey": "<key>", "error": "<the error message>" }`.
+3. **Hand back** the script's output as it returned it:
+   - `fileKey`
+   - `page`: `{ id, name, url, textLayers }`, or null when the file has no page named "Review Profile". `url` is the page's link, or null without a file key
+   - `text`: the page's visible text layers, top to bottom, separated by blank lines
+   - `unread[]`: what couldn't be read, each `{ what, reason }`
+
+```js
+const LIMIT = 18000;
+const out = { fileKey: figma.fileKey || null, page: null, text: null, unread: [] };
+const named = figma.root.children.filter((p) => p.name.trim().toLowerCase() === 'review profile');
+if (named.length) {
+  const page = named[0];
+  if (named.length > 1) out.unread.push({ what: 'pages', reason: `${named.length} pages are named "Review Profile": only the first was read` });
+  await page.loadAsync();
+  const visible = (n) => { for (let x = n; x && x.type !== 'PAGE'; x = x.parent) if (x.visible === false) return false; return true; };
+  const texts = page.findAllWithCriteria({ types: ['TEXT'] }).filter(visible).filter((t) => t.characters.trim());
+  const position = (t) => t.absoluteBoundingBox || { x: t.x, y: t.y };
+  texts.sort((a, b) => position(a).y - position(b).y || position(a).x - position(b).x);
+  const url = out.fileKey ? `https://www.figma.com/design/${out.fileKey}/?node-id=${page.id.replace(/:/g, '-')}` : null;
+  out.page = { id: page.id, name: page.name, url, textLayers: texts.length };
+  out.text = texts.map((t) => t.characters.trim()).join('\n\n');
+  if (out.text.length > LIMIT) {
+    out.text = out.text.slice(0, LIMIT);
+    out.unread.push({ what: 'text', reason: `the page holds more than ${LIMIT} characters: the rest wasn't read` });
+  }
 }
 return out;
 ```

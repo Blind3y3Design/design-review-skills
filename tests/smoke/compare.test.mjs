@@ -190,6 +190,12 @@ test('each expected case passes against itself and fails when any compared field
       (r) => { entry(r, '1.4.3').status = 'not-readable'; },
       (r) => { entry(r, '4.1.2').status = 'not-applicable'; },
     ],
+    'A11Y-01-override': [
+      (r) => { r.findings[0].severity = 'moderate'; },
+      (r) => { r.findings[0].certainty = 'likely'; },
+      (r) => { entry(r, '1.4.3').status = 'not-readable'; },
+      (r) => { entry(r, '4.1.2').status = 'not-applicable'; },
+    ],
     'CLEAN-01': [
       (r) => { r.findings.push({ id: 'accessibility/1.4.3/node:5:8', axis: 'accessibility', severity: 'moderate', certainty: 'confirmed' }); },
       (r) => { entry(r, '1.4.3').status = 'not-applicable'; },
