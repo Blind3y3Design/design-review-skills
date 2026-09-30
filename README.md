@@ -1,6 +1,6 @@
 # design-review-skills
 
-Agent skills for reviewing and evaluating design work, primarily in Figma, across multiple review axes, plus an Orchestrator skill that decides which reviews to run and merges their findings.
+Agent skills for reviewing and evaluating design work, primarily in Figma, across multiple review axes, plus an Orchestrator skill that runs several reviews at once and merges their findings.
 
 > **Status: planning.** The skill set, review axes, and output format are still being decided. Planning is tracked as a wayfinder map in this repo's [GitHub Issues](https://github.com/Blind3y3Design/design-review-skills/issues?q=label%3Awayfinder%3Amap). Anything below marked _planned_ may change.
 
@@ -18,13 +18,17 @@ Visual hierarchy, content and UX writing, and interaction states are candidates 
 
 ### Orchestrator (planned)
 
-A skill that takes a Figma file, frame, or selection, picks the relevant Review Skills, runs them, and merges their Findings into one report.
+A skill that takes a Figma file, frame, or selection and runs several Review Skills on it: all the axes the Review Profile covers, a subset you name, or the ones you pick when it asks. It runs them in parallel where the agent supports it, and merges their Findings into one report.
+
+### Report Writer (planned)
+
+A skill that every other skill uses to write its report, so output is the same shape whether a Review Skill runs on its own or through the Orchestrator: a Markdown report, then a JSON block of Findings and Coverage.
 
 ### Review Profile (planned)
 
 Skills don't bundle any organisation's standards. A team's Review Profile names its design system layers, research sources, and accessibility target. If no profile exists, the skill walks the user through creating one on the first run.
 
-Every skill is a single portable `SKILL.md` that works inside Figma's agent and in external agents such as Claude Code, Codex and Cursor. See [ADR 0001](docs/adr/0001-portable-single-file-skills.md).
+Every skill is a single portable `SKILL.md` that works inside Figma Design's agent and in external agents such as Claude Code, Codex and Cursor. Skills invoke each other rather than copying each other's content. Figma Make isn't supported. See [ADR 0001](docs/adr/0001-portable-single-file-skills.md) and [ADR 0005](docs/adr/0005-chained-skills-only-figma-make-out-of-scope.md).
 
 ## Requirements
 
@@ -39,7 +43,7 @@ Every skill is a single portable `SKILL.md` that works inside Figma's agent and 
 skills-lock.json    Lockfile for the vendored skills
 ```
 
-Folders for the design review skills and the meta agent will be added once their structure is decided.
+Folders for the design review skills, the Orchestrator and the Report Writer will be added once their structure is decided.
 
 ## Development workflow
 

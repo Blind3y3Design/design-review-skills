@@ -1,9 +1,10 @@
 # Prefer separate skills with nested invocation; inline only as a stopgap
 
-The target design is a set of small, separate skills that invoke each other: the Orchestrator invokes Review Skills, and a Review Skill invokes any skill it depends on. We prefer this to copying one skill's content into another, because each skill then has one owner and one version, and nothing goes stale in a copy. Figma's agent runs one skill per prompt today ([issue #2](https://github.com/Blind3y3Design/design-review-skills/issues/2)), so where a runtime can't chain skills, content is inlined at publish (ADR 0002, ADR 0003) as a stopgap, not as the design. Each skill still works on its own when a skill it would invoke isn't available, and its report says what it did instead.
+The target design is a set of small, separate skills that invoke each other: the Orchestrator invokes Review Skills, and every skill invokes the Report Writer and any other skill it depends on. We prefer this to copying one skill's content into another, because each skill then has one owner and one version, and nothing goes stale in a copy. Figma Design's agent and external agents can chain skills ([issue #14](https://github.com/Blind3y3Design/design-review-skills/issues/14), ADR 0005). Inlining at publish (ADR 0002, ADR 0003) is kept only as a stopgap for content a runtime can't reach any other way.
 
 ## Consequences
 
-- New work designs the chained shape first and the inlined Figma shape second. The Orchestrator is the first place this applies.
-- Removing inlining once chaining works must stay cheap. The ADR 0002 build step stays a plain copy.
+- New work designs the chained shape first. Build an inlined shape only when a supported runtime can't reach the content.
+- Removing inlining must stay cheap. The ADR 0002 build step stays a plain copy.
 - A skill keeps its steps separate where a future split is likely, with a plain hand-off between them. Research alignment keeps fetching research apart from judging it, so a skill for one research tool can be split out if testing shows it's needed.
+- **Required and optional skills behave differently when missing.** If a required skill, such as the Report Writer, won't load, the run stops and names the skill to install. Nothing can be reported without it, and an unformatted fallback would bring back a drifting copy of the format. If an optional skill won't load, such as one Review Skill in an Orchestrator run, the run continues without it, and Coverage names the missing skill and says what wasn't assessed.

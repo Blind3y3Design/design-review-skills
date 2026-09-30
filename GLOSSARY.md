@@ -13,8 +13,12 @@ A skill that evaluates a design along exactly one Review Axis.
 _Avoid_: Checker, auditor, sub-skill
 
 **Orchestrator**:
-The skill that chooses which Review Skills apply to a design, runs them, and merges their Findings into one report.
+The skill that runs several Review Skills in one review, choosing them from the Review Profile and the user's request, and merges their Findings into one report.
 _Avoid_: Meta skill, meta agent, coordinator
+
+**Report Writer**:
+The skill that writes a review's Findings and Coverage in the shared report format, whether a Review Skill runs on its own or through the Orchestrator. It judges no Review Axis.
+_Avoid_: Documentation skill, formatter, output skill
 
 **Finding**:
 One issue a Review Skill reports: what is wrong, the evidence for it, the standard it breaks, and its Severity.
