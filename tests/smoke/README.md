@@ -36,7 +36,7 @@ It must pass before every release, and after Figma changes its agent or its help
 
 A missing, extra or duplicate Finding or Coverage entry fails. It prints `PASS <case>` and exits with 0, or `FAIL <case>` and one line per difference and exits with 1. It exits with 2 when it can't run.
 
-Its own tests: `node --test tests/smoke/`.
+Its own tests: `node --test tests/smoke/compare.test.mjs`.
 
 ## Cases
 

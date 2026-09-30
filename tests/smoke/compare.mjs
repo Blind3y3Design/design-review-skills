@@ -1,3 +1,4 @@
+// Compares a report's JSON with a smoke case's expected JSON, on the fields the smoke test checks.
 import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
@@ -33,59 +34,64 @@ export function readReport(text) {
   return JSON.parse(blocks[blocks.length - 1][1]);
 }
 
-const related = (finding) => [...(finding.relatedFindings || [])].sort();
-
 export function compareReports(expected, actual) {
-  const differences = [];
-  for (const list of ['findings', 'coverage']) {
-    if (!Array.isArray(actual[list])) differences.push(`The report has no "${list}" array`);
-  }
-  if (differences.length) return { pass: false, differences };
-  const actualById = new Map();
-  for (const f of actual.findings) {
-    if (actualById.has(f.id)) differences.push(`Duplicate Finding id ${f.id}`);
-    actualById.set(f.id, f);
-  }
-  const expectedIds = new Set(expected.findings.map((f) => f.id));
-  for (const want of expected.findings) {
-    const got = actualById.get(want.id);
-    if (!got) {
-      differences.push(`Missing Finding ${want.id}`);
-      continue;
-    }
-    for (const field of ['axis', 'severity', 'certainty']) {
-      if (got[field] !== want[field]) {
-        differences.push(`Finding ${want.id}: ${field} is "${got[field]}", expected "${want[field]}"`);
-      }
-    }
-    const [gotRelated, wantRelated] = [related(got), related(want)];
-    if (gotRelated.join('\n') !== wantRelated.join('\n')) {
-      differences.push(`Finding ${want.id}: relatedFindings are [${gotRelated.join(', ')}], expected [${wantRelated.join(', ')}]`);
-    }
-  }
-  for (const got of actual.findings) {
-    if (!expectedIds.has(got.id)) {
-      differences.push(`Unexpected Finding ${got.id} (${got.axis}, ${got.severity}, ${got.certainty})`);
-    }
-  }
-
-  const actualCoverage = new Map(actual.coverage.map((c) => [coverageKey(c), c]));
-  const expectedCoverage = new Set(expected.coverage.map(coverageKey));
-  for (const want of expected.coverage) {
-    const key = coverageKey(want);
-    const got = actualCoverage.get(key);
-    if (!got) differences.push(`Missing Coverage ${key}`);
-    else if (got.status !== want.status) {
-      differences.push(`Coverage ${key}: status is "${got.status}", expected "${want.status}"`);
-    }
-  }
-  for (const got of actual.coverage) {
-    const key = coverageKey(got);
-    if (!expectedCoverage.has(key)) differences.push(`Unexpected Coverage ${key} (${got.status})`);
-  }
+  const absent = ['findings', 'coverage'].filter((list) => !Array.isArray(actual[list]));
+  if (absent.length) return { pass: false, differences: absent.map((list) => `The report has no "${list}" array`) };
+  const differences = [
+    ...matchByKey('Finding', expected.findings, actual.findings, findings),
+    ...matchByKey('Coverage', expected.coverage, actual.coverage, coverage),
+  ];
   return { pass: differences.length === 0, differences };
 }
 
-const coverageKey = (entry) => (entry.ref === undefined ? `${entry.axis} (whole axis)` : `${entry.axis} ${entry.ref}`);
+const relatedOf = (finding) => [...(finding.relatedFindings || [])].sort();
+
+const findings = {
+  keyOf: (finding) => finding.id,
+  describe: (finding) => `${finding.axis}, ${finding.severity}, ${finding.certainty}`,
+  differ(want, got) {
+    const differences = ['axis', 'severity', 'certainty']
+      .filter((field) => got[field] !== want[field])
+      .map((field) => `${field} is "${got[field]}", expected "${want[field]}"`);
+    const [gotRelated, wantRelated] = [relatedOf(got), relatedOf(want)];
+    if (gotRelated.join('\n') !== wantRelated.join('\n')) {
+      differences.push(`relatedFindings are [${gotRelated.join(', ')}], expected [${wantRelated.join(', ')}]`);
+    }
+    return differences;
+  },
+};
+
+const coverage = {
+  keyOf: (entry) => (entry.ref == null ? `${entry.axis} (whole axis)` : `${entry.axis} ${entry.ref}`),
+  describe: (entry) => entry.status,
+  differ: (want, got) => (got.status === want.status ? [] : [`status is "${got.status}", expected "${want.status}"`]),
+};
+
+// Matches expected and actual entries by key. A key the report repeats is reported once, and not compared further.
+function matchByKey(kind, expectedEntries, actualEntries, { keyOf, describe, differ }) {
+  const differences = [];
+  const actualByKey = new Map();
+  const repeated = new Set();
+  for (const entry of actualEntries) {
+    const key = keyOf(entry);
+    if (actualByKey.has(key) && !repeated.has(key)) {
+      repeated.add(key);
+      differences.push(`Duplicate ${kind} ${key}`);
+    }
+    actualByKey.set(key, entry);
+  }
+  const expectedKeys = new Set(expectedEntries.map(keyOf));
+  for (const want of expectedEntries) {
+    const key = keyOf(want);
+    if (repeated.has(key)) continue;
+    const got = actualByKey.get(key);
+    if (!got) differences.push(`Missing ${kind} ${key}`);
+    else differences.push(...differ(want, got).map((d) => `${kind} ${key}: ${d}`));
+  }
+  for (const [key, got] of actualByKey) {
+    if (!expectedKeys.has(key)) differences.push(`Unexpected ${kind} ${key} (${describe(got)})`);
+  }
+  return differences;
+}
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) main(process.argv.slice(2));

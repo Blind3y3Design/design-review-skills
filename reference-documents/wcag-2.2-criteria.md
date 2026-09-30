@@ -44,7 +44,7 @@ Under the lines, **How to judge** gives the test and its thresholds, and what th
 - **Large text** is at least 24 px, or at least 18.66 px with a font weight of 700 or more (18 pt, or 14 pt bold). Figma px are read as CSS px.
 - **No rounding up.** Compare the ratio as the facts give it. 4.49:1 fails 4.5:1.
 - **Fails:** a ratio below the pair's threshold.
-- **Exceptions:** logotypes, and text in an inactive control or that is pure decoration, have no requirement. When a failing layer looks like one of these by its name or its component (such as `Logo` or `Disabled`), keep the Finding and give it `needs-review`, saying which exception may apply.
+- **Exceptions:** logotypes, and text in an inactive control or that is pure decoration, have no requirement. When a failing layer looks like one of these by its name or its component (such as `Logo` or `Disabled`), keep the Finding, and say in its evidence which exception may apply.
 - **Evidence:** `<text colour> on <background colour> = <ratio>:1, needs <threshold>:1`, then the text size and weight, such as `#8A8A8A on #FFFFFF = 3.45:1, needs 4.5:1 (16 px, weight 400)`. Add any flag the facts give, and a token or style name when a colour came from one.
 - **Fix:** raise the contrast of the text against its background to the threshold, by darkening or lightening the text colour or the background. Name a colour token only when the facts or the team's documents give one.
 

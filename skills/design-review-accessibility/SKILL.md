@@ -13,9 +13,10 @@ A design-stage review of Figma frames along one Review Axis, `accessibility`. Th
 
 ## Required skills
 
-This review MUST use two other skills: `design-review-scanner` reads the design, and `design-review-report-writer` writes the report. Before anything else, check that both are available to you. If either isn't, reply with only this, naming each missing skill, and stop:
+This review MUST use two other skills: `design-review-scanner` reads the design, and `design-review-report-writer` writes the report. Before anything else, check that both are available to you. If either isn't, reply with only the line that fits, and stop:
 
-> This review can't run: the skill `<name>` isn't installed. Install it, then run the review again.
+- One missing: "This review can't run: the skill `<name>` isn't installed. Install it, then run the review again."
+- Both missing: "This review can't run: the skills `design-review-scanner` and `design-review-report-writer` aren't installed. Install them, then run the review again."
 
 These two skills are the review's only way to read the design and to write a report.
 
@@ -69,7 +70,7 @@ Judging is done when every criterion that applies has one Coverage entry, and ev
 
 Use the skill `design-review-report-writer`, handing over:
 
-- `run`: today's `date`, the `scope` (`fileKey`, and each node's `id` and `name`), the `runtime`, `setVersion` `0.1.0-dev`, `factsVersion` and `factGroups` from the Design Facts, and `settings`: `{ "accessibility": { "standard": "WCAG", "version": "<version>", "level": "<level>", "from": "run time" or "default", "criteriaReference": "<location>" } }`.
+- `run`: today's `date`, the `scope` (`fileKey`, and `nodes` as `{ id, name }`), the `runtime`, `setVersion` from this skill's Version line, `factsVersion` and `factGroups` from the Design Facts, and `settings`: `{ "accessibility": { "standard": "WCAG", "version": "<version>", "level": "<level>", "from": "run time" or "default", "criteriaReference": "<location>" } }`.
 - `profile`: null.
 - `references`: the criteria reference's name, version and location.
 - `findings`, each with its `rootCause`, and `coverage`.

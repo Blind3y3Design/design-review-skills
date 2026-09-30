@@ -14,12 +14,7 @@ const saved = (name, text) => {
   writeFileSync(path, text);
   return path;
 };
-const a11y01Report = () => ({
-  schemaVersion: '0.2',
-  findings: [{ id: 'accessibility/1.4.3/node:5:5', axis: 'accessibility', severity: 'moderate', certainty: 'confirmed', title: 'Body text fails contrast' }],
-  coverage: [{ axis: 'accessibility', ref: '1.4.3', status: 'judged' }],
-});
-
+// A report for A11Y-01 that matches tests/smoke/expected/A11Y-01.json.
 const report = () => ({
   schemaVersion: '0.2',
   findings: [
@@ -121,7 +116,19 @@ test('a report with no findings or coverage array fails without throwing', () =>
 test('two Findings with the same id fail', () => {
   const actual = report();
   actual.findings.push({ ...actual.findings[0] });
-  assert.deepEqual(compareReports(report(), actual).differences, ['Duplicate Finding id accessibility/1.4.3/node:5:5']);
+  assert.deepEqual(compareReports(report(), actual).differences, ['Duplicate Finding accessibility/1.4.3/node:5:5']);
+});
+
+test('two Coverage entries for the same standard fail, even when one matches', () => {
+  const actual = report();
+  actual.coverage.unshift({ axis: 'accessibility', ref: '1.4.3', status: 'not-applicable' });
+  assert.deepEqual(compareReports(report(), actual).differences, ['Duplicate Coverage accessibility 1.4.3']);
+});
+
+test('a Coverage entry with a null ref counts as a whole-axis entry', () => {
+  const skipped = { findings: [], coverage: [{ axis: 'research', status: 'skipped' }] };
+  const withNull = { findings: [], coverage: [{ axis: 'research', ref: null, status: 'skipped' }] };
+  assert.equal(compareReports(skipped, withNull).pass, true);
 });
 
 test('a pasted report is read from raw JSON, or from the last json block of a Markdown report', () => {
@@ -154,16 +161,16 @@ test('an axis-level skipped entry is matched by its axis', () => {
 });
 
 test('the command passes a matching report for a case id, with exit code 0', () => {
-  const markdown = `# Design review\n\n\`\`\`json\n${JSON.stringify(a11y01Report(), null, 2)}\n\`\`\`\n`;
+  const markdown = `# Design review\n\n\`\`\`json\n${JSON.stringify(report(), null, 2)}\n\`\`\`\n`;
   const result = run(['A11Y-01', saved('report.md', markdown)]);
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /^PASS A11Y-01/);
 });
 
 test('the command lists each difference and exits with 1 when a report differs', () => {
-  const report = a11y01Report();
-  report.findings[0].certainty = 'likely';
-  const result = run(['A11Y-01', '-'], JSON.stringify(report));
+  const likely = report();
+  likely.findings[0].certainty = 'likely';
+  const result = run(['A11Y-01', '-'], JSON.stringify(likely));
   assert.equal(result.status, 1);
   assert.equal(result.stdout, 'FAIL A11Y-01\n- Finding accessibility/1.4.3/node:5:5: certainty is "likely", expected "confirmed"\n');
 });

@@ -59,7 +59,7 @@ Nothing is built or edited before publishing: a published skill is the release f
 
 ## Repository layout
 
-`skills/`, `reference-documents/` and `tests/smoke/` hold their first versions: three of the six skills, the WCAG reference's 1.4.3 entry, and two smoke cases. `docs/setup/` and `docs/publishing.md` are planned.
+`skills/`, `reference-documents/` and `tests/smoke/` are being built; `docs/setup/` and `docs/publishing.md` are planned.
 
 ```
 skills/<name>/SKILL.md     The six design review skills, one folder each, holding only SKILL.md

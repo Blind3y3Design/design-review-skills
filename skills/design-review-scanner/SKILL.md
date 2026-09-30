@@ -1,6 +1,6 @@
 ---
 name: design-review-scanner
-description: Reads Figma frames and returns their Design Facts, such as text contrast ratios, for the other design review skills, which invoke it. To start a review, use /design-review or a single review such as /design-review-accessibility. Use when a design review skill asks for Design Facts.
+description: Reads Figma frames and returns their Design Facts, such as text contrast ratios, for the other design review skills, which invoke it. To start a review, use /design-review or a single review such as /design-review-accessibility.
 metadata:
   version: "0.1.0-dev"
 ---
@@ -68,6 +68,7 @@ const FACTS_VERSION = '0.1';
 const LIMIT = 18000;
 const SAMPLES = 10;
 const out = { factsVersion: FACTS_VERSION, fileKey: figma.fileKey || null, scope: null, groups: ['colourPairs'], unread: [], colourPairs: null };
+const childIds = (n) => ('children' in n ? n.children.map(c => c.id) : []);
 
 const node = await figma.getNodeByIdAsync(NODE_ID);
 if (!node) { out.unread.push({ what: NODE_ID, reason: 'no node with this id' }); return out; }
@@ -76,51 +77,57 @@ while (page.parent && page.type !== 'PAGE') page = page.parent;
 if (page.type === 'PAGE') await page.loadAsync();
 if (node.type === 'PAGE' || node.type === 'DOCUMENT') {
   out.groups = [];
-  out.unread.push({ what: NODE_ID, reason: 'a page, not a layer: scan each id in scanInstead', scanInstead: 'children' in node ? node.children.map(c => c.id) : [] });
+  out.unread.push({ what: NODE_ID, reason: 'a page, not a layer: scan each id in scanInstead', scanInstead: childIds(node) });
   return out;
 }
-let top = node;
-while (top.parent && top.parent.type !== 'PAGE') top = top.parent;
-out.scope = { id: node.id, name: node.name, type: node.type, page: page.name, topLevelFrame: top.id === node.id ? null : { id: top.id, name: top.name } };
+let topFrame = node;
+while (topFrame.parent && topFrame.parent.type !== 'PAGE') topFrame = topFrame.parent;
+out.scope = { id: node.id, name: node.name, type: node.type, page: page.name, topLevelFrame: topFrame.id === node.id ? null : { id: topFrame.id, name: topFrame.name } };
 
-const cut = (a, b) => {
+const intersect = (a, b) => {
   if (!a || !b) return a || b;
   const x = Math.max(a.x, b.x), y = Math.max(a.y, b.y);
   const w = Math.min(a.x + a.width, b.x + b.width) - x, h = Math.min(a.y + a.height, b.y + b.height) - y;
   return { x, y, width: Math.max(0, w), height: Math.max(0, h) };
 };
-const empty = (r) => !r || r.width <= 0 || r.height <= 0;
-const covers = (o, i) => o.x <= i.x + 0.01 && o.y <= i.y + 0.01 && o.x + o.width >= i.x + i.width - 0.01 && o.y + o.height >= i.y + i.height - 0.01;
-const blended = (n) => 'blendMode' in n && n.blendMode !== 'NORMAL' && n.blendMode !== 'PASS_THROUGH';
-const shown = (fills) => Array.isArray(fills) ? fills.filter(f => f.visible !== false && (f.opacity ?? 1) > 0) : [];
+const isEmpty = (r) => !r || r.width <= 0 || r.height <= 0;
+const covers = (outer, inner) => outer.x <= inner.x + 0.01 && outer.y <= inner.y + 0.01 && outer.x + outer.width >= inner.x + inner.width - 0.01 && outer.y + outer.height >= inner.y + inner.height - 0.01;
+const alpha = (paint) => paint.opacity ?? 1;
+const paintBlended = (paint) => Boolean(paint.blendMode) && paint.blendMode !== 'NORMAL';
+const layerBlended = (n) => 'blendMode' in n && n.blendMode !== 'NORMAL' && n.blendMode !== 'PASS_THROUGH';
+const shown = (fills) => (Array.isArray(fills) ? fills.filter(p => p.visible !== false && alpha(p) > 0) : []);
 
 // Paint order: a pre-order walk of the top-level frame, children back to front.
 // Everything earlier in the walk is painted below everything later.
 const texts = [], painted = [];
-let index = 0;
-const walk = (n, inScope, dimmed, blend, clip, path) => {
+let order = 0;
+const walk = (n, inScope, parentTranslucent, parentBlended, clip, parentPath) => {
   if (n.visible === false || ('opacity' in n && n.opacity === 0)) return;
-  const i = index++;
-  const here = inScope || n.id === node.id;
-  const p = path ? `${path} / ${n.name}` : n.name;
-  const dim = dimmed || ('opacity' in n && n.opacity < 1);
-  const bl = blend || blended(n);
+  const layer = {
+    n,
+    order: order++,
+    translucent: parentTranslucent || ('opacity' in n && n.opacity < 1),
+    blended: parentBlended || layerBlended(n),
+    clip,
+    path: parentPath ? `${parentPath} / ${n.name}` : n.name,
+  };
+  const scoped = inScope || n.id === node.id;
   const box = n.absoluteBoundingBox;
   if (n.type === 'TEXT') {
-    if (here) texts.push({ n, i, dim, bl, clip, path: p });
+    if (scoped) texts.push(layer);
   } else if (!n.isMask && 'fills' in n && shown(n.fills).length && box) {
-    painted.push({ n, i, dim, bl, box: cut(box, clip) });
+    painted.push({ ...layer, box: intersect(box, clip) });
   }
   if ('children' in n && n.type !== 'BOOLEAN_OPERATION') {
-    let inner = 'clipsContent' in n && n.clipsContent && box ? cut(box, clip) : clip;
+    let inner = 'clipsContent' in n && n.clipsContent && box ? intersect(box, clip) : clip;
     const kids = n.itemReverseZIndex ? [...n.children].reverse() : n.children;
     for (const c of kids) {
-      walk(c, here, dim, bl, inner, p);
-      if (c.isMask && c.visible !== false && c.absoluteBoundingBox) inner = cut(inner, c.absoluteBoundingBox);
+      walk(c, scoped, layer.translucent, layer.blended, inner, layer.path);
+      if (c.isMask && c.visible !== false && c.absoluteBoundingBox) inner = intersect(inner, c.absoluteBoundingBox);
     }
   }
 };
-walk(top, false, false, false, null, '');
+walk(topFrame, false, false, false, null, '');
 
 const vars = new Map(), styles = new Map();
 const sourceOf = async (paint, styleId) => {
@@ -139,37 +146,36 @@ const sourceOf = async (paint, styleId) => {
 };
 const sourceId = (src) => !src ? '-' : src.kind === 'raw' ? `node:${src.node}` : `${src.kind}:${src.key || src.id}`;
 const hex = (c) => '#' + [c.r, c.g, c.b].map(v => Math.round(v * 255).toString(16).padStart(2, '0')).join('').toUpperCase();
-const over = (top, under) => ({ r: top.r * top.a + under.r * (1 - top.a), g: top.g * top.a + under.g * (1 - top.a), b: top.b * top.a + under.b * (1 - top.a), a: 1 });
-const lum = (c) => {
-  const f = (v) => (v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4));
-  return 0.2126 * f(c.r) + 0.7152 * f(c.g) + 0.0722 * f(c.b);
+const over = (upper, lower) => ({ r: upper.r * upper.a + lower.r * (1 - upper.a), g: upper.g * upper.a + lower.g * (1 - upper.a), b: upper.b * upper.a + lower.b * (1 - upper.a), a: 1 });
+const luminance = (c) => {
+  const channel = (v) => (v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4));
+  return 0.2126 * channel(c.r) + 0.7152 * channel(c.g) + 0.0722 * channel(c.b);
 };
-const ratio = (a, b) => { const x = lum(a), y = lum(b); return Math.floor(((Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05)) * 100) / 100; };
+const ratio = (a, b) => { const x = luminance(a), y = luminance(b); return Math.floor(((Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05)) * 100) / 100; };
 const kindOf = (p) => (p.type === 'IMAGE' || p.type === 'VIDEO' ? 'an image' : p.type.startsWith('GRADIENT') ? 'a gradient' : p.type);
 
 // The background: layers painted below the text, top down, until one is opaque.
-const backgroundOf = async (t, box) => {
+const backgroundOf = async (text, box) => {
   const layers = [];
   const flags = new Set();
   for (let k = painted.length - 1; k >= 0; k--) {
-    const b = painted[k];
-    if (b.i >= t.i || empty(cut(b.box, box))) continue;
-    if (!covers(b.box, box)) return { reason: `background varies: "${b.n.name}" covers only part of the text` };
-    if (b.dim) flags.add('opacity');
-    if (b.bl) flags.add('blend-mode');
-    const fills = shown(b.n.fills);
-    for (let f = fills.length - 1; f >= 0; f--) {
-      const p = fills[f];
-      if (p.type !== 'SOLID') return { reason: `text over ${kindOf(p)} in "${b.n.name}"` };
-      const a = p.opacity ?? 1;
-      if (a < 1) flags.add('opacity');
-      if (p.blendMode && p.blendMode !== 'NORMAL') flags.add('blend-mode');
-      layers.push({ node: b.n, paint: p, a });
-      if (a >= 1) {
-        let c = { ...p.color, a: 1 };
-        for (let l = layers.length - 2; l >= 0; l--) c = over({ ...layers[l].paint.color, a: layers[l].a }, c);
-        const first = layers[0];
-        return { color: c, hex: hex(c), node: first.node.id, source: await sourceOf(first.paint, first.node.fillStyleId), flags };
+    const below = painted[k];
+    if (below.order >= text.order || isEmpty(intersect(below.box, box))) continue;
+    if (!covers(below.box, box)) return { reason: `background varies: "${below.n.name}" covers only part of the text` };
+    if (below.translucent) flags.add('opacity');
+    if (below.blended) flags.add('blend-mode');
+    const fills = shown(below.n.fills);
+    for (let j = fills.length - 1; j >= 0; j--) {
+      const paint = fills[j];
+      if (paint.type !== 'SOLID') return { reason: `text over ${kindOf(paint)} in "${below.n.name}"` };
+      if (alpha(paint) < 1) flags.add('opacity');
+      if (paintBlended(paint)) flags.add('blend-mode');
+      layers.push({ node: below.n, paint });
+      if (alpha(paint) >= 1) {
+        let c = { ...paint.color, a: 1 };
+        for (let l = layers.length - 2; l >= 0; l--) c = over({ ...layers[l].paint.color, a: alpha(layers[l].paint) }, c);
+        const topmost = layers[0];
+        return { color: c, hex: hex(c), node: topmost.node.id, source: await sourceOf(topmost.paint, topmost.node.fillStyleId), flags };
       }
     }
   }
@@ -181,45 +187,45 @@ let textLayers = 0;
 for (const t of texts) {
   const n = t.n;
   if (!n.characters.trim()) continue;
-  const box = cut(n.absoluteRenderBounds || n.absoluteBoundingBox, t.clip);
-  if (empty(box)) continue;
+  const box = intersect(n.absoluteRenderBounds || n.absoluteBoundingBox, t.clip);
+  if (isEmpty(box)) continue;
   textLayers++;
   const mixed = [n.fills, n.fillStyleId, n.fontSize, n.fontWeight].some(v => v === figma.mixed);
-  const segs = mixed ? n.getStyledTextSegments(['fills', 'fillStyleId', 'fontSize', 'fontWeight']) : [{ fills: n.fills, fillStyleId: n.fillStyleId, fontSize: n.fontSize, fontWeight: n.fontWeight }];
+  const runs = mixed ? n.getStyledTextSegments(['fills', 'fillStyleId', 'fontSize', 'fontWeight']) : [{ fills: n.fills, fillStyleId: n.fillStyleId, fontSize: n.fontSize, fontWeight: n.fontWeight }];
   const bg = await backgroundOf(t, box);
-  for (const s of segs) {
-    const fills = shown(s.fills);
+  for (const run of runs) {
+    const fills = shown(run.fills);
     if (!fills.length) continue;
     const flags = new Set(bg.flags || []);
-    if (t.dim) flags.add('opacity');
-    if (t.bl) flags.add('blend-mode');
+    if (t.translucent) flags.add('opacity');
+    if (t.blended) flags.add('blend-mode');
     let reason = bg.reason || null, fg = null, source = null;
-    const odd = fills.find(p => p.type !== 'SOLID');
-    if (odd) reason = `text fill is ${kindOf(odd)}`;
+    const nonSolid = fills.find(p => p.type !== 'SOLID');
+    if (nonSolid) reason = `text fill is ${kindOf(nonSolid)}`;
     else {
       const topPaint = fills[fills.length - 1];
-      source = await sourceOf(topPaint, s.fillStyleId);
+      source = await sourceOf(topPaint, run.fillStyleId);
       if (source.kind === 'raw') source.node = n.id;
-      if (fills.length > 1 || fills.some(p => (p.opacity ?? 1) < 1)) flags.add('opacity');
-      if (fills.some(p => p.blendMode && p.blendMode !== 'NORMAL')) flags.add('blend-mode');
+      if (fills.length > 1 || fills.some(p => alpha(p) < 1)) flags.add('opacity');
+      if (fills.some(paintBlended)) flags.add('blend-mode');
       if (bg.color) {
         fg = bg.color;
-        for (const p of fills) fg = over({ ...p.color, a: p.opacity ?? 1 }, fg);
+        for (const p of fills) fg = over({ ...p.color, a: alpha(p) }, fg);
       } else fg = { ...topPaint.color, a: 1 };
     }
     const text = { hex: fg ? hex(fg) : null, source };
     const background = bg.color ? { hex: bg.hex, source: bg.source, node: bg.node } : null;
-    const f = [...flags].sort();
-    const key = [sourceId(source), text.hex, background ? (background.source.kind === 'raw' ? background.hex : sourceId(background.source)) : '-', s.fontSize, s.fontWeight, f.join(','), reason].join('|');
+    const flagList = [...flags].sort();
+    const key = [sourceId(source), text.hex, background ? (background.source.kind === 'raw' ? background.hex : sourceId(background.source)) : '-', run.fontSize, run.fontWeight, flagList.join(','), reason].join('|');
     if (!pairs.has(key)) {
-      pairs.set(key, { text, background, fontSize: s.fontSize, fontWeight: s.fontWeight, ratio: fg && bg.color ? ratio(fg, bg.color) : null, flags: f, reason, count: 0, nodes: [] });
+      pairs.set(key, { text, background, fontSize: run.fontSize, fontWeight: run.fontWeight, ratio: fg && bg.color ? ratio(fg, bg.color) : null, flags: flagList, reason, count: 0, nodes: [] });
       seen.set(key, new Set());
     }
-    const g = pairs.get(key), ids = seen.get(key);
+    const group = pairs.get(key), ids = seen.get(key);
     if (!ids.has(n.id)) {
       ids.add(n.id);
-      g.count++;
-      if (g.nodes.length < SAMPLES) g.nodes.push({ id: n.id, path: t.path });
+      group.count++;
+      if (group.nodes.length < SAMPLES) group.nodes.push({ id: n.id, path: t.path });
     }
   }
 }
@@ -227,12 +233,12 @@ for (const t of texts) {
 // Keep the output under the smaller runtime limit (about 20 kB through use_figma).
 out.colourPairs = { textLayers, groups: [...pairs.values()] };
 const size = () => JSON.stringify(out).length;
-if (size() > LIMIT) for (const g of out.colourPairs.groups) for (const x of g.nodes) x.path = x.path.split(' / ').slice(-3).join(' / ');
-if (size() > LIMIT) for (const g of out.colourPairs.groups) g.nodes = g.nodes.slice(0, 3);
+if (size() > LIMIT) for (const group of out.colourPairs.groups) for (const x of group.nodes) x.path = x.path.split(' / ').slice(-3).join(' / ');
+if (size() > LIMIT) for (const group of out.colourPairs.groups) group.nodes = group.nodes.slice(0, 3);
 if (size() > LIMIT) {
   out.colourPairs = null;
   out.groups = [];
-  out.unread.push({ what: 'colourPairs', reason: `output limit: ${textLayers} text layers are too many for one call; scan each id in scanInstead`, scanInstead: 'children' in node ? node.children.map(c => c.id) : [] });
+  out.unread.push({ what: 'colourPairs', reason: `output limit: ${textLayers} text layers are too many for one call; scan each id in scanInstead`, scanInstead: childIds(node) });
 }
 return out;
 ```
