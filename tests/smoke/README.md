@@ -10,14 +10,14 @@ It must pass before every release, and after Figma changes its agent or its help
 
 **Page convention.** Every case is one top-level frame on the **Cases** page (`5:2`). The frame's name is its case id, such as `A11Y-01`, and its content is made up. Each case prefix (A11Y, DS, X, RES, CLEAN, RUN) has a row of its own. Add a case at the end of its prefix's row, and start a new prefix as a row below the others. Reviews scan whole frames, so keep a case's frame free of anything the case doesn't need. A variant of a case, such as `A11Y-01-override`, runs on its base case's frame with other settings. Leave "Page 1", the file's original page, empty. A later ticket adds the report page.
 
-**The Review Profile page** (`16:2`) holds the test profile as one text layer, a copy of [`profiles/smoke-test-profile.md`](profiles/smoke-test-profile.md). The override profiles in `profiles/` are the same profile with a Severity Overrides section. Keep them all the same otherwise: a ticket that adds a profile section, such as Design System Layers, adds it to each.
+**The Review Profile page** (`16:2`) holds the test profile as one text layer, a copy of [`profiles/smoke-test-profile.md`](profiles/smoke-test-profile.md). Its Design System Layers are DRS Test Foundation, then DRS Test Product. The override profiles in `profiles/` are the same profile with a Severity Overrides section. Keep them all the same otherwise: a ticket that adds a profile section, such as Design System Layers, adds it to each.
 
 ## Running a case
 
 **In an external agent** with the Figma MCP server connected:
 
 1. Make the skills in `skills/` available to the agent, by copying the folder or with `npx skills add`.
-2. Ask for the review, giving the test profile at run time, such as: "Run design-review-accessibility on https://www.figma.com/design/MavZEc8FpIpNX0bagnQQ33/?node-id=5-3 with the Review Profile at https://www.figma.com/design/MavZEc8FpIpNX0bagnQQ33/?node-id=16-2." A profile given at run time counts as agreeing to use it, so the run doesn't stop to ask. Until the criteria reference is on `main`, also give its location, such as "Use the criteria reference at reference-documents/wcag-2.2-criteria.md."
+2. Ask for the review, giving the test profile at run time, such as: "Run design-review-accessibility on https://www.figma.com/design/MavZEc8FpIpNX0bagnQQ33/?node-id=5-3 with the Review Profile at https://www.figma.com/design/MavZEc8FpIpNX0bagnQQ33/?node-id=16-2." A profile given at run time counts as agreeing to use it, so the run doesn't stop to ask. Until the Reference Documents are on `main`, also give the one the review reads, such as "Use the criteria reference at reference-documents/wcag-2.2-criteria.md." For a design system adherence case, run `design-review-library` in the same way, with "Use the Design system baseline at reference-documents/design-system-baseline.md."
 3. Save the reply, or just its JSON block, to a file and compare it:
 
    ```
@@ -55,8 +55,9 @@ Each built case has a frame on the Cases page and, if its result is a report, an
 | A11Y-04 | Meaningful image with no text-alternative annotation | | Missing-annotation Finding (`needs-review`), with 1.1.1 `needs-annotation` in Coverage. With `coverage only`, the Coverage entry alone |
 | A11Y-05 | Contrast failure inside an unmodified library instance | | Blamed on the design system; Root Cause is the library component |
 | A11Y-06 | Reflow with no section marked for it | | `needs-section`, naming the title to add; no Finding |
-| DS-01 | Raw hex fill matching exactly one stack token | | Raw-value Finding, `confirmed`; fix names the token |
-| DS-02 | Raw value no token matches | | Raw-value Finding, `confirmed`; fix names no token |
+| DS-01 | Raw hex fill matching exactly one stack token: a `Raw swatch` filled `#E0115F`, beside a `Token swatch` bound to Foundation's `signal/500` (`#E0115F`), on a frame bound to `color/surface/default` | `45:16` | [`DS-01.json`](expected/DS-01.json): one `raw-value` Finding on the raw swatch (`45:18`), `moderate`, `confirmed`. Coverage: `raw-value` `judged`. Checked by hand: the fix names `signal/500` |
+| DS-01-no-baseline | DS-01 with the profile given at run time and no baseline location, while the baseline's default link can't be read. Until the baseline is on `main`, that's any run without its location. After that, block the link for the run | `45:16` | [`DS-01-no-baseline.json`](expected/DS-01-no-baseline.json): no Findings, and a whole-axis `skipped` entry whose reason says the baseline couldn't be read |
+| DS-02 | Raw value no token matches: a `Raw swatch` filled `#7A3EF0`, beside a `Token swatch` bound to `color/action/primary` (`#0B5FFF`) | `45:19` | [`DS-02.json`](expected/DS-02.json): one `raw-value` Finding on the raw swatch (`45:21`), `moderate`, `confirmed`. Coverage as for DS-01. Checked by hand: the fix names no token |
 | DS-03 | Raw value matched by several tokens, including an alias | | Fix follows the tie-break, or lists every candidate |
 | DS-04 | Detached library instance | | Detached-instance Finding, `confirmed` from `detachedInfo` |
 | DS-05 | Direct fill override that swaps in another stack token | | Override Finding; evidence names the token |
