@@ -50,7 +50,7 @@ A reusable document, shareable across files and teams, naming the standards a re
 _Avoid_: Config, settings, ruleset
 
 **Reference Document**:
-A document of standards content, such as the WCAG criteria and how to judge each from a design, that a Review Skill reads from a location it is pointed to rather than carrying inside itself.
+A document of standards content that a Review Skill reads from a location it is pointed to rather than carrying inside itself, such as the WCAG criteria and how to judge each from a design, or a Design System Layer's rules written by the team that owns it.
 _Avoid_: Reference file, knowledge base, ruleset
 
 **Research Insight**:
