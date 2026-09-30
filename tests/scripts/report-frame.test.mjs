@@ -46,6 +46,7 @@ function fakeFigma({ pages = ['Cases'], failOn } = {}) {
     }
     remove() { this.parent.children.splice(this.parent.children.indexOf(this), 1); this.parent = null; this.removed = true; }
     setSharedPluginData(namespace, key, value) {
+      refuse('setSharedPluginData');
       if (namespace.length + key.length + Buffer.byteLength(value) > 100000) throw new Error('entry over 100 kB');
       this.data[`${namespace}/${key}`] = value;
     }
@@ -108,7 +109,7 @@ test('with no report page, it adds a "Design review" page holding one frame, nam
   const [frame] = reports.children;
   assert.equal(frame.name, '2026-09-30 · A11Y-01');
   assert.deepEqual(JSON.parse(frame.getSharedPluginData('designreview', 'report')), report);
-  assert.deepEqual(result, { page: { id: reports.id, name: 'Design review', created: true }, frame: { id: frame.id, name: frame.name }, json: 'saved' });
+  assert.deepEqual(result, { page: { id: reports.id, name: 'Design review', created: true }, frame: { id: frame.id, name: frame.name }, json: 'stored' });
   assert.equal(page(figma, 'Cases').children.length, 0, 'something was left on the current page');
 });
 
@@ -194,6 +195,15 @@ test('a report JSON over the 100 kB limit, or none, stays out of the frame, whic
   }
 });
 
+test('when Figma refuses the JSON for another reason, the frame and the result give that reason', async () => {
+  const figma = fakeFigma({ failOn: 'setSharedPluginData' });
+  const result = await run(figma);
+  const [frame] = page(figma, 'Design review').children;
+  assert.deepEqual([result.json, result.jsonError], ['not stored', 'fake: setSharedPluginData refused']);
+  const texts = textsOf(frame);
+  assert.equal(texts[texts.length - 1].characters, 'Report JSON: not stored in this frame (fake: setSharedPluginData refused), so it stayed in the chat the review ran in.');
+});
+
 test('a write Figma refuses, such as without edit access, leaves the file as it was and returns the error', async () => {
   for (const [failOn, pages] of [['createPage', ['Cases']], ['createText', ['Cases']], ['createText', ['Cases', 'Design review']]]) {
     const figma = fakeFigma({ pages, failOn });
@@ -214,6 +224,6 @@ test('a report JSON just under the limit is kept', async () => {
   const figma = fakeFigma();
   const report = { e: 'x'.repeat(100000 - 'designreview'.length - 'report'.length - '{"e":""}'.length) };
   const result = await run(figma, { report });
-  assert.equal(result.json, 'saved');
+  assert.equal(result.json, 'stored');
   assert.equal(page(figma, 'Design review').children[0].getSharedPluginData('designreview', 'report'), JSON.stringify(report));
 });

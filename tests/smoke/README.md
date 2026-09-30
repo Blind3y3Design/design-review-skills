@@ -40,7 +40,7 @@ It must pass before every release, and after Figma changes its agent or its help
 
 A missing, extra or duplicate Finding or Coverage entry fails. It prints `PASS <case>` and exits with 0, or `FAIL <case>` and one line per difference and exits with 1. It exits with 2 when it can't run.
 
-Its own tests: `node --test tests/smoke/compare.test.mjs`. The Design Scanner's report frame script has tests too, run against a fake of the Plugin API: `node --test tests/scripts/`.
+Its own tests: `node --test tests/smoke/compare.test.mjs`. The Design Scanner's report frame script has tests too, run against a fake of the Plugin API: `node --test tests/scripts/report-frame.test.mjs`.
 
 ## Cases
 

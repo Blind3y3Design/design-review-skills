@@ -86,7 +86,7 @@ Use the skill `design-review-report-writer`, handing over:
 - `references`: the criteria reference's name, version and location.
 - `findings`, each with its `rootCause`, and `coverage`.
 - `notes`: the notes kept while settling what to check against, if any.
-- `reportSettings`: the Report settings section of the profile whose section you used, as `{ "<key>": "<value>" }`, or null.
+- `reportSettings`: the profile's Report settings you noted, as `{ "<key>": "<value>" }`, or null.
 - `saveRequest`: "don't save" or "save to <location>" when the user said so, otherwise null.
 
 The review is done when the Report Writer has delivered the report.
@@ -127,10 +127,10 @@ The Accessibility section holds this skill's settings, one `Key: value` per line
 Settle the settings by what the lookup found:
 
 - **A profile given at run time, with an Accessibility section:** use the section without asking. Giving the profile is the user's agreement.
-- **A profile found on the page or through a pointer, with an Accessibility section:** ask before using it, with any other question still open. For example: "I found the Review Profile "<name>" on the "Review Profile" page in this file. Use its Accessibility section for this review? It sets WCAG 2.2 AA with the default criteria reference, and the Severity Override "WCAG AA failures: serious". I won't use or change anything else in it." When the profile has a Report settings section, also say where it saves reports. Name any Severity Override you'll refuse, and why. On yes, use the section. On no, go on as below.
+- **A profile found on the page or through a pointer, with an Accessibility section:** ask before using it, with any other question still open. For example: "I found the Review Profile "<name>" on the "Review Profile" page in this file. Use its Accessibility section for this review? It sets WCAG 2.2 AA with the default criteria reference, and the Severity Override "WCAG AA failures: serious". I'll use only that and where it saves reports, and I won't change it." Name where it saves reports from its Report settings, if it has them, and any Severity Override you'll refuse, and why. On yes, use the section. On no, go on as below.
 - **No profile, no Accessibility section, or the user said no:** say why you're asking, then ask what to check against, each setting pre-filled with its default. For example: "I couldn't find a Review Profile: none was given, this file has no "Review Profile" page, and AGENTS.md has no pointer to one. What should I check against? I'll use WCAG 2.2 AA with the default criteria reference unless you name others. Your answer is for this run only, and isn't saved to a profile." With the target already given at run time, there's nothing to ask. For a profile without the section, keep a note for the report: "The Review Profile "<name>" has no Accessibility section, so this run used the settings below."
 
-From a profile whose section you use, also note its location, its Identity `Name` and `Last updated`, its Severity Overrides about WCAG, and its Report settings.
+From a profile whose section you use, also note its location, its Identity `Name` and `Last updated`, and its Severity Overrides about WCAG. From any profile the lookup found, unless the user said no to it, note its Report settings.
 
 ### Severity Overrides
 

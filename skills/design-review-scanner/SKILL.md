@@ -280,18 +280,18 @@ return out;
 
 ## Writing a report frame
 
-The Report Writer may ask you to save a report on the reviewed file's report page, the page named "Design review", as a frame of its own. This is the only script that writes to a file. It lays out the text it's given and judges nothing.
+The Report Writer may ask you to save a report on the reviewed file's report page, the page named "Design review", as a frame of its own. This is the scanner's one script that writes to a file. It lays out the text it's given and judges nothing.
 
 1. **Pick the tool** as in step 1 of Steps, with the reviewed file's key.
 2. **Set the script's first three lines** from the Report Writer's hand-over, and run everything else exactly as written, in one call:
    - `NAME`: the frame's name, as a string
    - `MARKDOWN`: the Markdown report without its JSON block, as an array of strings, one per line
    - `REPORT`: the report JSON, as an object
-3. **If the call is refused because the script is too long,** run it again with `const REPORT = null;`. If that's refused too, also cut `MARKDOWN` to the report's title and header lines, and add the line "The whole report was too long to save here. It's in the chat the review ran in."
-4. **If the call errors or returns an `error`,** run it once more unchanged. The script removes whatever it added before it returns an error. If it fails again, hand back the error.
-5. **Hand back** the script's output: `page` (`id`, `name`, and `created` when this call added it), `frame` (`id`, `name`), and `json`, which is `saved`, or `too large` when the JSON isn't in the frame.
+3. **If the call is refused because the script is too long,** run it again with `const REPORT = null;`, so the frame goes without its JSON. If that's refused too, hand back `{ "error": "the report is too long to save as a frame" }`.
+4. **If the call errors or returns an `error`,** retry it as in step 2 of Steps. The script removes whatever it added before it returns an error, so a retry adds no second frame. If it fails again, hand back the error.
+5. **Hand back** the script's output: `page` (`id`, `name`, and `created` when this call added it), `frame` (`id`, `name`), and `json`: `stored`, `too large`, or `not stored` with Figma's `jsonError`.
 
-The frame goes above everything else on the page, so the newest is first, and older frames are left as they are. Its text is the Markdown, one text layer per heading and paragraph, and its last line says where the JSON is. The JSON goes in the frame's shared plugin data, namespace `designreview`, key `report`, when that entry fits Figma's limit of 100 kB.
+The frame is written when the script hands back a `frame`, or the error is handed back. The frame's last line says where its JSON is: in its shared plugin data, namespace `designreview`, key `report`, when that entry fits Figma's limit of 100 kB, or in the chat.
 
 ```js
 const NAME = 'NAME';
@@ -308,7 +308,7 @@ const WIDTH = 720, PAD = 40;
 const FONT = { regular: { family: 'Inter', style: 'Regular' }, semi: { family: 'Inter', style: 'Semi Bold' }, bold: { family: 'Inter', style: 'Bold' } };
 const STYLE = [[FONT.regular, 13], [FONT.bold, 24], [FONT.bold, 18], [FONT.semi, 15]]; // body, then #, ## and ###
 
-const utf8 = (s) => { let n = 0; for (const ch of s) { const c = ch.codePointAt(0); n += c < 0x80 ? 1 : c < 0x800 ? 2 : c < 0x10000 ? 3 : 4; } return n; };
+const utf8Bytes = (s) => { let n = 0; for (const ch of s) { const c = ch.codePointAt(0); n += c < 0x80 ? 1 : c < 0x800 ? 2 : c < 0x10000 ? 3 : 4; } return n; };
 
 // Inline Markdown: **bold**, [text](url) and `code` become plain text, with bold and link ranges.
 const inline = (src) => {
@@ -348,7 +348,7 @@ for (const raw of MARKDOWN) {
 // Anything this call adds is removed again if a write fails, such as without edit access.
 let page = figma.root.children.find((p) => p.name.trim().toLowerCase() === PAGE.toLowerCase());
 const created = !page;
-let frame = null, saved = false;
+let frame = null, json = 'too large', jsonError = null;
 try {
   if (created) { page = figma.createPage(); page.name = PAGE; }
   await page.loadAsync();
@@ -365,11 +365,16 @@ try {
   frame.fills = [{ type: 'SOLID', color: { r: 1, g: 1, b: 1 } }];
 
   // The JSON goes in shared plugin data when the entry fits Figma's limit of 100 kB.
-  const json = REPORT === null ? null : JSON.stringify(REPORT);
-  if (json !== null && utf8(NAMESPACE + KEY + json) <= LIMIT) {
-    try { frame.setSharedPluginData(NAMESPACE, KEY, json); saved = true; } catch (e) { saved = false; }
+  const serialized = REPORT === null ? null : JSON.stringify(REPORT);
+  if (serialized !== null && utf8Bytes(NAMESPACE + KEY + serialized) <= LIMIT) {
+    try { frame.setSharedPluginData(NAMESPACE, KEY, serialized); json = 'stored'; } catch (e) { json = 'not stored'; jsonError = String((e && e.message) || e); }
   }
-  blocks.push({ level: 0, lines: [saved ? `Report JSON: in this frame's shared plugin data, namespace "${NAMESPACE}", key "${KEY}".` : 'Report JSON: too large for this frame, so it stayed in the chat the review ran in.'] });
+  const where = {
+    'stored': `Report JSON: in this frame's shared plugin data, namespace "${NAMESPACE}", key "${KEY}".`,
+    'too large': 'Report JSON: too large for this frame, so it stayed in the chat the review ran in.',
+    'not stored': `Report JSON: not stored in this frame (${jsonError}), so it stayed in the chat the review ran in.`,
+  };
+  blocks.push({ level: 0, lines: [where[json]] });
 
   for (const block of blocks) {
     const { text, bold, links } = inline(block.lines.join('\n'));
@@ -397,5 +402,5 @@ try {
   if (created && page && !page.removed) page.remove();
   return { error: String((e && e.message) || e) };
 }
-return { page: { id: page.id, name: page.name, created }, frame: { id: frame.id, name: frame.name }, json: saved ? 'saved' : 'too large' };
+return { page: { id: page.id, name: page.name, created }, frame: { id: frame.id, name: frame.name }, json, ...(jsonError ? { jsonError } : {}) };
 ```

@@ -149,27 +149,27 @@ When a destination can't be used, try the next one, keeping the reason. When the
 ### Locations
 
 - **A local folder,** in an external agent: a path, relative to your working directory unless it's absolute. Create the folder if it's missing. Save the whole report, Markdown and JSON block, as `design-review-<date>-<scope>.md`, where `<scope>` is the first scope node's name in lower case, with each run of characters other than letters and digits written as `-`. If a file of that name exists, add `-2`, `-3` and so on before `.md`.
-- **A GitHub folder,** in an external agent: a link such as `https://github.com/<owner>/<repo>/tree/<branch>/<folder>`. Commit the same file to that folder, on that branch, with the GitHub tool you have, such as the `gh` CLI.
-- **The report page:** the page named "Design review" in the reviewed file, holding one frame per run, newest first. It needs edit access to the file. You MUST use the skill `design-review-scanner` to write the frame, since it holds the only script that writes to a file. Hand it the file key, the runtime, and:
+- **A GitHub folder,** in an external agent: a link to a repo, such as `https://github.com/<owner>/<repo>`, or to a folder in one, such as `https://github.com/<owner>/<repo>/tree/<branch>/<folder>`. Commit the same file to that folder on that branch, or to the repo's root on its default branch, with the GitHub tool you have, such as the `gh` CLI.
+- **The report page:** the page named "Design review" in the reviewed file, holding one frame per run, newest first. It needs edit access to the file. You MUST use the skill `design-review-scanner` to write the frame. Hand it the file key, the runtime, and:
   - the frame's name: `<date> · <scope>`, with each scope node's name, separated by `, `
   - the Markdown report without its JSON block, one string per line
   - the report JSON
 
-  It hands back the frame's id, and whether the JSON is in the frame's shared plugin data. When the JSON is too large for a frame, the frame says so, and the JSON is in the chat only.
+  It hands back the frame's id, and whether the JSON is in the frame's shared plugin data. When it isn't, the frame says why, and the JSON is in the chat only.
 
 "Save to" also takes "the report page" or "this file". Inside Figma Design's agent, only the report page can be used.
 
 A destination can't be used when:
 
 - it's a local folder or a GitHub folder inside Figma Design's agent: "Figma Design's agent can't save to a folder or to GitHub yet"
-- it's none of the locations above: "<location> isn't a local folder, a GitHub folder link or the report page"
+- it's none of the locations above: "<location> isn't a local folder, a GitHub link or the report page"
 - saving there fails, such as a folder that can't be written, no GitHub tool, or no edit access to the file: the error, as the tool or the scanner gives it
 
 ### The Saved line
 
 The header's Saved line says where the report went. Write it for the destination you're saving to, so the saved copy carries it, and correct it in the chat if that save fails.
 
-- **Saved:** "Saved: <the file's path or link>." For the report page, "Saved: frame "<name>" on the "Design review" page, <the frame's link>.", where the link is built as for a `node` location. The copy in the frame leaves out the link, and the chat's line adds "The report JSON is too large for a frame, so it's only in this chat." when the scanner says so.
+- **Saved:** "Saved: <the file's path or link>." For the report page, "Saved: frame "<name>" on the "Design review" page, <the frame's link>.", where the link is built as for a `node` location. The copy in the frame leaves out the link. When the JSON isn't in the frame, the chat's line adds "The report JSON is too large for a frame, so it's only in this chat.", or with the scanner's `jsonError`, "The report JSON couldn't be stored in the frame (<jsonError>), so it's only in this chat."
 - **After a destination that couldn't be used,** add "<destination> wasn't used: <reason>." for each one.
 - **Not saved, with "don't save":** "Not saved: you asked not to save this run."
 - **Not saved, when no destination could be used:** "Not saved: <each reason>. The report is in this chat only."
@@ -180,5 +180,5 @@ A Review Profile's Report settings section, which the calling skill hands over a
 
 | Setting | Default |
 |---|---|
-| `Report location`: a local folder, a GitHub folder link, or `none` | `none`: the report page in the reviewed file |
-| `Annotate layers`: `on` or `off` | `off`. This version doesn't annotate layers, whatever the setting |
+| `Report location`: a local folder, a GitHub repo or folder link, or `none` | `none`: the report page in the reviewed file |
+| `Annotate layers`: `on` or `off`, for marking Findings on their layers, which a later version of the skills adds | `off` |
