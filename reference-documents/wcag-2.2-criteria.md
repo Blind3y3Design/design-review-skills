@@ -1,7 +1,7 @@
 # WCAG 2.2 criteria reference
 
 - Name: WCAG 2.2 criteria reference
-- Version: 0.2
+- Version: 0.3
 - Covers: WCAG 2.2 and WCAG 2.1, Levels A and AA
 
 A Reference Document for `design-review-accessibility`. For each WCAG success criterion it gives what a design-stage review needs: whether the criterion can be judged from a design, what triggers it, how to judge it with its thresholds, and its default Severity. The review skill holds only the procedure. Everything specific to a criterion lives here.
@@ -32,6 +32,17 @@ Each criterion is a `###` heading with its number and name, then these lines:
 - **W3C:** the criterion in the WCAG 2.2 Recommendation, used as a Finding's `standard.url` at a WCAG 2.2 target. "WCAG 2.1 changes" gives the links for a WCAG 2.1 target.
 
 Under the lines, **How to judge** gives the test and its thresholds, what fails, the exceptions, what the evidence and fix say, and the Root Cause when it's a source other than the failing layer.
+
+## Target sizes in CSS px
+
+Target sizes (2.5.8 and 2.5.5) are in CSS px. The Design Facts give Figma px, which convert by the frame's platform and density:
+
+- **The frame's platform** comes from the Product context's `Target platforms`. A platform whose name includes "web", such as `Web` or `Mobile web`, is a web platform. Any other, such as `iOS`, `Android` or `Windows`, is native. When the target platforms are all web or all native, every frame is too. With both kinds, a frame takes the kind of the platform its name includes, such as "Checkout · iOS", and a frame whose name includes none has an unknown platform.
+- **The frame's density** is stated in its name as `@<n>x`, such as `@1x`, `@2x` or `@3x`.
+- **A web frame:** CSS px are Figma px divided by the stated density. With none stated, a web frame is at 1x, so its Figma px are CSS px.
+- **A native frame:** CSS px are Figma px divided by the stated density, since a native platform's density-independent unit (a point on iOS, a dp on Android) counts as a CSS px, as W3C's WCAG2ICT guidance applies WCAG to software. With no density stated, the frame's sizes can't be converted.
+
+A frame with an unknown platform, or a native frame with no stated density, gives `needs-review` for its target sizes, as 2.5.8 says.
 
 ## Criteria
 
@@ -217,6 +228,7 @@ Under the lines, **How to judge** gives the test and its thresholds, what fails,
 
 - **Fails:** colour is the only visual difference that conveys the information, with no text, icon, pattern, shape, underline, weight or position alongside it. For example: a link in running text that differs from the text around it only in colour; an error or required field shown only by a red border or label; chart series told apart only by colour; a selected tab shown only by colour.
 - **Links in running text** pass with a non-colour cue, such as an underline. A link whose colour contrasts at least 3:1 with the text around it passes only when the design shows a non-colour cue on hover and focus.
+- **Reading links from the facts:** a link in running text is a run of a text layer's `runs` with a `link`, or styled unlike the text around it. Its non-colour cue is a `decoration`, or a different `font` or `fontWeight`. Compute its contrast with the text around it from the runs' colours.
 - **Evidence:** what the colour conveys, and that nothing else does.
 - **Fix:** add a non-colour cue, such as an underline, an icon or a text label.
 
@@ -277,17 +289,18 @@ Under the lines, **How to judge** gives the test and its thresholds, what fails,
 - Since: 2.0
 - Group: static
 - Facts: structure
-- Trigger: image layers, or vector layers such as outlined text, that may show words
+- Trigger: image layers and vector layers, since either may show words
 - Needs: none
 - Markers: none
 - Default Severity: moderate
 - W3C: https://www.w3.org/TR/WCAG22/#images-of-text
 
-**How to judge.** Judge each image or vector layer that shows words.
+**How to judge.** Judge each image layer (`image` in the structure facts) and each vector layer that may show words.
 
+- **What the facts show:** a layer's name, type and size, not its pixels. An image or vector shows words when its name, or the text or annotations about it, say so, such as a layer named "Sale banner text", a file name like "heading.png", or a vector or group named with words, which outlining a text layer leaves. An icon or a photo named as one shows none.
 - **Fails:** words shown as an image or outlined vector where live text could give the same look.
 - **Exceptions:** logotypes and brand names, text whose particular look is essential (such as a font specimen), and images of text the user can customise.
-- **Evidence:** the layer, and the words it shows.
+- **Evidence:** the layer, and the words it shows or what says it shows them.
 - **Fix:** replace the image with a text layer styled to look the same.
 
 ### 1.4.10 Reflow
@@ -314,17 +327,17 @@ Under the lines, **How to judge** gives the test and its thresholds, what fails,
 - Since: 2.1
 - Group: static
 - Facts: colourPairs, structure
-- Trigger: interactive components, state or focus indicators, or graphics needed to understand the content, such as meaningful icons and chart elements
+- Trigger: interactive components, state or focus indicators, or graphics needed to understand the content, such as meaningful icons and chart elements. Photos and other pictures of real-world scenes aren't among them
 - Needs: none
 - Markers: none
 - Default Severity: moderate
 - W3C: https://www.w3.org/TR/WCAG22/#non-text-contrast
 
-**How to judge.** Judge each colour that a non-text element needs in order to be seen, against each colour next to it. Only measurements of non-text elements count: colour pairs of text layers belong to 1.4.3.
+**How to judge.** Judge each colour that a non-text element needs in order to be seen, against each colour next to it. These are the non-text pairs in the colour pairs facts (`nonText`), for the layers the structure facts show to be such elements. Colour pairs of text layers belong to 1.4.3.
 
-- **Threshold:** at least 3:1 against every adjacent colour. No rounding up.
-- **Applies to:** what identifies a component when nothing else does (such as a text field's border), what shows its state (a checkbox's check, a selected tab's indicator, a focus indicator), and the parts of a graphic needed to understand it (an icon with no text label, a chart's lines or segments).
-- **Doesn't apply to:** a button's shape when its text identifies it, inactive components, native controls whose look the platform sets and the design hasn't changed, and graphics whose particular look is essential, such as a logo or a flag.
+- **Threshold:** at least 3:1 against every adjacent colour: `against`, and `inside` for a stroke. No rounding up.
+- **Applies to:** what identifies a component when nothing else does (such as a text field's border), what shows its state (a checkbox's check, a selected tab's indicator, a focus indicator), and the parts of a graphic needed to understand it (an icon with no text label, a chart's lines or segments). A component is identified when one of its edges meets the threshold, such as a white checkbox's border on a white background.
+- **Doesn't apply to:** a button's shape when its text identifies it, inactive components, native controls whose look the platform sets and the design hasn't changed, graphics whose particular look is essential, such as a logo or a flag, and containers that group content, such as a card, a panel or the fill behind text.
 - **Root Cause:** the failing colour's source.
 - **Evidence:** `<element colour> on <adjacent colour> = <ratio>:1, needs 3:1`, naming the element.
 - **Fix:** raise the contrast of the element against the colour next to it.
@@ -654,23 +667,24 @@ Exceptions: real-time events such as an auction, limits essential to the activit
 - Level: AA
 - Since: 2.2
 - Group: static
-- Facts: structure
+- Facts: structure, text
 - Trigger: pointer targets: buttons, links, form controls and anything else that acts on a tap or click
 - Needs: none
 - Markers: none
 - Default Severity: moderate
 - W3C: https://www.w3.org/TR/WCAG22/#target-size-minimum
 
-**How to judge.** Measure each target's bounding box.
+**How to judge.** Measure each target's box: its `width` and `height` in the structure facts, converted to CSS px as Target sizes in CSS px says. The targets are the layers the facts show act on a tap or click, by their names, components and prototype `reactions`, and the links in the text facts. A layer inside a target, such as a button's icon, is part of that target.
 
-- **Threshold:** at least 24 by 24 CSS px. In a web frame at 1x, Figma px are CSS px. A native frame converts by its stated density, and with no density stated the measurement is `needs-review`.
+- **Threshold:** at least 24 by 24 CSS px.
 - **Exceptions:**
-  - **Spacing:** an undersized target passes when a 24 px circle centred on its bounding box doesn't overlap another target, or another undersized target's circle.
+  - **Spacing:** an undersized target passes when a 24 px circle centred on its box doesn't overlap another target, or another undersized target's circle. Work it out from the boxes' `x`, `y`, `width` and `height`: the circle overlaps a target when its centre is less than 12 px from that target's box, and another undersized target's circle when their centres are less than 24 px apart.
   - **Equivalent:** another control on the same screen that meets the size does the same thing.
   - **Inline:** the target is in a sentence, or its size is set by the line height of the text around it.
   - **User agent control:** a native control the design hasn't restyled.
   - **Essential:** the size is essential or legally required.
-- **Evidence:** `<width>×<height> px, needs 24×24 px`, and the spacing to the nearest target when the spacing exception was checked.
+- **Sizes that can't be converted:** a frame with targets whose sizes can't be converted to CSS px gives one Finding at `needs-review`, whose Root Cause is the frame (`node:<frame id>`). Its locations are the frame's targets, and its evidence says why the sizes can't be converted, such as "a native frame with no stated density". Fix: state the frame's density in its name, such as `@1x`, or name its platform when the product has web and native platforms.
+- **Evidence:** `<width>×<height> px, needs 24×24 px`, in CSS px, naming the density when it isn't 1x, and the spacing to the nearest target when the spacing exception was checked.
 - **Fix:** enlarge the target, or space it so the spacing exception applies.
 
 ### 3.1.1 Language of Page
@@ -977,7 +991,7 @@ These are judged only as above-target checks, since this reference covers no AAA
 - Level: AAA
 - Since: 2.1
 - Group: static
-- Facts: structure
+- Facts: structure, text
 - Trigger: pointer targets: buttons, links, form controls and anything else that acts on a tap or click
 - Needs: none
 - Markers: none

@@ -26,8 +26,8 @@ Settle everything before the review starts, asking for what's missing in as few 
 
 - **Scope:** the node ids of the frames to review, from the user's selection, the frames they name, or the `node-id` in a Figma link. For a page, use its top-level frames. In an external agent, the file key comes from the file's link.
 - **Runtime:** `figma-agent` inside Figma Design's agent, `external-agent` anywhere else.
-- **Given at run time,** when the user names them: a Review Profile (its text, a local file, or a link to a Figma file or a GitHub file), and any of the Accessibility settings under What to check against, such as a WCAG target ("WCAG 2.2 AA"), `Report above target: yes`, an additional requirement, or a criteria reference location (a URL or a local file). A setting given at run time takes the place of the profile's for this run. Also where to save this run's report, if the user says: "don't save", or "save to <location>".
-- **What to check against:** find the Review Profile, then settle the Accessibility settings from it or by asking, as Review Profile below describes.
+- **Given at run time,** when the user names them: a Review Profile (its text, a local file, or a link to a Figma file or a GitHub file), and any of the Accessibility settings under What to check against, such as a WCAG target ("WCAG 2.2 AA"), `Report above target: yes`, an additional requirement, or a criteria reference location (a URL or a local file), and the Product context's settings. A setting given at run time takes the place of the profile's for this run. Also where to save this run's report, if the user says: "don't save", or "save to <location>".
+- **What to check against:** find the Review Profile, then settle the Accessibility and Product context settings from it or by asking, as Review Profile below describes.
 
 The inputs are settled when the scope, runtime and settings are known, or the run has stopped.
 
@@ -57,9 +57,11 @@ Judge these three sets. At a target the reference doesn't cover, judge only the 
 Give each exactly one Coverage entry, `{ "axis": "accessibility", "ref": "<criterion number, or requirement id>", "status": "<status>" }`. Add a `note` to any status but `judged`, and to every above-target entry ("above target"). The status is the first that fits:
 
 1. `needs-code` when its group is `code`. It's never a Finding.
-2. `not-readable` when a fact group it needs is in the facts' `unread`, or none of its measurements could be made. The note gives the scanner's reason.
-3. `not-applicable` when its trigger isn't in the scope.
+2. `not-readable` when a fact group it needs is in the facts' `unread`, or none of its measurements could be made. A criterion whose Markers line isn't `none` also needs the sections the scanner reads, so it's `not-readable` while `unread` names `sections`. The note gives the scanner's reason.
+3. `not-applicable` when its trigger isn't in the scope. The facts show what a layer is by its name, its component, its prototype `reactions`, and the text in and beside it.
 4. `judged` otherwise, following its How to judge.
+
+Work out any measurement the facts don't give, such as the spacing between two targets or the contrast between two runs' colours, from the facts' values, with code where you can run it.
 
 Each failure becomes part of a Finding:
 
@@ -69,7 +71,7 @@ Each failure becomes part of a Finding:
 - **Certainty:**
   - `confirmed` for a measurement from facts with no `flags`.
   - `likely` for a measurement from facts with a flag, such as `opacity` or `blend-mode`, which the evidence names; or for a judgement of wording or meaning, such as whether a heading describes its section.
-  - `needs-review` when a measurement couldn't be made. The evidence gives the scanner's `reason`. This is always a Finding, since it may fail.
+  - `needs-review` when a measurement couldn't be made, such as text over an image, or a size in a frame whose density isn't known. The evidence gives the scanner's `reason`, or why the size couldn't be converted. This is always a Finding, since it may fail.
 - **Title:** one line naming the layer and what fails.
 - **Evidence** and **fix,** as the criterion's How to judge says.
 - **Locations:** `{ "kind": "node", "fileKey", "nodeId", "layerPath" }` for each layer in the facts. When a facts group's `count` is more than its sample `nodes`, the evidence says how many more layers share it.
@@ -81,7 +83,9 @@ Judging is done when every criterion that applies to the target (or an uncovered
 
 Use the skill `design-review-report-writer`, handing over:
 
-- `run`: today's `date`, the `scope` (`fileKey`, and `nodes` as `{ id, name }`), the `runtime`, `setVersion` from this skill's Version line, `factsVersion` and `factGroups` from the Design Facts, and `settings`. `settings` is null when a profile's Accessibility section gave the target, `Report above target` and the additional requirements, whatever the criteria reference's location. Otherwise it's `{ "accessibility": { "standard": "WCAG", "version": "<version>", "level": "<level>", "from": "profile", "run time" or "asked", "criteriaReference": "<location>", "reportAboveTarget": "yes" or "no", "additionalRequirements": ["<id> (<Severity>): <statement>", …] } }`, where `from` says where the target came from.
+- `run`: today's `date`, the `scope` (`fileKey`, and `nodes` as `{ id, name }`), the `runtime`, `setVersion` from this skill's Version line, `factsVersion` and `factGroups` from the Design Facts, and `settings`. `settings` is null when a profile gave the target, `Report above target`, the additional requirements and the Product context, whatever the criteria reference's location. Otherwise it holds what no profile gave:
+  - `accessibility`, unless a profile's Accessibility section gave the target, `Report above target` and the additional requirements: `{ "standard": "WCAG", "version": "<version>", "level": "<level>", "from": "profile", "run time" or "asked", "criteriaReference": "<location>", "reportAboveTarget": "yes" or "no", "additionalRequirements": ["<id> (<Severity>): <statement>", …] }`, where `from` says where the target came from.
+  - `productContext`, unless a profile's Product context section gave it: `{ "targetPlatforms": ["<platform>", …], "supportedViewportWidths": ["<width>", …], "from": "run time", "asked" or "default" }`.
 - `profile`: `{ name, location, lastUpdated }` for the profile whose section you used, otherwise null.
 - `references`: the criteria reference's name, version and location.
 - `findings`, each with its `rootCause`, and `coverage`.
@@ -93,7 +97,7 @@ The review is done when the Report Writer has delivered the report.
 
 ## Review Profile
 
-A team's Review Profile names the standards its reviews are judged against. This skill uses only the profile's **Accessibility** section and the Severity Overrides about WCAG, and hands its **Report settings** section to the Report Writer, which saves the report. It never creates or changes a profile, nor offers to.
+A team's Review Profile names the standards its reviews are judged against. This skill uses only the profile's **Accessibility** and **Product context** sections and the Severity Overrides about WCAG, and hands its **Report settings** section to the Report Writer, which saves the report. It never creates or changes a profile, nor offers to.
 
 ### Lookup
 
@@ -131,6 +135,17 @@ Settle the settings by what the lookup found:
 - **No profile, no Accessibility section, or the user said no:** say why you're asking, then ask what to check against, each setting pre-filled with its default. For example: "I couldn't find a Review Profile: none was given, this file has no "Review Profile" page, and AGENTS.md has no pointer to one. What should I check against? I'll use WCAG 2.2 AA with the default criteria reference unless you name others. Your answer is for this run only, and isn't saved to a profile." With the target already given at run time, there's nothing to ask. For a profile without the section, keep a note for the report: "The Review Profile "<name>" has no Accessibility section, so this run used the settings below."
 
 From a profile whose section you use, also note its location, its Identity `Name` and `Last updated`, and its Severity Overrides about WCAG. From any profile the lookup found, unless the user said no to it, note its Report settings.
+
+### Product context
+
+The **Product context** section says where the product runs, for the checks that depend on screen size, such as target size. One `Key: value` per line:
+
+| Setting | Default |
+|---|---|
+| `Target platforms`: the platforms, separated by commas, such as `Web, iOS`. The criteria reference says how each one's frames are measured | `Web` |
+| `Supported viewport widths`: the widths designed for, such as `375px, 768px, 1440px` | none |
+
+Use the Product context of any profile the lookup found, unless the user said no to it, and name it when you ask before using that profile. Settings given at run time take its place. With no Product context, add its settings, pre-filled with their defaults, to any question you ask about what to check against. When there's nothing to ask, use the defaults, and keep a note for the report: "No Product context was given, so this run measured every frame as a web frame."
 
 ### Severity Overrides
 

@@ -10,7 +10,7 @@ It must pass before every release, and after Figma changes its agent or its help
 
 **Page convention.** Every case is one top-level frame on the **Cases** page (`5:2`). The frame's name is its case id, such as `A11Y-01`, and its content is made up. Each case prefix (A11Y, DS, X, RES, CLEAN, RUN) has a row of its own. Add a case at the end of its prefix's row, and start a new prefix as a row below the others. Reviews scan whole frames, so keep a case's frame free of anything the case doesn't need. A variant of a case, such as `A11Y-01-override`, runs on its base case's frame with other settings. Leave "Page 1", the file's original page, empty.
 
-**The Review Profile page** (`16:2`) holds the test profile as one text layer, a copy of [`profiles/smoke-test-profile.md`](profiles/smoke-test-profile.md). The override profiles in `profiles/` are the same profile with a Severity Overrides section, and [`profiles/local-folder.md`](profiles/local-folder.md) is the same with a Report settings section. Keep them all the same otherwise: a ticket that adds a profile section, such as Design System Layers, adds it to each.
+**The Review Profile page** (`16:2`) holds the test profile as one text layer, a copy of [`profiles/smoke-test-profile.md`](profiles/smoke-test-profile.md). Its Product context is `Target platforms: Web`. The override profiles in `profiles/` are the same profile with a Severity Overrides section, [`profiles/local-folder.md`](profiles/local-folder.md) is the same with a Report settings section, and [`profiles/native.md`](profiles/native.md) is the same with `Target platforms: iOS`. Keep them all the same otherwise: a ticket that adds a profile section, such as Design System Layers, adds it to each.
 
 ## Running a case
 
@@ -40,7 +40,7 @@ It must pass before every release, and after Figma changes its agent or its help
 
 A missing, extra or duplicate Finding or Coverage entry fails. It prints `PASS <case>` and exits with 0, or `FAIL <case>` and one line per difference and exits with 1. It exits with 2 when it can't run.
 
-Its own tests: `node --test tests/smoke/compare.test.mjs`. The Design Scanner's report frame script has tests too, run against a fake of the Plugin API: `node --test tests/scripts/report-frame.test.mjs`.
+Its own tests: `node --test tests/smoke/compare.test.mjs`. The Design Scanner's scripts have tests too, run against a fake of the Plugin API: `node --test tests/scripts/*.test.mjs`.
 
 ## Cases
 
@@ -48,12 +48,14 @@ Each built case has a frame on the Cases page and, if its result is a report, an
 
 | Id | Case | Frame | Expected |
 |---|---|---|---|
-| A11Y-01 | Body text at 3.4:1: `#8A8A8A` 16 px text on a `#FFFFFF` frame (3.45:1), under a title that passes | `5:3` | [`A11Y-01.json`](expected/A11Y-01.json): one 1.4.3 Finding on the body text (`5:5`), `moderate`, `confirmed`. Coverage has all 55 WCAG 2.2 A/AA criteria: 1.4.3 `judged`, the 8 code-only criteria `needs-code`, and the rest `not-readable` until the scanner reads their facts |
+| A11Y-01 | Body text at 3.4:1: `#8A8A8A` 16 px text on a `#FFFFFF` frame (3.45:1), under a title that passes | `5:3` | [`A11Y-01.json`](expected/A11Y-01.json): one 1.4.3 Finding on the body text (`5:5`), `moderate`, `confirmed`. Coverage has all 55 WCAG 2.2 A/AA criteria: 1.4.3 and 2.4.6 (the title) `judged`, the other static criteria `not-applicable`, the 8 code-only criteria `needs-code`, and the rest `not-readable` until the scanner reads their facts |
 | A11Y-01-override | A11Y-01 with [`profiles/override-serious.md`](profiles/override-serious.md) given at run time, whose Severity Override is "WCAG AA failures: serious" | `5:3` | [`A11Y-01-override.json`](expected/A11Y-01-override.json): the same Finding at `serious`. Coverage as for A11Y-01. Checked by hand: its evidence names the override |
-| CLEAN-01 | A frame that follows every rule. For now, every text pair passes 1.4.3, on a frame's fill, a nested frame's fill and a rectangle beneath the text | `5:6` | [`CLEAN-01.json`](expected/CLEAN-01.json): no Findings. Coverage as for A11Y-01 |
+| CLEAN-01 | A frame that follows every rule: text pairs that pass 1.4.3 on a frame's fill, a nested frame's fill and a rectangle beneath the text, an instruction naming a button by its label, an underlined link in running text, a checked 24×24 checkbox with its label, and a 312×48 button | `5:6` | [`CLEAN-01.json`](expected/CLEAN-01.json): no Findings. Coverage: every static criterion not needing a marked section `judged`, and the rest as for A11Y-01 |
 | RUN-04 | A run with `design-review-report-writer` or `design-review-scanner` missing | any case frame | Checked by hand: the run stops, names the missing skill and writes no report |
-| A11Y-02 | Text over an image | | `needs-review`, or `not-readable` in Coverage |
-| A11Y-03 | Target smaller than 24×24 px | | Target size Finding (2.5.8) |
+| A11Y-01-figma | A11Y-01 run in Figma Design's agent | `5:3` | Passes `A11Y-01.json`. Checked by hand: the line suggesting Figma's accessibility checker follows the design-stage line. In an external agent, it doesn't appear |
+| A11Y-02 | Text over an image: a white caption (`64:6`) over a photo, under a title that passes | `64:2` | [`A11Y-02.json`](expected/A11Y-02.json): one 1.4.3 Finding on the caption, `moderate`, `needs-review`, with the scanner's reason. 1.4.3 is `judged` from the title, and 1.4.5 and 2.4.6 are `judged` |
+| A11Y-03 | Target smaller than 24×24 px: two 16×16 icon buttons, `Previous` (`64:9`) and `Next` (`64:12`), 4 px apart, so the spacing exception doesn't apply | `64:7` | [`A11Y-03.json`](expected/A11Y-03.json): a 2.5.8 Finding on each button, `moderate`, `confirmed`. 1.4.5, 1.4.11 and 2.5.8 `judged` |
+| A11Y-03-native | A11Y-03 with [`profiles/native.md`](profiles/native.md) given at run time, so the frame is native and states no density | `64:7` | [`A11Y-03-native.json`](expected/A11Y-03-native.json): one 2.5.8 Finding on the frame (`node:64:7`), `moderate`, `needs-review`, and 2.5.8 `not-readable` |
 | A11Y-04 | Meaningful image with no text-alternative annotation | | Missing-annotation Finding (`needs-review`), with 1.1.1 `needs-annotation` in Coverage. With `coverage only`, the Coverage entry alone |
 | A11Y-05 | Contrast failure inside an unmodified library instance | | Blamed on the design system; Root Cause is the library component |
 | A11Y-06 | Reflow with no section marked for it | | `needs-section`, naming the title to add; no Finding |
@@ -95,6 +97,7 @@ Checked by hand in an external agent, on A11Y-01 unless the check names another 
 | An unreadable pointer | Page off. `AGENTS.md` points to a file that doesn't exist | Stops with the location and the reason, and writes no report |
 | An unreadable pointer on the page | Page off. A temporary page named `Review Profile` holds only `Review Profile: <link to a file with no Review Profile page>`, such as [DRS Test Unlisted](https://www.figma.com/design/8DhePf1jHSsrvwFxpiYoQf/DRS-Test-Unlisted). Delete it afterwards | Stops with the location and the reason, and writes no report |
 | A critical override without a core task | [`profiles/override-critical.md`](profiles/override-critical.md) given at run time | Passes `A11Y-01`, and the header's Notes say the override wasn't applied |
+| No Product context | A copy of the test profile without its Product context section, given at run time as a local file | No question. Passes `A11Y-01`, the header's Notes say every frame was measured as a web frame, and `run.settings.productContext` has `from: "default"` |
 
 ## Saving checks
 

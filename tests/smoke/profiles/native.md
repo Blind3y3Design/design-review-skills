@@ -1,4 +1,4 @@
-# Review Profile: Smoke test, local folder
+# Review Profile: Smoke test, native
 
 Profile version: 0.1
 
@@ -6,7 +6,7 @@ Profile version: 0.1
 
 What this profile is called and who maintains it.
 
-- Name: Smoke test, local folder
+- Name: Smoke test, native
 - Owner: Design review skills maintainers
 - Last updated: 2026-09-30
 
@@ -23,12 +23,5 @@ The accessibility standard designs are judged against.
 
 Where the product runs, used by checks that depend on screen size.
 
-- Target platforms: Web
+- Target platforms: iOS
 - Supported viewport widths: 360px, 1440px
-
-## Report settings
-
-Where reports are saved, and whether Findings are marked on layers.
-
-- Report location: reports/smoke-test
-- Annotate layers: off
