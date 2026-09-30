@@ -11,7 +11,7 @@ Version 0.1.0-dev of the design review skills.
 
 Reads a design and returns its Design Facts: what was read or measured, never a judgement. The scanner holds no thresholds and no criteria. The Review Skill that asked for the facts judges them.
 
-All reading goes through **fixed scripts**, tested as written, so every review reads a file the same way. Design Facts come from the script under The script, where you change only the node id on its first line. A skill can also ask for a file's Review Profile page, which is read by a script of its own (see Reading a Review Profile page).
+All reading goes through **fixed scripts**, tested as written, so every review reads a file the same way. Design Facts come from the script under The script, where you change only the node id on its first line. A skill can also ask for a file's Review Profile page, which is read by a script of its own (see Reading a Review Profile page), and the Report Writer asks you to save its report frames (see Writing a report frame).
 
 ## Inputs
 
@@ -276,4 +276,131 @@ if (named.length) {
   }
 }
 return out;
+```
+
+## Writing a report frame
+
+The Report Writer may ask you to save a report on the reviewed file's report page, the page named "Design review", as a frame of its own. This is the scanner's one script that writes to a file. It lays out the text it's given and judges nothing.
+
+1. **Pick the tool** as in step 1 of Steps, with the reviewed file's key.
+2. **Set the script's first three lines** from the Report Writer's hand-over, and run everything else exactly as written, in one call:
+   - `NAME`: the frame's name, as a string
+   - `MARKDOWN`: the Markdown report without its JSON block, as an array of strings, one per line
+   - `REPORT`: the report JSON, as an object
+3. **If the call is refused because the script is too long,** run it again with `const REPORT = null;`, so the frame goes without its JSON. If that's refused too, hand back `{ "error": "the report is too long to save as a frame" }`.
+4. **If the call errors or returns an `error`,** retry it as in step 2 of Steps. The script removes whatever it added before it returns an error, so a retry adds no second frame. If it fails again, hand back the error.
+5. **Hand back** the script's output: `page` (`id`, `name`, and `created` when this call added it), `frame` (`id`, `name`), and `json`: `stored`, `too large`, or `not stored` with Figma's `jsonError`.
+
+The frame is written when the script hands back a `frame`, or the error is handed back. The frame's last line says where its JSON is: in its shared plugin data, namespace `designreview`, key `report`, when that entry fits Figma's limit of 100 kB, or in the chat.
+
+```js
+const NAME = 'NAME';
+const MARKDOWN = ['MARKDOWN'];
+const REPORT = 'REPORT';
+if (NAME === 'NAME' || MARKDOWN[0] === 'MARKDOWN' || REPORT === 'REPORT') return { error: 'set NAME, MARKDOWN and REPORT on the first three lines' };
+
+const PAGE = 'Design review';
+const NAMESPACE = 'designreview';
+const KEY = 'report';
+const LIMIT = 100000;
+const GAP = 80;
+const WIDTH = 720, PAD = 40;
+const FONT = { regular: { family: 'Inter', style: 'Regular' }, semi: { family: 'Inter', style: 'Semi Bold' }, bold: { family: 'Inter', style: 'Bold' } };
+const STYLE = [[FONT.regular, 13], [FONT.bold, 24], [FONT.bold, 18], [FONT.semi, 15]]; // body, then #, ## and ###
+
+const utf8Bytes = (s) => { let n = 0; for (const ch of s) { const c = ch.codePointAt(0); n += c < 0x80 ? 1 : c < 0x800 ? 2 : c < 0x10000 ? 3 : 4; } return n; };
+
+// Inline Markdown: **bold**, [text](url) and `code` become plain text, with bold and link ranges.
+const inline = (src) => {
+  const re = /\*\*(.+?)\*\*|\[([^\]]+)\]\(([^)\s]+)\)|`([^`]*)`/g;
+  let text = '', last = 0, m;
+  const bold = [], links = [];
+  while ((m = re.exec(src))) {
+    text += src.slice(last, m.index);
+    last = re.lastIndex;
+    if (m[4] !== undefined) { text += m[4]; continue; }
+    const start = text.length, inner = inline(m[1] ?? m[2]);
+    for (const [s, e] of inner.bold) bold.push([start + s, start + e]);
+    for (const [s, e, url] of inner.links) links.push([start + s, start + e, url]);
+    text += inner.text;
+    if (m[1] !== undefined) bold.push([start, text.length]);
+    else links.push([start, text.length, m[3]]);
+  }
+  return { text: text + src.slice(last), bold, links };
+};
+
+// Blocks: a heading, or a paragraph of consecutive lines. Fenced blocks, such as the JSON, are left out.
+const blocks = [];
+let paragraph = null, fenced = false;
+for (const raw of MARKDOWN) {
+  const line = String(raw).trimEnd();
+  const heading = /^(#{1,3})\s+(.*)$/.exec(line);
+  if (/^\s*`{3}/.test(line)) { fenced = !fenced; paragraph = null; }
+  else if (fenced) continue;
+  else if (heading) { blocks.push({ level: heading[1].length, lines: [heading[2]] }); paragraph = null; }
+  else if (!line.trim()) paragraph = null;
+  else {
+    if (!paragraph) blocks.push(paragraph = { level: 0, lines: [] });
+    paragraph.lines.push(line.replace(/^(\s*)[-*]\s+/, '$1• '));
+  }
+}
+
+// Anything this call adds is removed again if a write fails, such as without edit access.
+let page = figma.root.children.find((p) => p.name.trim().toLowerCase() === PAGE.toLowerCase());
+const created = !page;
+let frame = null, json = 'too large', jsonError = null;
+try {
+  if (created) { page = figma.createPage(); page.name = PAGE; }
+  await page.loadAsync();
+  await Promise.all(Object.values(FONT).map((f) => figma.loadFontAsync(f)));
+  frame = figma.createFrame();
+  page.appendChild(frame);
+  frame.name = NAME;
+  frame.layoutMode = 'VERTICAL';
+  frame.resize(WIDTH, 100);
+  frame.primaryAxisSizingMode = 'AUTO';
+  frame.counterAxisSizingMode = 'FIXED';
+  frame.paddingTop = frame.paddingBottom = frame.paddingLeft = frame.paddingRight = PAD;
+  frame.itemSpacing = 12;
+  frame.fills = [{ type: 'SOLID', color: { r: 1, g: 1, b: 1 } }];
+
+  // The JSON goes in shared plugin data when the entry fits Figma's limit of 100 kB.
+  const serialized = REPORT === null ? null : JSON.stringify(REPORT);
+  if (serialized !== null && utf8Bytes(NAMESPACE + KEY + serialized) <= LIMIT) {
+    try { frame.setSharedPluginData(NAMESPACE, KEY, serialized); json = 'stored'; } catch (e) { json = 'not stored'; jsonError = String((e && e.message) || e); }
+  }
+  const where = {
+    'stored': `Report JSON: in this frame's shared plugin data, namespace "${NAMESPACE}", key "${KEY}".`,
+    'too large': 'Report JSON: too large for this frame, so it stayed in the chat the review ran in.',
+    'not stored': `Report JSON: not stored in this frame (${jsonError}), so it stayed in the chat the review ran in.`,
+  };
+  blocks.push({ level: 0, lines: [where[json]] });
+
+  for (const block of blocks) {
+    const { text, bold, links } = inline(block.lines.join('\n'));
+    if (!text.trim()) continue;
+    const [font, size] = STYLE[block.level];
+    const t = figma.createText();
+    frame.appendChild(t);
+    t.fontName = font;
+    t.fontSize = size;
+    t.textAutoResize = 'HEIGHT';
+    t.resize(WIDTH - 2 * PAD, t.height);
+    t.characters = text;
+    for (const [s, e] of bold) t.setRangeFontName(s, e, FONT.bold);
+    for (const [s, e, url] of links) { t.setRangeHyperlink(s, e, { type: 'URL', value: url }); t.setRangeTextDecoration(s, e, 'UNDERLINE'); }
+  }
+
+  // Newest first: above everything already on the page, lined up with its left edge.
+  const others = page.children.filter((n) => n !== frame);
+  if (others.length) {
+    frame.x = Math.min(...others.map((n) => n.x));
+    frame.y = Math.min(...others.map((n) => n.y)) - frame.height - GAP;
+  }
+} catch (e) {
+  if (frame && !frame.removed) frame.remove();
+  if (created && page && !page.removed) page.remove();
+  return { error: String((e && e.message) || e) };
+}
+return { page: { id: page.id, name: page.name, created }, frame: { id: frame.id, name: frame.name }, json, ...(jsonError ? { jsonError } : {}) };
 ```
