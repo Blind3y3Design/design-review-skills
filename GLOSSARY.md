@@ -20,6 +20,14 @@ _Avoid_: Meta skill, meta agent, coordinator
 The skill that writes a review's Findings and Coverage in the shared report format, whether a Review Skill runs on its own or through the Orchestrator. It judges no Review Axis.
 _Avoid_: Documentation skill, formatter, output skill
 
+**Design Scanner**:
+The skill that reads a design and returns its Design Facts, without judging them.
+_Avoid_: Inspector, crawler, collector
+
+**Design Facts**:
+What was read or measured from a design, without judgement: its components, bindings, detached instances, overrides, text, and measurements such as contrast ratios. Review Skills judge from Design Facts.
+_Avoid_: Scan results, data, metadata
+
 **Finding**:
 One issue a Review Skill reports: what is wrong, the evidence for it, the standard it breaks, and its Severity.
 _Avoid_: Issue, violation, comment, flag

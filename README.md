@@ -24,6 +24,10 @@ A skill that takes a Figma file, frame, or selection and runs several Review Ski
 
 A skill that every other skill uses to write its report, so output is the same shape whether a Review Skill runs on its own or through the Orchestrator: a Markdown report, then a JSON block of Findings and Coverage.
 
+### Design Scanner (planned)
+
+A skill that reads the design once and returns Design Facts for the Review Skills to judge: components, bindings, detached instances, overrides, text, and measurements such as contrast. It holds all the Plugin API code, so every review reads the file the same way. Design review isn't delivered as a Figma plugin; see [ADR 0006](docs/adr/0006-design-facts-from-a-scanning-skill-not-a-plugin.md).
+
 ### Review Profile (planned)
 
 Skills don't bundle any organisation's standards. A team's Review Profile names its design system layers, research sources, and accessibility target. If no profile exists, the skill walks the user through creating one on the first run.
