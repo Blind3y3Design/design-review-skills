@@ -27,7 +27,7 @@ Ask for anything missing in one message, before the review starts. Nothing is as
 - **Scope:** the node ids of the frames to review, from the user's selection, the frames they name, or the `node-id` in a Figma link. For a page, use its top-level frames. In an external agent, the file key comes from the file's link.
 - **Target:** the WCAG version and level given at run time, such as "WCAG 2.2 AA". If none is given, use WCAG 2.2 AA, and record that it's the default.
 - **Report above target:** `yes` or `no`, given at run time. `no` by default.
-- **Additional requirements:** the team's own requirements given at run time, none by default. Each is one line, `Additional requirement: <id> (<Severity>): <statement>`, such as `Additional requirement: AR-1 (minor): Body text is at least 16 px.` The Severity is critical, serious, moderate or minor. A line with no id takes `AR-<n>`, its place in the list.
+- **Additional requirements:** the team's own requirements given at run time, none by default. Each is one line, `Additional requirement: <id> (<Severity>): <statement>`, such as `Additional requirement: AR-1 (minor): Body text is at least 16 px.` The Severity is critical, serious, moderate or minor. A line with no id takes the first `AR-<n>` not already used.
 - **Criteria reference:** a location given at run time, a URL or a local file. Otherwise the default, `https://raw.githubusercontent.com/Blind3y3Design/design-review-skills/main/reference-documents/wcag-2.2-criteria.md`.
 - **Runtime:** `figma-agent` inside Figma Design's agent, `external-agent` anywhere else.
 
@@ -48,7 +48,7 @@ Use the skill `design-review-scanner`. Give it the scope's node ids, the runtime
 
 ## 4. Judge
 
-Judge three sets, or only the last at a target the reference doesn't cover:
+Judge these three sets. At a target the reference doesn't cover, judge only the additional requirements.
 
 - **The target's criteria:** every criterion in the reference that applies to the target.
 - **Above-target checks,** only with `Report above target: yes`: every `static` criterion in the reference that doesn't apply to the target, such as its AAA entries.
@@ -64,7 +64,7 @@ Give each exactly one Coverage entry, `{ "axis": "accessibility", "ref": "<crite
 Each failure becomes part of a Finding:
 
 - **Root Cause:** the source the criterion's How to judge names, written as `variable:<key>` or `style:<key>` when the facts show that value bound to one, otherwise `node:<id>` of the failing layer. Give one Finding per Root Cause per criterion, with every layer it covers in `locations` and each failing measurement in the evidence.
-- **Severity:** the criterion's Default Severity, or an additional requirement's own. An additional requirement at critical needs a core task in its statement. Without one, it's serious, and the evidence says why.
+- **Severity:** the criterion's Default Severity, or an additional requirement's own. An additional requirement given as critical with no core task in its statement starts at serious instead, and the evidence says why.
 - **Above target:** every above-target Finding is advisory, with no `standard`. Give one per Root Cause across all the above-target checks, naming each criterion it fails, with its W3C link, in the evidence.
 - **Certainty:**
   - `confirmed` for a measurement from facts with no `flags`.
@@ -81,7 +81,7 @@ Judging is done when every criterion that applies to the target (or an uncovered
 
 Use the skill `design-review-report-writer`, handing over:
 
-- `run`: today's `date`, the `scope` (`fileKey`, and `nodes` as `{ id, name }`), the `runtime`, `setVersion` from this skill's Version line, `factsVersion` and `factGroups` from the Design Facts, and `settings`: `{ "accessibility": { "standard": "WCAG", "version": "<version>", "level": "<level>", "from": "run time" or "default", "criteriaReference": "<location>", "reportAboveTarget": "yes" or "no", "additionalRequirements": ["<each line, as given>"] } }`.
+- `run`: today's `date`, the `scope` (`fileKey`, and `nodes` as `{ id, name }`), the `runtime`, `setVersion` from this skill's Version line, `factsVersion` and `factGroups` from the Design Facts, and `settings`: `{ "accessibility": { "standard": "WCAG", "version": "<version>", "level": "<level>", "from": "run time" or "default", "criteriaReference": "<location>", "reportAboveTarget": "yes" or "no", "additionalRequirements": ["<id> (<Severity>): <statement>", …] } }`.
 - `profile`: null.
 - `references`: the criteria reference's name, version and location.
 - `findings`, each with its `rootCause`, and `coverage`.

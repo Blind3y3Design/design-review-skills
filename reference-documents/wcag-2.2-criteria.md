@@ -28,10 +28,10 @@ Each criterion is a `###` heading with its number and name, then these lines:
 - **Trigger:** what in the design brings the criterion into play. With no trigger in the scope, Coverage gives `not-applicable`.
 - **Needs:** for `annotation/prototype` criteria, what must exist before it can be judged: `annotation: <kind>` or `state: <kind>`, where a state is a prototype, variant or frame showing the behaviour. Criteria that need the same annotation name the same kind. `none` for the other groups.
 - **Markers:** for criteria judged only in a section explicitly marked for them, what marks one: the criterion number, a marker word, or a variant value. The first marker word is the section title to suggest when there's none. `none` otherwise.
-- **Default Severity:** where a failure starts. Level A starts at serious, Level AA at moderate. AAA entries are always advisory.
-- **W3C:** the criterion in the WCAG 2.2 Recommendation, used as a Finding's `standard.url`.
+- **Default Severity:** where a failure starts. Level A starts at serious, Level AA at moderate, and AAA at advisory.
+- **W3C:** the criterion in the WCAG 2.2 Recommendation, used as a Finding's `standard.url` at a WCAG 2.2 target. "WCAG 2.1 changes" gives the links for a WCAG 2.1 target.
 
-Under the lines, **How to judge** gives the test and its thresholds, what fails, the exceptions, and what the evidence and fix say. The Root Cause is the failing layer, unless How to judge names another source.
+Under the lines, **How to judge** gives the test and its thresholds, what fails, the exceptions, what the evidence and fix say, and the Root Cause when it's a source other than the failing layer.
 
 ## Criteria
 
@@ -252,7 +252,7 @@ Under the lines, **How to judge** gives the test and its thresholds, what fails,
 - **Large text** is at least 24 px, or at least 18.66 px with a font weight of 700 or more (18 pt, or 14 pt bold). Figma px are read as CSS px.
 - **No rounding up.** Compare the ratio as the facts give it. 4.49:1 fails 4.5:1.
 - **Fails:** a ratio below the pair's threshold.
-- **Exceptions:** logotypes, and text in an inactive control or that is pure decoration, have no requirement. When a failing layer looks like one of these by its name or its component (such as `Logo` or `Disabled`), keep the Finding, and say in its evidence which exception may apply.
+- **Exceptions:** logotypes, text in an inactive control, text that is pure decoration or that no one can see, and text that's part of a picture with significant other visual content (such as a street sign in a photo) have no requirement. When a failing layer looks like one of these by its name or its component (such as `Logo` or `Disabled`), keep the Finding, and say in its evidence which exception may apply.
 - **Root Cause:** the text colour's source.
 - **Evidence:** `<text colour> on <background colour> = <ratio>:1, needs <threshold>:1`, then the text size and weight, such as `#8A8A8A on #FFFFFF = 3.45:1, needs 4.5:1 (16 px, weight 400)`. Add any flag the facts give, and a token or style name when a colour came from one.
 - **Fix:** raise the contrast of the text against its background to the threshold, by darkening or lightening the text colour or the background. Name a colour token only when the facts or the team's documents give one.
@@ -296,13 +296,13 @@ Under the lines, **How to judge** gives the test and its thresholds, what fails,
 - Since: 2.1
 - Group: static
 - Facts: structure
-- Trigger: a section marked for reflow
+- Trigger: a page or screen of content
 - Needs: none
 - Markers: 1.4.10, "Reflow"
 - Default Severity: moderate
 - W3C: https://www.w3.org/TR/WCAG22/#reflow
 
-**How to judge.** Judge each frame in the marked section that's 320 CSS px wide or narrower, for content that scrolls vertically, or 256 CSS px high or shorter, for content that scrolls horizontally. A marked section with no such frame gets `needs-section` in Coverage, asking for a 320 px frame in it.
+**How to judge.** Judged only in a section marked for it. Judge each frame in the section that's 320 CSS px wide or narrower, for content that scrolls vertically, or 256 CSS px high or shorter, for content that scrolls horizontally. A section without such a frame can't be judged until it has one.
 
 - **Fails:** content that's cut off, overlaps, or runs past the frame's edge so it would need scrolling in two directions, or information or a function from the wider design that's missing with no other way to reach it.
 - **Exceptions:** parts that need a two-dimensional layout for their use or meaning: maps, diagrams, video, games, presentations, data tables, and toolbars that must stay in view.
@@ -320,11 +320,11 @@ Under the lines, **How to judge** gives the test and its thresholds, what fails,
 - Default Severity: moderate
 - W3C: https://www.w3.org/TR/WCAG22/#non-text-contrast
 
-**How to judge.** Judge each colour that something needs in order to be seen, against each colour next to it.
+**How to judge.** Judge each colour that a non-text element needs in order to be seen, against each colour next to it. Only measurements of non-text elements count: colour pairs of text layers belong to 1.4.3.
 
 - **Threshold:** at least 3:1 against every adjacent colour. No rounding up.
 - **Applies to:** what identifies a component when nothing else does (such as a text field's border), what shows its state (a checkbox's check, a selected tab's indicator, a focus indicator), and the parts of a graphic needed to understand it (an icon with no text label, a chart's lines or segments).
-- **Doesn't apply to:** a button's shape when its text identifies it (the text is judged under 1.4.3), inactive components, and graphics whose particular look is essential, such as a logo or a flag.
+- **Doesn't apply to:** a button's shape when its text identifies it, inactive components, native controls whose look the platform sets and the design hasn't changed, and graphics whose particular look is essential, such as a logo or a flag.
 - **Root Cause:** the failing colour's source.
 - **Evidence:** `<element colour> on <adjacent colour> = <ratio>:1, needs 3:1`, naming the element.
 - **Fix:** raise the contrast of the element against the colour next to it.
@@ -552,13 +552,13 @@ Exceptions: real-time events such as an auction, limits essential to the activit
 - Since: 2.0
 - Group: static
 - Facts: structure, components
-- Trigger: a section marked for focus states, or a component with a focus variant
+- Trigger: focusable components
 - Needs: none
 - Markers: 2.4.7, "Focus states", a variant value `Focus` or `Focused`
 - Default Severity: moderate
 - W3C: https://www.w3.org/TR/WCAG22/#focus-visible
 
-**How to judge.** Compare each focused state with the same component's default state.
+**How to judge.** Judged only in a section marked for it, or on a component whose variants mark it. Compare each focused state with the same component's default state.
 
 - **Fails:** a focused state that looks the same as the default, or a focusable component in the marked section with no focused state.
 - **Contrast** of the focus indicator is judged under 1.4.11, not here.
@@ -735,13 +735,13 @@ Exceptions: real-time events such as an auction, limits essential to the activit
 - Since: 2.0
 - Group: static
 - Facts: structure, components, text
-- Trigger: a section marked as a user flow, with navigation repeated on more than one screen
+- Trigger: navigation, such as a navigation bar, menu, tab bar or footer
 - Needs: none
 - Markers: 3.2.3, "User flow"
 - Default Severity: moderate
 - W3C: https://www.w3.org/TR/WCAG22/#consistent-navigation
 
-**How to judge.** Compare navigation repeated across the marked section's screens, such as navigation bars, menus, tab bars and footers.
+**How to judge.** Judged only in a section marked for it. Compare the navigation repeated across the section's screens.
 
 - **Fails:** repeated items that appear in a different relative order on different screens. Adding or removing items is fine while the repeated ones keep their order.
 - **Exceptions:** a change the user makes, such as reordering a menu.
@@ -754,13 +754,13 @@ Exceptions: real-time events such as an auction, limits essential to the activit
 - Since: 2.0
 - Group: static
 - Facts: structure, components, text
-- Trigger: a section marked as a user flow, with a component of the same function on more than one screen
+- Trigger: interactive components, such as buttons, links and icons that do something
 - Needs: none
 - Markers: 3.2.4, "User flow"
 - Default Severity: moderate
 - W3C: https://www.w3.org/TR/WCAG22/#consistent-identification
 
-**How to judge.** Compare components that do the same thing across the marked section's screens.
+**How to judge.** Judged only in a section marked for it. Compare components that do the same thing across the section's screens.
 
 - **Fails:** the same function labelled or shown differently, such as a search button labelled "Search" on one screen and "Find" on another, or with different icons.
 - **Evidence:** the screens compared, and each label or icon.
@@ -772,13 +772,13 @@ Exceptions: real-time events such as an auction, limits essential to the activit
 - Since: 2.2
 - Group: static
 - Facts: structure, text
-- Trigger: a section marked as a user flow, with help repeated on more than one screen: contact details, a contact form or chat, or a self-help link such as FAQs
+- Trigger: help: contact details, a contact form or chat, or a self-help link such as FAQs
 - Needs: none
 - Markers: 3.2.6, "User flow"
 - Default Severity: serious
 - W3C: https://www.w3.org/TR/WCAG22/#consistent-help
 
-**How to judge.** Compare where the repeated help sits across the marked section's screens.
+**How to judge.** Judged only in a section marked for it. Compare where the help repeated across the section's screens sits.
 
 - **Fails:** help that appears in a different order relative to the other content on different screens, such as in the header on one and the footer on another.
 - **Exceptions:** a change the user makes.
@@ -813,7 +813,8 @@ Exceptions: real-time events such as an auction, limits essential to the activit
 
 **How to judge.** Judge each field and each group of related controls.
 
-- **Fails:** a field with no visible label or instruction; a field whose only label is placeholder text inside it, which disappears once the user types; a group of controls, such as radio buttons or a date split into three fields, with no group label; a required format, such as a date format, that isn't stated.
+- **Fails:** a field with no visible label or instruction; a group of controls, such as radio buttons or a date split into three fields, with no group label; a required format, such as a date format, that isn't stated.
+- **Placeholder-only labels:** a field whose only label is placeholder text inside it is a Finding too, since the text disappears once the user types. This is issue #5's reading: W3C's Understanding document doesn't list it as a failure, so the evidence says so.
 - **Evidence:** the field, and what labels it now.
 - **Fix:** add a visible label above or beside the field, and any instruction it needs.
 
@@ -927,7 +928,7 @@ At a WCAG 2.1 target, the entries apply by their Since and Removed lines. That m
 
 ## AAA criteria judged from a design
 
-These are judged only as above-target checks, since this reference covers no AAA target, so every failure is advisory. When a failure also fails the matching A or AA criterion that's judged in the same run (1.4.3 for 1.4.6, 2.4.4 for 2.4.9, 2.5.8 for 2.5.5), only that criterion's Finding is raised.
+These are judged only as above-target checks, since this reference covers no AAA target. When a failure also fails the matching A or AA criterion that's judged in the same run (1.4.3 for 1.4.6, 2.4.4 for 2.4.9, 2.5.8 for 2.5.5), only that criterion's Finding is raised.
 
 ### 1.4.6 Contrast (Enhanced)
 

@@ -93,7 +93,7 @@ The Markdown shows a **short id**: the axis's short name, the ref, and the Root 
 | `severity` | yes | A Severity level |
 | `certainty` | yes | A Certainty level |
 | `locations` | yes | Each has a `kind`. `node`: `fileKey`, `nodeId`, `layerPath`, `url`. `component` or `style`: `key`, `name`, `library`, `url`. `variable`: `collection`, `name`, `library`. A Finding blamed on the design system lists the library asset first |
-| `standard` | yes, except advisory | `{ source, ref, url }`, such as `{ "source": "WCAG 2.2", "ref": "1.4.3", "url": "https://www.w3.org/TR/WCAG22/#contrast-minimum" }` |
+| `standard` | yes, except advisory | `{ source, ref, url }`, such as `{ "source": "WCAG 2.2", "ref": "1.4.3", "url": "https://www.w3.org/TR/WCAG22/#contrast-minimum" }`. `url` is left out when the standard has no link, such as a requirement given at run time |
 | `evidence` | yes | What was read or measured, with the measurement's inputs and result |
 | `fix` | no | What to change |
 | `supportingEvidence` | no | Other sources for the same problem |
@@ -128,6 +128,6 @@ In this order. Leave out a section that has nothing in it, except Coverage.
    - Evidence
    - Fix
    With no Findings, write "No Findings." under the axis heading.
-5. **Coverage:** a `## Coverage` section with a `###` heading for each axis, then one line per status and note: `<status>: <ref>, <ref>, …`, then the note. A skipped axis gets one line with its reason.
+5. **Coverage:** a `## Coverage` section with a `###` heading for each axis, then its entries, where entries with the same status and the same note share one line: `<status>: <ref>, <ref>, …`, then the note. A skipped axis gets one line with its reason.
 6. **The design-stage line,** after the Coverage section, in every report whose axes include accessibility, whatever its Findings or Coverage: "This is a design-stage review, not a WCAG conformance evaluation. Criteria marked needs-code or needs-annotation in Coverage were not assessed."
 7. **The report JSON,** in one fenced `json` block, pretty-printed with 2-space indentation.
