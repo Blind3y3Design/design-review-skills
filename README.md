@@ -59,7 +59,7 @@ Nothing is built or edited before publishing: a published skill is the release f
 
 ## Repository layout
 
-The design review folders are planned; the rest exists today.
+`skills/`, `reference-documents/` and `tests/smoke/` are being built; `docs/setup/` and `docs/publishing.md` are planned.
 
 ```
 skills/<name>/SKILL.md     The six design review skills, one folder each, holding only SKILL.md
