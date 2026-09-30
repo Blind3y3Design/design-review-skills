@@ -44,8 +44,8 @@ Each built case has a frame on the Cases page and, if its result is a report, an
 
 | Id | Case | Frame | Expected |
 |---|---|---|---|
-| A11Y-01 | Body text at 3.4:1: `#8A8A8A` 16 px text on a `#FFFFFF` frame (3.45:1), under a title that passes | `5:3` | [`A11Y-01.json`](expected/A11Y-01.json): one 1.4.3 Finding on the body text (`5:5`), `moderate`, `confirmed`; 1.4.3 `judged` |
-| CLEAN-01 | A frame that follows every rule. For now, every text pair passes 1.4.3, on a frame's fill, a nested frame's fill and a rectangle beneath the text | `5:6` | [`CLEAN-01.json`](expected/CLEAN-01.json): no Findings; 1.4.3 `judged` |
+| A11Y-01 | Body text at 3.4:1: `#8A8A8A` 16 px text on a `#FFFFFF` frame (3.45:1), under a title that passes | `5:3` | [`A11Y-01.json`](expected/A11Y-01.json): one 1.4.3 Finding on the body text (`5:5`), `moderate`, `confirmed`. Coverage has all 55 WCAG 2.2 A/AA criteria: 1.4.3 `judged`, the 8 code-only criteria `needs-code`, and the rest `not-readable` until the scanner reads their facts |
+| CLEAN-01 | A frame that follows every rule. For now, every text pair passes 1.4.3, on a frame's fill, a nested frame's fill and a rectangle beneath the text | `5:6` | [`CLEAN-01.json`](expected/CLEAN-01.json): no Findings. Coverage as for A11Y-01 |
 | RUN-04 | A run with `design-review-report-writer` or `design-review-scanner` missing | any case frame | Checked by hand: the run stops, names the missing skill and writes no report |
 | A11Y-02 | Text over an image | | `needs-review`, or `not-readable` in Coverage |
 | A11Y-03 | Target smaller than 24×24 px | | Target size Finding (2.5.8) |

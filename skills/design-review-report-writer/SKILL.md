@@ -128,6 +128,6 @@ In this order. Leave out a section that has nothing in it, except Coverage.
    - Evidence
    - Fix
    With no Findings, write "No Findings." under the axis heading.
-5. **Coverage:** a `## Coverage` section with a `###` heading for each axis, then one line per entry, `<ref>: <status>`, and its note. A skipped axis gets one line with its reason.
-6. **For accessibility,** after the Coverage section: "This is a design-stage review, not a WCAG conformance evaluation. Criteria marked needs-code or needs-annotation in Coverage were not assessed."
+5. **Coverage:** a `## Coverage` section with a `###` heading for each axis, then one line per status and note: `<status>: <ref>, <ref>, …`, then the note. A skipped axis gets one line with its reason.
+6. **The design-stage line,** after the Coverage section, in every report whose axes include accessibility, whatever its Findings or Coverage: "This is a design-stage review, not a WCAG conformance evaluation. Criteria marked needs-code or needs-annotation in Coverage were not assessed."
 7. **The report JSON,** in one fenced `json` block, pretty-printed with 2-space indentation.
