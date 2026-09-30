@@ -1,7 +1,7 @@
 # WCAG 2.2 criteria reference
 
 - Name: WCAG 2.2 criteria reference
-- Version: 0.2
+- Version: 0.3
 - Covers: WCAG 2.2 and WCAG 2.1, Levels A and AA
 
 A Reference Document for `design-review-accessibility`. For each WCAG success criterion it gives what a design-stage review needs: whether the criterion can be judged from a design, what triggers it, how to judge it with its thresholds, and its default Severity. The review skill holds only the procedure. Everything specific to a criterion lives here.
@@ -24,8 +24,8 @@ Each criterion is a `###` heading with its number and name, then these lines:
 - **Since:** the WCAG version that added it. A criterion applies to a target whose version is this or later, and whose level is this level or higher.
 - **Removed:** only on an entry that has one, the version that removed it. The criterion applies only to earlier versions.
 - **Group:** `static` (judged from layers and their values), `annotation/prototype` (judged when the annotation or prototype state exists), or `code` (never judged from a design: Coverage gives `needs-code`).
-- **Facts:** the Design Facts groups it's judged from: `colourPairs`, `text`, `structure`, `components` or `annotations`. `none` for `code` criteria.
-- **Trigger:** what in the design brings the criterion into play. With no trigger in the scope, Coverage gives `not-applicable`.
+- **Facts:** the Design Facts groups it's judged from: `colourPairs`, `text`, `structure`, `components` or `annotations`. A part in brackets, such as `structure (target sizes)`, is the part of that group the criterion needs. `none` for `code` criteria.
+- **Trigger:** what in the design brings the criterion into play. With no trigger in the scope, Coverage gives `not-applicable`. A trigger that names a **screen** means a frame at least 320 px wide and 320 px high, either on the page or directly inside a Figma section. A smaller frame, such as a card, a component or a set of variants, isn't a screen.
 - **Needs:** for `annotation/prototype` criteria, what must exist before it can be judged: `annotation: <kind>` or `state: <kind>`, where a state is a prototype, variant or frame showing the behaviour. Criteria that need the same annotation name the same kind. `none` for the other groups.
 - **Markers:** for criteria judged only in a section explicitly marked for them, what marks one: the criterion number, a marker word, or a variant value. The first marker word is the section title to suggest when there's none. `none` otherwise.
 - **Default Severity:** where a failure starts. Level A starts at serious, Level AA at moderate, and AAA at advisory.
@@ -146,7 +146,7 @@ Under the lines, **How to judge** gives the test and its thresholds, what fails,
 - Since: 2.0
 - Group: annotation/prototype
 - Facts: structure, annotations
-- Trigger: a screen whose content could be read in more than one order, such as columns, cards, side panels or overlapping layers
+- Trigger: content that could be read in more than one order, such as columns, a row or grid of cards, side panels, or content laid over other content
 - Needs: annotation: reading order
 - Markers: none
 - Default Severity: serious
@@ -179,7 +179,7 @@ Under the lines, **How to judge** gives the test and its thresholds, what fails,
 - Since: 2.1
 - Group: annotation/prototype
 - Facts: structure, annotations
-- Trigger: screens for a device that can rotate: mobile or tablet frames, by the product's target platforms or the frame's size
+- Trigger: a screen narrower than 1024 px, the width of a phone or tablet, unless the product's target platforms leave out phones and tablets
 - Needs: annotation: orientation
 - Markers: none
 - Default Severity: moderate
@@ -276,7 +276,7 @@ Under the lines, **How to judge** gives the test and its thresholds, what fails,
 - Level: AA
 - Since: 2.0
 - Group: static
-- Facts: structure
+- Facts: structure (what images show)
 - Trigger: image layers, or vector layers such as outlined text, that may show words
 - Needs: none
 - Markers: none
@@ -296,7 +296,7 @@ Under the lines, **How to judge** gives the test and its thresholds, what fails,
 - Since: 2.1
 - Group: static
 - Facts: structure
-- Trigger: a page or screen of content
+- Trigger: a screen
 - Needs: none
 - Markers: 1.4.10, "Reflow"
 - Default Severity: moderate
@@ -314,16 +314,17 @@ Under the lines, **How to judge** gives the test and its thresholds, what fails,
 - Since: 2.1
 - Group: static
 - Facts: colourPairs, structure
-- Trigger: interactive components, state or focus indicators, or graphics needed to understand the content, such as meaningful icons and chart elements
+- Trigger: interactive components, state or focus indicators, or graphics needed to understand the content, such as meaningful icons and chart elements. Photos of real-life scenes, such as people or places, don't trigger it
 - Needs: none
 - Markers: none
 - Default Severity: moderate
 - W3C: https://www.w3.org/TR/WCAG22/#non-text-contrast
 
-**How to judge.** Judge each colour that a non-text element needs in order to be seen, against each colour next to it. Only measurements of non-text elements count: colour pairs of text layers belong to 1.4.3.
+**How to judge.** Judge each colour that a non-text element needs in order to be seen, against each colour next to it. Only measurements of non-text elements count: colour pairs of text layers belong to 1.4.3. The Design Facts measure each stroke, and each vector layer's fill, against the colour beneath the layer, and a stroke against its layer's own fill too.
 
 - **Threshold:** at least 3:1 against every adjacent colour. No rounding up.
 - **Applies to:** what identifies a component when nothing else does (such as a text field's border), what shows its state (a checkbox's check, a selected tab's indicator, a focus indicator), and the parts of a graphic needed to understand it (an icon with no text label, a chart's lines or segments).
+- **Focus indicators:** one outside the component, such as an outside stroke or a ring around it, is judged against the colour beneath the component. One inside it is judged against the component's own fill.
 - **Doesn't apply to:** a button's shape when its text identifies it, inactive components, native controls whose look the platform sets and the design hasn't changed, and graphics whose particular look is essential, such as a logo or a flag.
 - **Root Cause:** the failing colour's source.
 - **Evidence:** `<element colour> on <adjacent colour> = <ratio>:1, needs 3:1`, naming the element.
@@ -473,7 +474,7 @@ Exceptions: real-time events such as an auction, limits essential to the activit
 - Since: 2.0
 - Group: annotation/prototype
 - Facts: structure, annotations
-- Trigger: a frame that's a whole web page or app screen
+- Trigger: a screen: a whole web page or app screen
 - Needs: annotation: page title
 - Markers: none
 - Default Severity: serious
@@ -487,7 +488,7 @@ Exceptions: real-time events such as an auction, limits essential to the activit
 - Since: 2.0
 - Group: annotation/prototype
 - Facts: structure, annotations
-- Trigger: a screen with more than one focusable component
+- Trigger: more than one focusable component in the scope. The states of one component, such as its variants, count as one
 - Needs: annotation: reading order
 - Markers: none
 - Default Severity: serious
@@ -551,14 +552,14 @@ Exceptions: real-time events such as an auction, limits essential to the activit
 - Level: AA
 - Since: 2.0
 - Group: static
-- Facts: structure, components
+- Facts: structure
 - Trigger: focusable components
 - Needs: none
 - Markers: 2.4.7, "Focus states", a variant value `Focus` or `Focused`
 - Default Severity: moderate
 - W3C: https://www.w3.org/TR/WCAG22/#focus-visible
 
-**How to judge.** Judged only in a section marked for it, or on a component whose variants mark it. Compare each focused state with the same component's default state.
+**How to judge.** Judged only in a section marked for it, or on a component whose variants mark it. Compare each focused state with the same component's default state, by their fills, strokes and effects.
 
 - **Fails:** a focused state that looks the same as the default, or a focusable component in the marked section with no focused state.
 - **Contrast** of the focus indicator is judged under 1.4.11, not here.
@@ -654,7 +655,7 @@ Exceptions: real-time events such as an auction, limits essential to the activit
 - Level: AA
 - Since: 2.2
 - Group: static
-- Facts: structure
+- Facts: structure (target sizes)
 - Trigger: pointer targets: buttons, links, form controls and anything else that acts on a tap or click
 - Needs: none
 - Markers: none
@@ -679,7 +680,7 @@ Exceptions: real-time events such as an auction, limits essential to the activit
 - Since: 2.0
 - Group: annotation/prototype
 - Facts: annotations
-- Trigger: a frame that's a whole web page or app screen
+- Trigger: a screen: a whole web page or app screen
 - Needs: annotation: language
 - Markers: none
 - Default Severity: serious
@@ -713,7 +714,7 @@ Exceptions: real-time events such as an auction, limits essential to the activit
 - Default Severity: serious
 - W3C: https://www.w3.org/TR/WCAG22/#on-focus
 
-**How to judge.** Judge prototype interactions or annotations that say what happens on focus. Focusing a component doesn't change the context: it doesn't submit a form, open a page or window, move focus elsewhere, or change content in a way that alters the page's meaning. Fix: make the change happen on an explicit action, such as a button.
+**How to judge.** Judge prototype interactions or annotations that say what happens on focus. A focused variant shows only how focus looks, not what it does. Focusing a component doesn't change the context: it doesn't submit a form, open a page or window, move focus elsewhere, or change content in a way that alters the page's meaning. Fix: make the change happen on an explicit action, such as a button.
 
 ### 3.2.2 On Input
 
@@ -977,7 +978,7 @@ These are judged only as above-target checks, since this reference covers no AAA
 - Level: AAA
 - Since: 2.1
 - Group: static
-- Facts: structure
+- Facts: structure (target sizes)
 - Trigger: pointer targets: buttons, links, form controls and anything else that acts on a tap or click
 - Needs: none
 - Markers: none

@@ -1,16 +1,16 @@
 {
-  "case": "A11Y-01",
+  "case": "A11Y-04",
   "findings": [
     {
-      "id": "accessibility/1.4.3/node:5:5",
+      "id": "accessibility/1.1.1/node:38:4",
       "axis": "accessibility",
-      "severity": "moderate",
-      "certainty": "confirmed",
+      "severity": "serious",
+      "certainty": "needs-review",
       "relatedFindings": []
     }
   ],
   "coverage": [
-    { "axis": "accessibility", "ref": "1.1.1", "status": "not-applicable" },
+    { "axis": "accessibility", "ref": "1.1.1", "status": "needs-annotation" },
     { "axis": "accessibility", "ref": "1.2.1", "status": "not-applicable" },
     { "axis": "accessibility", "ref": "1.2.2", "status": "not-applicable" },
     { "axis": "accessibility", "ref": "1.2.3", "status": "not-applicable" },

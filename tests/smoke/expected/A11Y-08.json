@@ -1,8 +1,8 @@
 {
-  "case": "A11Y-01",
+  "case": "A11Y-08",
   "findings": [
     {
-      "id": "accessibility/1.4.3/node:5:5",
+      "id": "accessibility/1.4.11/node:38:24",
       "axis": "accessibility",
       "severity": "moderate",
       "certainty": "confirmed",
@@ -27,7 +27,7 @@
     { "axis": "accessibility", "ref": "1.4.4", "status": "needs-code" },
     { "axis": "accessibility", "ref": "1.4.5", "status": "not-readable" },
     { "axis": "accessibility", "ref": "1.4.10", "status": "not-applicable" },
-    { "axis": "accessibility", "ref": "1.4.11", "status": "not-applicable" },
+    { "axis": "accessibility", "ref": "1.4.11", "status": "judged" },
     { "axis": "accessibility", "ref": "1.4.12", "status": "needs-code" },
     { "axis": "accessibility", "ref": "1.4.13", "status": "not-applicable" },
     { "axis": "accessibility", "ref": "2.1.1", "status": "needs-code" },
@@ -42,7 +42,7 @@
     { "axis": "accessibility", "ref": "2.4.4", "status": "not-readable" },
     { "axis": "accessibility", "ref": "2.4.5", "status": "not-readable" },
     { "axis": "accessibility", "ref": "2.4.6", "status": "not-readable" },
-    { "axis": "accessibility", "ref": "2.4.7", "status": "not-applicable" },
+    { "axis": "accessibility", "ref": "2.4.7", "status": "judged" },
     { "axis": "accessibility", "ref": "2.4.11", "status": "not-applicable" },
     { "axis": "accessibility", "ref": "2.5.1", "status": "not-applicable" },
     { "axis": "accessibility", "ref": "2.5.2", "status": "needs-code" },
@@ -52,7 +52,7 @@
     { "axis": "accessibility", "ref": "2.5.8", "status": "not-readable" },
     { "axis": "accessibility", "ref": "3.1.1", "status": "not-applicable" },
     { "axis": "accessibility", "ref": "3.1.2", "status": "not-readable" },
-    { "axis": "accessibility", "ref": "3.2.1", "status": "not-applicable" },
+    { "axis": "accessibility", "ref": "3.2.1", "status": "needs-state" },
     { "axis": "accessibility", "ref": "3.2.2", "status": "not-applicable" },
     { "axis": "accessibility", "ref": "3.2.3", "status": "not-readable" },
     { "axis": "accessibility", "ref": "3.2.4", "status": "not-readable" },

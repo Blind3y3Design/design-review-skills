@@ -203,6 +203,35 @@ test('each expected case passes against itself and fails when any compared field
       (r) => { r.coverage.pop(); },
       (r) => { r.coverage = []; },
     ],
+    'A11Y-04': [
+      (r) => { r.findings[0].id = 'accessibility/1.1.1/node:38:2'; },
+      (r) => { r.findings[0].severity = 'moderate'; },
+      (r) => { r.findings[0].certainty = 'likely'; },
+      (r) => { r.findings = []; },
+      (r) => { entry(r, '1.1.1').status = 'not-applicable'; },
+    ],
+    'A11Y-04-coverage-only': [
+      (r) => { r.findings.push({ id: 'accessibility/1.1.1/node:38:4', axis: 'accessibility', severity: 'serious', certainty: 'needs-review' }); },
+      (r) => { entry(r, '1.1.1').status = 'judged'; },
+    ],
+    'A11Y-06': [
+      (r) => { entry(r, '1.4.10').status = 'not-applicable'; },
+      (r) => { entry(r, '2.4.2').status = 'needs-annotation'; },
+      (r) => { r.findings.push({ id: 'accessibility/1.4.10/node:38:5', axis: 'accessibility', severity: 'moderate', certainty: 'needs-review' }); },
+    ],
+    'A11Y-07': [
+      (r) => { r.findings[0].id = 'accessibility/2.4.3/node:38:9'; },
+      (r) => { r.findings.push({ id: 'accessibility/2.4.3/node:38:9', axis: 'accessibility', severity: 'serious', certainty: 'needs-review' }); },
+      (r) => { entry(r, '2.4.3').status = 'judged'; },
+      (r) => { entry(r, '2.4.7').status = 'not-applicable'; },
+      (r) => { entry(r, '3.2.1').status = 'needs-annotation'; },
+    ],
+    'A11Y-08': [
+      (r) => { r.findings[0].id = 'accessibility/1.4.11/node:38:22'; },
+      (r) => { r.findings[0].certainty = 'likely'; },
+      (r) => { entry(r, '2.4.7').status = 'needs-section'; },
+      (r) => { entry(r, '1.4.11').status = 'not-applicable'; },
+    ],
   };
   for (const [id, edits] of Object.entries(changes)) {
     assert.equal(compareReports(load(id), load(id)).pass, true, id);
