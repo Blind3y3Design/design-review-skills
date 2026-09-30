@@ -26,10 +26,10 @@ Settle everything before the review starts, asking for what's missing in as few 
 
 - **Scope:** the node ids of the frames to review, from the user's selection, the frames they name, or the `node-id` in a Figma link. For a page, use its top-level frames. In an external agent, the file key comes from the file's link.
 - **Runtime:** `figma-agent` inside Figma Design's agent, `external-agent` anywhere else.
-- **Given at run time,** when the user names them: a Review Profile (its text, a local file, or a link to a Figma file or a GitHub file), a WCAG target such as "WCAG 2.2 AA", and a criteria reference location (a URL or a local file). A target or criteria reference given at run time takes the place of the profile's for this run.
-- **What to check against:** find the Review Profile, then settle the target from it or by asking, as Review Profile below describes.
+- **Given at run time,** when the user names them: a Review Profile (its text, a local file, or a link to a Figma file or a GitHub file), and any of the Accessibility settings under What to check against, such as a WCAG target ("WCAG 2.2 AA"), `Report above target: yes`, an additional requirement, or a criteria reference location (a URL or a local file). A setting given at run time takes the place of the profile's for this run.
+- **What to check against:** find the Review Profile, then settle the Accessibility settings from it or by asking, as Review Profile below describes.
 
-The inputs are settled when the scope, runtime and target are known, or the run has stopped.
+The inputs are settled when the scope, runtime and settings are known, or the run has stopped.
 
 ## 2. Read the criteria reference
 
@@ -38,41 +38,50 @@ Its location is the first of: given at run time or in answer to a question, the 
 - If a location the user or the profile gave can't be read, stop. Tell the user the location and the error, and write no report.
 - If the default link can't be read, the axis is skipped. Hand the Report Writer no Findings and one Coverage entry, `{ "axis": "accessibility", "status": "skipped", "reason": "the criteria reference couldn't be read: <location>: <error>" }`, and go to step 5.
 
-From the document's header, note its name, version and location for the report. Its "How an entry reads" section says which criteria apply to the target.
+From the document's header, note its name, version and location for the report, and its `Covers` line. Its "How an entry reads" section says which criteria apply to the target.
+
+**A target the reference doesn't cover,** a version or level missing from its `Covers` line, gets only its additional requirements judged in step 4. Give the target one Coverage entry in their place: `{ "axis": "accessibility", "ref": "WCAG <version> <level>", "status": "not-readable", "note": "The criteria reference covers <its Covers line>, not WCAG <version> <level>. Only additional requirements were judged." }`.
 
 ## 3. Scan
 
-Use the skill `design-review-scanner`. Give it the scope's node ids, the runtime, and the fact groups on the `Facts` lines of the criteria that apply. Judge from the Design Facts it hands back.
+Use the skill `design-review-scanner`. Give it the scope's node ids, the runtime, and the fact groups to judge from: those on the `Facts` lines of the criteria you'll judge in step 4, and those holding what each additional requirement is about. Judge from the Design Facts it hands back.
 
 ## 4. Judge
 
-Work through every criterion that applies to the target, following its **How to judge**, and give each exactly one Coverage entry, `{ "axis": "accessibility", "ref": "<number>", "status": "<status>" }`, adding a `note` for any status but `judged`:
+Judge these three sets. At a target the reference doesn't cover, judge only the additional requirements.
 
-- `needs-code` when its group is `code`.
-- `not-readable` when a fact group it needs is in the facts' `unread`, or none of its measurements could be made. The note gives the scanner's reason.
-- `not-applicable` when its trigger isn't in the scope.
-- `judged` otherwise.
+- **The target's criteria:** every criterion in the reference that applies to the target.
+- **Above-target checks,** only with `Report above target: yes`: every `static` criterion in the reference that doesn't apply to the target, such as its AAA entries.
+- **Additional requirements:** each one, judged like a criterion. Its statement is its test.
+
+Give each exactly one Coverage entry, `{ "axis": "accessibility", "ref": "<criterion number, or requirement id>", "status": "<status>" }`. Add a `note` to any status but `judged`, and to every above-target entry ("above target"). The status is the first that fits:
+
+1. `needs-code` when its group is `code`. It's never a Finding.
+2. `not-readable` when a fact group it needs is in the facts' `unread`, or none of its measurements could be made. The note gives the scanner's reason.
+3. `not-applicable` when its trigger isn't in the scope.
+4. `judged` otherwise, following its How to judge.
 
 Each failure becomes part of a Finding:
 
-- **Root Cause:** for a colour pair, the text colour's source in the facts: `variable:<key>` or `style:<key>` when the colour is bound to one, otherwise `node:<id>` of the text layer. Give one Finding per Root Cause per criterion, with every layer it covers in `locations` and each of its pairs in the evidence.
-- **Severity:** the criterion's Default Severity, or the one a profile's Severity Override sets (see Severity Overrides).
-- **Certainty,** for a measurement:
-  - `confirmed` when the pair has no `flags`.
-  - `likely` when it has a flag, such as `opacity` or `blend-mode`. The evidence names the flag.
-  - `needs-review` when the pair couldn't be computed. The evidence gives the scanner's `reason`. Such a pair is always a Finding, since it may fail.
+- **Root Cause:** the source the criterion's How to judge names, written as `variable:<key>` or `style:<key>` when the facts show that value bound to one, otherwise `node:<id>` of the failing layer. Give one Finding per Root Cause per criterion, with every layer it covers in `locations` and each failing measurement in the evidence.
+- **Severity:** the criterion's Default Severity, or the one a profile's Severity Override sets (see Severity Overrides), or an additional requirement's own. An additional requirement given as critical with no core task in its statement starts at serious instead, and the evidence says why.
+- **Above target:** every above-target Finding is advisory, with no `standard`. Give one per Root Cause across all the above-target checks, naming each criterion it fails, with its W3C link, in the evidence.
+- **Certainty:**
+  - `confirmed` for a measurement from facts with no `flags`.
+  - `likely` for a measurement from facts with a flag, such as `opacity` or `blend-mode`, which the evidence names; or for a judgement of wording or meaning, such as whether a heading describes its section.
+  - `needs-review` when a measurement couldn't be made. The evidence gives the scanner's `reason`. This is always a Finding, since it may fail.
 - **Title:** one line naming the layer and what fails.
 - **Evidence** and **fix,** as the criterion's How to judge says.
 - **Locations:** `{ "kind": "node", "fileKey", "nodeId", "layerPath" }` for each layer in the facts. When a facts group's `count` is more than its sample `nodes`, the evidence says how many more layers share it.
-- **Standard:** `{ "source": "WCAG <version>", "ref": "<number>", "url": "<its W3C line>" }`.
+- **Standard:** `{ "source": "WCAG <version>", "ref": "<number>", "url": "<its W3C line>" }`, with the url the reference gives for the target's version. For an additional requirement, `{ "source": "Additional requirement", "ref": "<id>" }`.
 
-Judging is done when every criterion that applies has one Coverage entry, and every failing or uncomputed pair is in a Finding.
+Judging is done when every criterion that applies to the target (or an uncovered target itself), every above-target check that's on, and every additional requirement has one Coverage entry, and every failure or measurement that couldn't be made is in a Finding. The reference's header says how many criteria apply at each target it covers: check your Coverage against it.
 
 ## 5. Report
 
 Use the skill `design-review-report-writer`, handing over:
 
-- `run`: today's `date`, the `scope` (`fileKey`, and `nodes` as `{ id, name }`), the `runtime`, `setVersion` from this skill's Version line, `factsVersion` and `factGroups` from the Design Facts, and `settings`. `settings` is null when a profile's Accessibility section gave the target. Otherwise it's `{ "accessibility": { "standard": "WCAG", "version": "<version>", "level": "<level>", "from": "run time" or "asked", "criteriaReference": "<location>" } }`, where `from` says where the target came from.
+- `run`: today's `date`, the `scope` (`fileKey`, and `nodes` as `{ id, name }`), the `runtime`, `setVersion` from this skill's Version line, `factsVersion` and `factGroups` from the Design Facts, and `settings`. `settings` is null when a profile's Accessibility section gave the target, `Report above target` and the additional requirements, whatever the criteria reference's location. Otherwise it's `{ "accessibility": { "standard": "WCAG", "version": "<version>", "level": "<level>", "from": "profile", "run time" or "asked", "criteriaReference": "<location>", "reportAboveTarget": "yes" or "no", "additionalRequirements": ["<id> (<Severity>): <statement>", …] } }`, where `from` says where the target came from.
 - `profile`: `{ name, location, lastUpdated }` for the profile whose section you used, otherwise null.
 - `references`: the criteria reference's name, version and location.
 - `findings`, each with its `rootCause`, and `coverage`.
@@ -110,8 +119,10 @@ The Accessibility section holds this skill's settings, one `Key: value` per line
 |---|---|
 | `Standard`, `Version`, `Level`: the target, such as WCAG, 2.2 and AA. `Standard: WCAG 2.2` gives the version too | WCAG 2.2 AA |
 | `Criteria reference`: the criteria reference's location | the skill's default (step 2) |
+| `Report above target`: `yes` adds the above-target checks in step 4, as advisory Findings | `no` |
+| `Additional requirement`: one of the team's own requirements, one line each, `Additional requirement: <id> (<Severity>): <statement>`, such as `Additional requirement: AR-1 (minor): Body text is at least 16 px.` The Severity is critical, serious, moderate or minor. A line with no id takes the first `AR-<n>` not already used | none |
 
-Settle the target by what the lookup found:
+Settle the settings by what the lookup found:
 
 - **A profile given at run time, with an Accessibility section:** use the section without asking. Giving the profile is the user's agreement.
 - **A profile found on the page or through a pointer, with an Accessibility section:** ask before using it, with any other question still open. For example: "I found the Review Profile "<name>" on the "Review Profile" page in this file. Use its Accessibility section for this review? It sets WCAG 2.2 AA with the default criteria reference, and the Severity Override "WCAG AA failures: serious". I won't use or change anything else in it." Name any Severity Override you'll refuse, and why. On yes, use the section. On no, go on as below.
@@ -121,7 +132,7 @@ From a profile whose section you use, also note its location, its Identity `Name
 
 ### Severity Overrides
 
-A profile's **Severity Overrides** section sets the starting Severity for a type of rule, one `<type of rule>: <Severity>` per line, such as `WCAG AA failures: serious`. Apply the lines about WCAG: failures at every level (`WCAG failures`), at one level (`WCAG AA failures`), or of one criterion (`1.4.3`). When several match a Finding, the most specific wins: a criterion, then a level, then every level. Lines about other axes are for other skills.
+A profile's **Severity Overrides** section sets the starting Severity for a type of rule, one `<type of rule>: <Severity>` per line, such as `WCAG AA failures: serious`. Apply the lines about WCAG: failures at every level (`WCAG failures`), at one level (`WCAG AA failures`), or of one criterion (`1.4.3`). When several match a Finding, the most specific wins: a criterion, then a level, then every level. They set the Severity of Findings against the target's criteria: above-target Findings stay advisory, and additional requirements keep their own Severity. Lines about other axes are for other skills.
 
 - **Critical needs a core task.** A line that sets critical names the core task it's tied to, such as `1.4.3: critical, core task: paying for an order`, and the evidence of each Finding it changes gives that task. Refuse a line that names none: treat it as absent, so a less specific line or the Default Severity applies, and keep a note for the report: "The Severity Override "<line>" wasn't applied: it sets critical without naming a core task."
 - **Say so in the evidence.** When an override changes a Finding's Severity, its evidence says so, such as "Severity raised from moderate to serious by the Review Profile's Severity Override "WCAG AA failures: serious"."
