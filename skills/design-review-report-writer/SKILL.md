@@ -15,11 +15,12 @@ Turns a review's Findings and Coverage into its report: Markdown for people, the
 
 The calling skill hands over:
 
-- `run`: `date`, `scope` (`fileKey`, and `nodes` as `{ id, name }`), `runtime`, `setVersion`, `factsVersion`, `factGroups`, and `settings` (the settings used for this run when no Review Profile gave them, or null).
-- `profile`: `{ name, location, lastUpdated }`, or null.
+- `run`: `date`, `scope` (`fileKey`, and `nodes` as `{ id, name }`), `runtime`, `setVersion`, `factsVersion`, `factGroups`, and `settings` (the settings this run used that no Review Profile gave, or null).
+- `profile`: `{ name, location, lastUpdated }` of the Review Profile the run used, or null.
 - `references[]`: `{ name, version, location }` for each Reference Document used.
 - `findings[]`: each Finding's fields from the table below, with a `rootCause` in place of `id`, and each location without its `url`.
 - `coverage[]`: the Coverage entries.
+- `notes[]`, optional: sentences on how the run's settings were settled, such as a Severity Override that wasn't applied. They go in the Markdown header only.
 
 ## Steps
 
@@ -116,7 +117,8 @@ In this order. Leave out a section that has nothing in it, except Coverage.
 2. **Header,** one line each:
    - Scope: each node's name and id, and the file's link (`https://www.figma.com/design/<fileKey>/`)
    - Date
-   - Profile: its name and location. With none: "None. Settings for this run:", then each of the run's settings as `key: value`
+   - Profile: its name, location and last updated date, or "None". Then, when `settings` isn't null, "Settings for this run:" and each of its settings as `key: value`
+   - Notes: each of the `notes`, when there are any
    - Reference Documents: each name, version and location
    - Skills: "design review skills `<setVersion>`, Design Facts `<factsVersion>` (`<factGroups>`), `<runtime>`"
    - Saved: where the report was saved

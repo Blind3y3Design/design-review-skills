@@ -1,0 +1,15 @@
+{
+  "case": "A11Y-01-override",
+  "findings": [
+    {
+      "id": "accessibility/1.4.3/node:5:5",
+      "axis": "accessibility",
+      "severity": "serious",
+      "certainty": "confirmed",
+      "relatedFindings": []
+    }
+  ],
+  "coverage": [
+    { "axis": "accessibility", "ref": "1.4.3", "status": "judged" }
+  ]
+}
