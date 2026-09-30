@@ -8,9 +8,9 @@ It must pass before every release, and after Figma changes its agent or its help
 
 [Design review smoke test](https://www.figma.com/design/MavZEc8FpIpNX0bagnQQ33/Design-review-smoke-test), file key `MavZEc8FpIpNX0bagnQQ33`. Link access is limited to people at Cat, because this repo is public.
 
-**Page convention.** Every case is one top-level frame on the **Cases** page (`5:2`). The frame's name is its case id, such as `A11Y-01`, and its content is made up. Each case prefix (A11Y, DS, X, RES, CLEAN, RUN) has a row of its own. Add a case at the end of its prefix's row, and start a new prefix as a row below the others. Reviews scan whole frames, so keep a case's frame free of anything the case doesn't need. A variant of a case, such as `A11Y-01-override`, runs on its base case's frame with other settings. Leave "Page 1", the file's original page, empty. A later ticket adds the report page.
+**Page convention.** Every case is one top-level frame on the **Cases** page (`5:2`). The frame's name is its case id, such as `A11Y-01`, and its content is made up. Each case prefix (A11Y, DS, X, RES, CLEAN, RUN) has a row of its own. Add a case at the end of its prefix's row, and start a new prefix as a row below the others. Reviews scan whole frames, so keep a case's frame free of anything the case doesn't need. A variant of a case, such as `A11Y-01-override`, runs on its base case's frame with other settings. Leave "Page 1", the file's original page, empty.
 
-**The Review Profile page** (`16:2`) holds the test profile as one text layer, a copy of [`profiles/smoke-test-profile.md`](profiles/smoke-test-profile.md). The override profiles in `profiles/` are the same profile with a Severity Overrides section. Keep them all the same otherwise: a ticket that adds a profile section, such as Design System Layers, adds it to each.
+**The Review Profile page** (`16:2`) holds the test profile as one text layer, a copy of [`profiles/smoke-test-profile.md`](profiles/smoke-test-profile.md). The override profiles in `profiles/` are the same profile with a Severity Overrides section, and [`profiles/local-folder.md`](profiles/local-folder.md) is the same with a Report settings section. Keep them all the same otherwise: a ticket that adds a profile section, such as Design System Layers, adds it to each.
 
 ## Running a case
 
@@ -18,6 +18,8 @@ It must pass before every release, and after Figma changes its agent or its help
 
 1. Make the skills in `skills/` available to the agent, by copying the folder or with `npx skills add`.
 2. Ask for the review, giving the test profile at run time, such as: "Run design-review-accessibility on https://www.figma.com/design/MavZEc8FpIpNX0bagnQQ33/?node-id=5-3 with the Review Profile at https://www.figma.com/design/MavZEc8FpIpNX0bagnQQ33/?node-id=16-2." A profile given at run time counts as agreeing to use it, so the run doesn't stop to ask. Until the criteria reference is on `main`, also give its location, such as "Use the criteria reference at reference-documents/wcag-2.2-criteria.md."
+
+   End the prompt with "Don't save the report." unless the case checks saving. A run saves its report by default, as a frame on the file's **Design review** page, so smoke runs would otherwise pile up frames there. The comparison is the same either way.
 3. Save the reply, or just its JSON block, to a file and compare it:
 
    ```
@@ -38,7 +40,7 @@ It must pass before every release, and after Figma changes its agent or its help
 
 A missing, extra or duplicate Finding or Coverage entry fails. It prints `PASS <case>` and exits with 0, or `FAIL <case>` and one line per difference and exits with 1. It exits with 2 when it can't run.
 
-Its own tests: `node --test tests/smoke/compare.test.mjs`.
+Its own tests: `node --test tests/smoke/compare.test.mjs`. The Design Scanner's report frame script has tests too, run against a fake of the Plugin API: `node --test tests/scripts/`.
 
 ## Cases
 
@@ -89,7 +91,32 @@ Checked by hand in an external agent, on A11Y-01 unless the check names another 
 | Given at run time | The page's link, or a file in `profiles/`, in the prompt, as in A11Y-01 and CLEAN-01 runs | No question. The report's `profile` and header name the profile |
 | The file's page | No profile in the prompt | Asks whether to use the page's Accessibility section. On yes, `profile` names the page |
 | A pointer in `AGENTS.md` | Page off. The project's `AGENTS.md` has `Review Profile: <path to profiles/smoke-test-profile.md>` | Asks whether to use it. On yes, `profile` names the file |
-| No profile | Page off, and no pointer | Says why it's asking and asks what to check against. The header lists the answers under "Settings for this run", `profile` is null, and nothing is saved |
+| No profile | Page off, and no pointer | Says why it's asking and asks what to check against. The header lists the answers under "Settings for this run", `profile` is null, and no profile is saved |
 | An unreadable pointer | Page off. `AGENTS.md` points to a file that doesn't exist | Stops with the location and the reason, and writes no report |
 | An unreadable pointer on the page | Page off. A temporary page named `Review Profile` holds only `Review Profile: <link to a file with no Review Profile page>`, such as [DRS Test Unlisted](https://www.figma.com/design/8DhePf1jHSsrvwFxpiYoQf/DRS-Test-Unlisted). Delete it afterwards | Stops with the location and the reason, and writes no report |
 | A critical override without a core task | [`profiles/override-critical.md`](profiles/override-critical.md) given at run time | Passes `A11Y-01`, and the header's Notes say the override wasn't applied |
+
+## Saving checks
+
+Checked by hand in an external agent, because the JSON seam doesn't say where a report went. These are the runs that leave out "Don't save the report." The report page is the **Design review** page, where each saved report is a frame, newest first. Delete a check's frames once it has passed, and the page when it's empty, so the next check adds it again.
+
+| Check | Set-up | Expected |
+|---|---|---|
+| The report page | A11Y-01 with the test profile's page link, and no Design review page in the file | Adds the Design review page with one frame, named `<date> · A11Y-01`. The chat's Saved line links to it. The frame's JSON, read back with the script below, passes `compare.mjs A11Y-01` |
+| Newest first | Then CLEAN-01 the same way | Its frame is above the A11Y-01 frame, and first in the script's `frames`. The A11Y-01 frame hasn't moved |
+| Don't save | A11Y-01-override, with "Don't save the report." | Passes `A11Y-01-override`. No frame is added, and the Saved line says "Not saved: you asked not to save this run." |
+| A local folder | A11Y-01 with [`profiles/local-folder.md`](profiles/local-folder.md) given at run time | The report is saved as `reports/smoke-test/design-review-<date>-a11y-01.md` (a folder git ignores), and that file passes `compare.mjs A11Y-01`. No frame is added |
+| Without edit access | A11Y-01, run by someone with view access to the test file | No frame is added. The chat's Saved line says the report is in the chat only, with Figma's error |
+| An oversized report | The frame script in the scanner run by hand with a `REPORT` over 100 kB, such as one Finding whose `evidence` is `'x'.repeat(110000)` | The frame's last line says the JSON stayed in the chat, and the frame has no JSON |
+
+To read a report frame back, run this through `use_figma` on the test file. `frames` lists the page's frames from the top of the layers panel down, and `json` is the report JSON of the frame named in `FRAME_ID`, or of the newest. Save `json` to a file to compare it.
+
+```js
+const FRAME_ID = null;
+const page = figma.root.children.find((p) => p.name.trim().toLowerCase() === 'design review');
+if (!page) return { page: null };
+await page.loadAsync();
+const frames = [...page.children].reverse().map((n) => ({ id: n.id, name: n.name, x: n.x, y: n.y, jsonLength: n.getSharedPluginData('designreview', 'report').length }));
+const frame = FRAME_ID ? await figma.getNodeByIdAsync(FRAME_ID) : page.children[page.children.length - 1];
+return { page: page.id, frames, json: frame ? JSON.parse(frame.getSharedPluginData('designreview', 'report') || 'null') : null };
+```
