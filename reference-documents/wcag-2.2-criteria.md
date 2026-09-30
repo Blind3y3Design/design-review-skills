@@ -320,7 +320,7 @@ Under the lines, **How to judge** gives the test and its thresholds, what fails,
 - Default Severity: moderate
 - W3C: https://www.w3.org/TR/WCAG22/#non-text-contrast
 
-**How to judge.** Judge each colour that a non-text element needs in order to be seen, against each colour next to it. Only measurements of non-text elements count: colour pairs of text layers belong to 1.4.3. The Design Facts measure each stroke, and each vector layer's fill, against the colour beneath the layer, and a stroke against its layer's own fill too.
+**How to judge.** Judge each colour that a non-text element needs in order to be seen, against each colour next to it. Only measurements of non-text elements count: colour pairs of text layers belong to 1.4.3. Judge from the non-text colour pairs in the Design Facts.
 
 - **Threshold:** at least 3:1 against every adjacent colour. No rounding up.
 - **Applies to:** what identifies a component when nothing else does (such as a text field's border), what shows its state (a checkbox's check, a selected tab's indicator, a focus indicator), and the parts of a graphic needed to understand it (an icon with no text label, a chart's lines or segments).

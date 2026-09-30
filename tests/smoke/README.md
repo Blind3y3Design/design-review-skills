@@ -10,7 +10,7 @@ It must pass before every release, and after Figma changes its agent or its help
 
 **Page convention.** Every case is one top-level frame on the **Cases** page (`5:2`). The frame's name is its case id, such as `A11Y-01`, and its content is made up. Each case prefix (A11Y, DS, X, RES, CLEAN, RUN) has a row of its own. Add a case at the end of its prefix's row, and start a new prefix as a row below the others. Reviews scan whole frames, so keep a case's frame free of anything the case doesn't need. A variant of a case, such as `A11Y-01-override`, runs on its base case's frame with other settings. Leave "Page 1", the file's original page, empty. A later ticket adds the report page.
 
-**The Review Profile page** (`16:2`) holds the test profile as one text layer, a copy of [`profiles/smoke-test-profile.md`](profiles/smoke-test-profile.md). The override profiles in `profiles/` are the same profile with a Severity Overrides section. Keep them all the same otherwise: a ticket that adds a profile section, such as Design System Layers, adds it to each.
+**The Review Profile page** (`16:2`) holds the test profile as one text layer, a copy of [`profiles/smoke-test-profile.md`](profiles/smoke-test-profile.md). The other profiles in `profiles/` are the same profile with one change each: a Severity Overrides section, or `Missing annotations: coverage only`. Keep them all the same otherwise: a ticket that adds a profile section, such as Design System Layers, adds it to each.
 
 ## Running a case
 

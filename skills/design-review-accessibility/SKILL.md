@@ -44,7 +44,7 @@ From the document's header, note its name, version and location for the report, 
 
 ## 3. Scan
 
-Use the skill `design-review-scanner`. Give it the scope's node ids, the runtime, the annotation kits the settings name, and the fact groups to judge from: those on the `Facts` lines of the criteria you'll judge in step 4 (a part in brackets belongs to its group), and those holding what each additional requirement is about. Judge from the Design Facts it hands back.
+Use the skill `design-review-scanner`. Give it the scope's node ids, the runtime, the settings' `Annotation kits`, and the fact groups to judge from: those on the `Facts` lines of the criteria you'll judge in step 4 (a part in brackets belongs to its group), and those holding what each additional requirement is about. Judge from the Design Facts it hands back.
 
 ## 4. Judge
 
@@ -59,13 +59,13 @@ Give each exactly one Coverage entry, `{ "axis": "accessibility", "ref": "<crite
 1. `needs-code` when its group is `code`. It's never a Finding.
 2. `not-readable` when a fact group it needs, or the part of one its Facts line names in brackets, is in the facts' `unread`, or none of its measurements could be made. The note gives the scanner's reason.
 3. `not-applicable` when its trigger isn't in the scope.
-4. `needs-section` when it has markers and nothing in the scope is marked for it, as Marked sections describes.
+4. `needs-section` when it has markers and no marked section lets it be judged, as Marked sections describes.
 5. `needs-annotation` or `needs-state` when the annotation or state its Needs line names is missing for one of its triggers, as Annotations and states describes.
 6. `judged` otherwise, following its How to judge.
 
 Each failure becomes part of a Finding:
 
-- **Root Cause:** the source the criterion's How to judge names, written as `variable:<key>` or `style:<key>` when the facts show that value bound to one, otherwise `node:<id>` of the failing layer. Give one Finding per Root Cause per criterion, with every layer it covers in `locations` and each failing measurement in the evidence. A missing annotation's Root Cause is under Annotations and states.
+- **Root Cause:** the source the criterion's How to judge names, written as `variable:<key>` or `style:<key>` when the facts show that value bound to one, otherwise `node:<id>` of the failing layer. Give one Finding per Root Cause per criterion, with every layer it covers in `locations` and each failing measurement in the evidence. A missing annotation's Finding is under Annotations and states.
 - **Severity:** the criterion's Default Severity, or the one a profile's Severity Override sets (see Severity Overrides), or an additional requirement's own. An additional requirement given as critical with no core task in its statement starts at serious instead, and the evidence says why.
 - **Above target:** every above-target Finding is advisory, with no `standard`. Give one per Root Cause across all the above-target checks, naming each criterion it fails, with its W3C link, in the evidence.
 - **Certainty:**
@@ -77,11 +77,26 @@ Each failure becomes part of a Finding:
 - **Locations:** `{ "kind": "node", "fileKey", "nodeId", "layerPath" }` for each layer in the facts. When a facts group's `count` is more than its sample `nodes`, the evidence says how many more layers share it.
 - **Standard:** `{ "source": "WCAG <version>", "ref": "<number>", "url": "<its W3C line>" }`, with the url the reference gives for the target's version. For an additional requirement, `{ "source": "Additional requirement", "ref": "<id>" }`.
 
-### Annotations and states
+Judging is done when every criterion that applies to the target (or an uncovered target itself), every above-target check that's on, and every additional requirement has one Coverage entry, and every failure, measurement that couldn't be made, and missing annotation (unless `coverage only`) is in a Finding. The reference's header says how many criteria apply at each target it covers: check your Coverage against it.
+
+## 5. Report
+
+Use the skill `design-review-report-writer`, handing over:
+
+- `run`: today's `date`, the `scope` (`fileKey`, and `nodes` as `{ id, name }`), the `runtime`, `setVersion` from this skill's Version line, `factsVersion` and `factGroups` from the Design Facts, and `settings`. `settings` is null when a profile's Accessibility section gave the target, `Report above target`, the additional requirements, `Missing annotations`, `Annotation kits` and `Marker words`, whatever the criteria reference's location. Otherwise it's `{ "accessibility": { "standard": "WCAG", "version": "<version>", "level": "<level>", "from": "profile", "run time" or "asked", "criteriaReference": "<location>", "reportAboveTarget": "yes" or "no", "additionalRequirements": ["<id> (<Severity>): <statement>", …], "missingAnnotations": "findings" or "coverage only", "annotationKits": ["<kit>", …], "markerWords": ["<word> (<criteria>)", …] } }`, where `from` says where the target came from.
+- `profile`: `{ name, location, lastUpdated }` for the profile whose section you used, otherwise null.
+- `references`: the criteria reference's name, version and location.
+- `findings`, each with its `rootCause`, and `coverage`.
+- `notes`: the notes kept while settling what to check against, if any.
+
+The review is done when the Report Writer has delivered the report.
+
+## Annotations and states
 
 An `annotation/prototype` criterion is judged once what its Needs line names exists.
 
-- **An annotation** is one in the facts' `annotations`: a native annotation, or an instance of a kit the settings name. A free-text note on the canvas (`annotations.notes`) counts too, but a Finding that rests on one is `likely`. Layer names and Figma comments aren't annotations.
+- **An annotation** is one in the facts' `annotations`: a native annotation, or an instance of one of the settings' `Annotation kits`. A free-text note on the canvas (`annotations.notes`) counts too, but a Finding that rests on one is `likely`. Layer names and Figma comments aren't annotations.
+- **Its kind** is what its text gives, whatever its category: a text alternative, a reading order, a page title, a language, and so on. It serves a Needs line of that kind.
 - **A state** is a frame, a variant or a prototype interaction in the facts' `structure` that shows the behaviour, or an annotation that describes it.
 - **Where an annotation belongs:** on the layer that triggers the criterion, such as an image for its text alternative, or on the scanned frame when the trigger is the frame as a whole, such as its reading order, title or language. An annotation serves a layer when it's attached to that layer or to a frame holding it, or when it names the layer or sits beside it.
 
@@ -89,32 +104,18 @@ A missing state gives `needs-state` and no Finding. A missing annotation gives `
 
 - **One per missing annotation:** its kind (from the Needs line) on the layer it belongs on, however many criteria need it. `standard` is the most severe of those criteria, the first in the reference on a tie, and the evidence names the others.
 - **Root Cause:** `node:<id>` of that layer, which is also the location.
-- **Severity:** that criterion's, as Severity above gives it. **Certainty:** `needs-review`.
+- **Severity:** that criterion's, as step 4's Severity gives it. **Certainty:** `needs-review`.
 - **Evidence:** what triggers each criterion, and that no annotation of that kind was found. **Fix:** add the annotation.
 
 When `annotations` is in the facts' `unread`, these criteria are `not-readable` (status 2), so no missing-annotation Finding is raised.
 
-### Marked sections
+## Marked sections
 
-A criterion with markers (a Markers line other than `none`) is judged only inside a section marked for it: the scanned frame, a Figma section holding it (`structure.sections`), or a frame inside it (`structure.frames`), whose name has one of its markers. A component whose variant takes one of its variant values, such as `State=Focused`, is marked for it too.
+A criterion with markers (a Markers line other than `none`) is judged only inside a section marked for it.
 
-- **Its markers:** the criterion number, the words and variant values on its Markers line, and each `Marker word` the settings give for it. Match whole words, ignoring case. A size, such as "320", is never a marker.
-- **Nothing marked:** `needs-section`, with the note `No section is marked for it. Add a section titled "<its first marker word>".` A marked section that lacks what the How to judge needs, such as a frame 320 px wide for 1.4.10, is `needs-section` too, and the note says what to add.
+- **A marked section** is the scanned frame, a Figma section holding it (`structure.sections`), or a frame inside it (`structure.frames`), whose name has the criterion's number, a marker word from its Markers line, or one of the settings' `Marker words` for it, as a whole word, ignoring case. A component is marked when one of its variants takes a variant value from the Markers line, such as `State=Focused`. A size, such as "320", never marks a section.
+- **Nothing marked:** `needs-section`, with the note `No section is marked for it. Add a section titled "<the first marker word on its Markers line>".` When a marked section lacks what the How to judge needs, it's `needs-section` too, and the note says what to add.
 - **Inside a marked section,** judge what it holds as the How to judge says. Its failures are ordinary Findings.
-
-Judging is done when every criterion that applies to the target (or an uncovered target itself), every above-target check that's on, and every additional requirement has one Coverage entry, and every failure, measurement that couldn't be made, and missing annotation (unless `coverage only`) is in a Finding. The reference's header says how many criteria apply at each target it covers: check your Coverage against it.
-
-## 5. Report
-
-Use the skill `design-review-report-writer`, handing over:
-
-- `run`: today's `date`, the `scope` (`fileKey`, and `nodes` as `{ id, name }`), the `runtime`, `setVersion` from this skill's Version line, `factsVersion` and `factGroups` from the Design Facts, and `settings`. `settings` is null when a profile's Accessibility section gave the target, `Report above target`, the additional requirements, `Missing annotations`, the annotation kits and the marker words, whatever the criteria reference's location. Otherwise it's `{ "accessibility": { "standard": "WCAG", "version": "<version>", "level": "<level>", "from": "profile", "run time" or "asked", "criteriaReference": "<location>", "reportAboveTarget": "yes" or "no", "additionalRequirements": ["<id> (<Severity>): <statement>", …], "missingAnnotations": "findings" or "coverage only", "annotationKits": ["<kit>", …], "markerWords": ["<word> (<criteria>)", …] } }`, where `from` says where the target came from.
-- `profile`: `{ name, location, lastUpdated }` for the profile whose section you used, otherwise null.
-- `references`: the criteria reference's name, version and location.
-- `findings`, each with its `rootCause`, and `coverage`.
-- `notes`: the notes kept while settling what to check against, if any.
-
-The review is done when the Report Writer has delivered the report.
 
 ## Review Profile
 
@@ -149,8 +150,8 @@ The Accessibility section holds this skill's settings, one `Key: value` per line
 | `Report above target`: `yes` adds the above-target checks in step 4, as advisory Findings | `no` |
 | `Additional requirement`: one of the team's own requirements, one line each, `Additional requirement: <id> (<Severity>): <statement>`, such as `Additional requirement: AR-1 (minor): Body text is at least 16 px.` The Severity is critical, serious, moderate or minor. A line with no id takes the first `AR-<n>` not already used | none |
 | `Missing annotations`: `findings` raises a Finding for each missing annotation, and `coverage only`, for teams that annotate outside Figma, only lists them in Coverage | `findings` |
-| `Annotation kit`: a kit whose instances count as annotations, one line each, named by what its components' names start with, such as `Annotation kit: A11y annotations/` | none |
-| `Marker word`: a word that also marks a section, one line each, with the criteria it marks, such as `Marker word: Narrow screens (1.4.10)`. It adds to the reference's markers | none |
+| `Annotation kits`: the kits whose instances count as annotations, each named by what its components' names start with, such as `Annotation kits: A11y annotations/, Handoff notes/` | none |
+| `Marker words`: words that also mark a section, each with the criteria it marks, such as `Marker words: Narrow screens (1.4.10); Journey (3.2.3, 3.2.4, 3.2.6)`. They add to the reference's markers | none |
 
 Settle the settings by what the lookup found:
 
