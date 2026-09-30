@@ -46,7 +46,7 @@ Material that strengthens a Finding by pointing to another source of the same pr
 ## Standards
 
 **Review Profile**:
-A reusable document, shareable across files and teams, naming the standards a review is judged against: its Design System Layers, research sources, accessibility target, product context and any Severity overrides. A review uses exactly one Review Profile.
+A reusable document, shareable across files and teams, naming the standards a review is judged against: its Design System Layers, research sources, accessibility target, product context and any Severity overrides. An Orchestrator run always uses exactly one Review Profile. A Review Skill run on its own may use one or none.
 _Avoid_: Config, settings, ruleset
 
 **Reference Document**:
