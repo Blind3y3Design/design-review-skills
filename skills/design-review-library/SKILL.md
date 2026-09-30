@@ -26,7 +26,7 @@ Settle everything before judging starts, asking for what's missing in as few mes
 
 - **Scope:** the node ids of the frames to review, from the user's selection, the frames they name, or the `node-id` in a Figma link. For a page, use its top-level frames. In an external agent, the file key comes from the file's link.
 - **Runtime:** `figma-agent` inside Figma Design's agent, `external-agent` anywhere else.
-- **Given at run time,** when the user names them: a Review Profile (its text, a local file, or a link to a Figma file or a GitHub file), the Design System Layers, or a baseline location (a URL or a local file). What's given at run time takes the place of the profile's for this run.
+- **Given at run time,** when the user names them: a Review Profile (its text, a local file, or a link to a Figma file or a GitHub file), the Design System Layers, or a baseline location (a URL or a local file). What's given at run time takes the place of the profile's for this run. Also where to save this run's report, if the user says: "don't save", or "save to <location>".
 - **What to check against:** find the Review Profile, then settle the Design System Layers from it or by asking, as Review Profile below describes.
 
 The inputs are settled when the scope, runtime and anything given at run time are known, and the layers are settled or wait to be asked after the scan, or the run has stopped.
@@ -75,6 +75,8 @@ Use the skill `design-review-report-writer`, handing over:
 - `references`: the baseline's name, version and location, when it was read.
 - `findings`, each with its `rootCause`, and `coverage`.
 - `notes`: the notes kept while settling what to check against, if any.
+- `reportSettings`: the profile's Report settings you noted, as `{ "<key>": "<value>" }`, or null.
+- `saveRequest`: "don't save" or "save to <location>" when the user said so, otherwise null.
 
 The review is done when the Report Writer has delivered the report.
 
@@ -92,7 +94,7 @@ A fix names a token only when one was found in the design: a variable or style i
 
 ## Review Profile
 
-A team's Review Profile names the standards its reviews are judged against. This skill uses only the profile's **Design System Layers** section, and never creates or changes a profile, nor offers to.
+A team's Review Profile names the standards its reviews are judged against. This skill uses only the profile's **Design System Layers** section, and hands its **Report settings** section to the Report Writer, which saves the report. It never creates or changes a profile, nor offers to.
 
 ### Finding the profile
 
@@ -135,10 +137,10 @@ The design systems this work is checked against, most general first. A more spec
 Settle the layers by what the lookup found:
 
 - **A profile given at run time (`from` is `run time`), with a Design System Layers section:** use the section without asking. Giving the profile is the user's agreement.
-- **A profile found on the page or through a pointer in a project file, with the section:** ask before using it, with any other question still open. For example: "I found the Review Profile "<name>" on the "Review Profile" page in this file. Use its Design System Layers for this review? They're 1. Foundation (Foundation Tokens) and 2. Web Platform (Web Platform Kit), with the default baseline. I won't use or change anything else in it." On yes, use the section. On no, go on as below.
-- **No profile, no section, or the user said no:** the layers are asked after the scan in step 3, pre-filled from the file. Say why you're asking, from the lookup's `searched` when there's no profile, then ask which libraries make up the design system, most general first. Pre-fill each library named in the facts' `variables`, one layer each, placing a library before any whose variables alias its own. With no library named there, offer no layers. For example: "I couldn't find a Review Profile: none was given, this file has no "Review Profile" page, and AGENTS.md has no pointer to one. Which libraries make up your design system, most general first? This design uses variables from Foundation Tokens and Web Platform Kit, so I'll use them as two layers in that order unless you name others. The layers decide which tokens I can suggest in fixes. Your answer is for this run only, and nothing is saved." With the layers already given at run time, there's nothing to ask. For a profile without the section, keep a note for the report: "The Review Profile "<name>" has no Design System Layers section, so this run used the layers below."
+- **A profile found on the page or through a pointer in a project file, with the section:** ask before using it, with any other question still open. For example: "I found the Review Profile "<name>" on the "Review Profile" page in this file. Use its Design System Layers for this review? They're 1. Foundation (Foundation Tokens) and 2. Web Platform (Web Platform Kit), with the default baseline. I'll use only them and where it saves reports, and I won't change it." Name where it saves reports from its Report settings, if it has them. On yes, use the section. On no, go on as below.
+- **No profile, no section, or the user said no:** the layers are asked after the scan in step 3, pre-filled from the file. Say why you're asking, from the lookup's `searched` when there's no profile, then ask which libraries make up the design system, most general first. Pre-fill each library named in the facts' `variables`, one layer each, placing a library before any whose variables alias its own. With no library named there, offer no layers. For example: "I couldn't find a Review Profile: none was given, this file has no "Review Profile" page, and AGENTS.md has no pointer to one. Which libraries make up your design system, most general first? This design uses variables from Foundation Tokens and Web Platform Kit, so I'll use them as two layers in that order unless you name others. The layers decide which tokens I can suggest in fixes. Your answer is for this run only, and isn't saved to a profile." With the layers already given at run time, there's nothing to ask. For a profile without the section, keep a note for the report: "The Review Profile "<name>" has no Design System Layers section, so this run used the layers below."
 
-Layers given at run time or in an answer have the libraries they name, and match hints only when the user gives some. From a profile whose section you use, also note its `profile`.
+Layers given at run time or in an answer have the libraries they name, and match hints only when the user gives some. From a profile whose section you use, also note its `profile`. From any profile the lookup found, unless the user said no to it, note its Report settings.
 
 ## Reading a location
 
