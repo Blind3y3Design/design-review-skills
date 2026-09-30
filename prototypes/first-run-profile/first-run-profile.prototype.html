@@ -60,11 +60,11 @@
 </head>
 <body>
 <main>
-  <h1>First-run Review Profile: a prototype (version 2)</h1>
+  <h1>First-run Review Profile: a prototype (version 3)</h1>
   <div class="banner"><strong>Throwaway prototype</strong> for <a href="https://github.com/Blind3y3Design/design-review-skills/issues/12">issue #12</a>. The file, its libraries and the answers are made up. Nothing here is saved anywhere.</div>
   <div class="intro">
     <p><strong>The question:</strong> when there's no Review Profile, what should the conversation that creates one ask, in what order, and who asks it? And how does a Review Skill run on its own behave with and without a profile? Pick how the review starts and whether a profile already exists, then step through it. Watch who asks each question, the transcript, the document being written, and the readiness check for each review.</p>
-    <p><strong>Changed since version 1, from your review:</strong></p>
+    <p><strong>Changed since version 1, from your reviews:</strong></p>
     <ul>
       <li>Step by step only. Compact mode is gone.</li>
       <li>"Not now" is gone. The Orchestrator needs a profile. A Review Skill run on its own can run without one, and asks what to check against instead.</li>
@@ -73,6 +73,7 @@
       <li>Layer owners aren't asked for. A Finding names the layer, and the designer knows which team that is.</li>
       <li>A library the ordering rule can't place is asked about, not guessed.</li>
       <li>The profile is written for agents: fixed headings, one setting per line, and one plain sentence per section for the people who maintain it.</li>
+      <li>In Figma, the profile is always saved as a "Review Profile" page in the file. The custom skill option is gone. A shared profile hosted on GitHub is a later enhancement.</li>
     </ul>
   </div>
 
@@ -133,11 +134,11 @@
   </section>
 
   <section class="panel questions">
-    <h2>Still open</h2>
+    <h2>Verdict after version 2</h2>
     <ol>
-      <li><strong>A skill run on its own doesn't offer to add its section</strong> to a profile that lacks it (walkthrough 7). It says why it's asking, and its answers are for that run only. Adding the section is the Orchestrator's job (walkthrough 8). Does asking again on every run feel acceptable?</li>
-      <li><strong>A design system skill run on its own</strong> proposes the stack from the file each time (walkthrough 6). Is that enough direction, or should it ask more?</li>
-      <li><strong>A profile saved as a custom skill</strong> is created privately, and the designer is told to publish it to the same team or org as the review skills (walkthrough 2). Whether the agent can publish it itself is untested.</li>
+      <li><strong>A skill run on its own doesn't offer to add its section</strong> to a profile that lacks it (walkthrough 7). Asking again on each run is acceptable. Adding the section is the Orchestrator's job (walkthrough 8).</li>
+      <li><strong>A design system skill run on its own</strong> proposing the stack from the file (walkthrough 6) is enough direction.</li>
+      <li><strong>In Figma, the profile is saved as a page in the file.</strong> The custom skill option is dropped. A shared profile hosted on GitHub, referenced from each file, is a later enhancement.</li>
     </ol>
   </section>
 </main>
@@ -301,9 +302,9 @@ const FirstRun = (() => {
           ? `From your frames, this looks like a web product at ${widths()} wide. Use that as the product context?`
           : `From your frames, this looks like a web product at ${widths()} wide. Check against those widths?`;
       case 'review':
-        return `Here's the whole profile. Save it?`;
+        return inFigma ? `Here's the whole profile. I'll save it as a "Review Profile" page in this file, where the reviews look for it. Save it?` : `Here's the whole profile. Save it?`;
       case 'save':
-        return inFigma ? `Where should I save it? Reviews in other files can use it too, by pointing to wherever it's saved.` : `Where should I save it?`;
+        return `Where should I save it?`;
       case 'add-section':
         return `Here's the Research Sources section. Add it to "${s.identity.name}" so it's there next time?`;
     }
@@ -363,8 +364,9 @@ const FirstRun = (() => {
         return advance(s);
       case 'ACCEPT':
         if (s.step === 'axes') {
-          s.queue = ['identity', ...(s.axes.ds ? ['layers'] : []), ...(s.axes.a11y ? ['accessibility'] : []), ...(s.axes.research ? ['research'] : []), 'product', 'review', 'save'];
+          s.queue = ['identity', ...(s.axes.ds ? ['layers'] : []), ...(s.axes.a11y ? ['accessibility'] : []), ...(s.axes.research ? ['research'] : []), 'product', 'review', ...(s.runtime === 'figma' ? [] : ['save'])];
         }
+        if (s.step === 'review' && s.runtime === 'figma') return save(s, 'page');
         if (s.step === 'found') {
           s.step = 'done'; s.outcome = 'existing';
           const run = Object.keys(AXES).filter(k => s.axes[k]).map(k => AXES[k].toLowerCase());
@@ -421,14 +423,12 @@ const FirstRun = (() => {
     const skill = slug(s.identity.name);
     const where = {
       page: { saved: `a "Review Profile" page in this file`, pointer: `none needed: the profile page is in this file. Other files can point to it with this file's link.` },
-      skill: { saved: `a private custom skill, /${skill}`, pointer: `a "Review Profile" page in this file with one line: "Review Profile: /${skill} (custom skill)"` },
       local: { saved: `review-profile.md in this project`, pointer: `a line in AGENTS.md: "Review Profile: ./review-profile.md"` },
       github: { saved: `review-profile.md in a GitHub repo`, pointer: `a line in AGENTS.md with the file's GitHub link` },
     }[target];
     s.saved = where.saved; s.pointer = where.pointer; s.step = 'done'; s.outcome = 'created';
     const run = Object.keys(AXES).filter(k => s.axes[k] && !(k === 'research' && s.research.skipped)).map(k => AXES[k].toLowerCase());
     let t = `Saved as ${where.saved}. Pointer: ${where.pointer}.\n\nNext I ask what to review${run.includes('research alignment') ? ' and the research topic' : ''}, then run ${list(run)} against "${s.identity.name}".`;
-    if (target === 'skill') t += `\n\nA private skill works only for you. Publish it to the same team or org as the review skills so your teammates' reviews find it.`;
     say(s, 'agent', 'Orchestrator', t);
     return s;
   }
@@ -495,13 +495,11 @@ const FirstRun = (() => {
         A({ type: 'ACCEPT_PRODUCT' }, 'Yes, use that'),
         A({ type: 'SKIP_PRODUCT' }, 'Skip'),
       ];
-      case 'review': return [A({ type: 'ACCEPT' }, 'Save it')];
-      case 'save': return s.runtime === 'figma' ? [
-        A({ type: 'SAVE', target: 'page' }, 'A page in this file'),
-        A({ type: 'SAVE', target: 'skill' }, 'A custom skill'),
-        A({ type: 'SAVE', target: 'shared-file' }, 'A page in a shared Figma file', false, "Untested: the agent can read other Figma files (#17), but writing into one isn't proven."),
-        A({ type: 'SAVE', target: 'github' }, 'A file in a GitHub repo', false, "Waiting on #19: committing through the GitHub connector isn't documented or tested."),
-      ] : [
+      case 'review': return s.runtime === 'figma' ? [
+        A({ type: 'ACCEPT' }, 'Save it as a page in this file'),
+        A({ type: 'SAVE_GITHUB' }, 'Save it to GitHub instead', false, 'A later enhancement: a shared profile hosted on GitHub, once the connector route is proven (#19).'),
+      ] : [A({ type: 'ACCEPT' }, 'Save it')];
+      case 'save': return [
         A({ type: 'SAVE', target: 'local' }, 'review-profile.md in this project'),
         A({ type: 'SAVE', target: 'github' }, 'A file in a GitHub repo'),
       ];
@@ -617,10 +615,10 @@ const FirstRun = (() => {
 const SCENARIOS = [
   { title: '1. First Orchestrator run', start: { trigger: 'orchestrator', profile: 'none', runtime: 'figma' },
     text: 'A designer runs the Orchestrator on a file with no profile. Watch the speaker on each question: the Orchestrator asks the shared ones, and each Review Skill asks its own. The design system skill can\'t tell where Icons Library goes, so it asks.',
-    steps: [{ type: 'CREATE' }, { type: 'ACCEPT' }, { type: 'ACCEPT' }, { type: 'ASSIGN', lib: 'icons', layer: 'Foundation' }, { type: 'ACCEPT' }, { type: 'ACCEPT' }, { type: 'ADD_SOURCE' }, { type: 'ACCEPT' }, { type: 'ACCEPT_PRODUCT' }, { type: 'ACCEPT' }, { type: 'SAVE', target: 'page' }] },
-  { title: '2. A lead saves it as a custom skill', start: { trigger: 'orchestrator', profile: 'none', runtime: 'figma' },
-    text: 'A design lead names the profile for the team, adds the Foundation rules document and saves the profile as a custom skill. Watch the note at the end about publishing it to the same team or org as the review skills.',
-    steps: [{ type: 'CREATE' }, { type: 'ACCEPT' }, { type: 'RENAME' }, { type: 'SET_OWNER_TEAM' }, { type: 'ACCEPT' }, { type: 'ASSIGN', lib: 'icons', layer: 'Foundation' }, { type: 'ADD_RULES_DOC', layer: 'Foundation' }, { type: 'ACCEPT' }, { type: 'ACCEPT' }, { type: 'ADD_SOURCE' }, { type: 'ACCEPT' }, { type: 'ACCEPT_PRODUCT' }, { type: 'ACCEPT' }, { type: 'SAVE', target: 'skill' }] },
+    steps: [{ type: 'CREATE' }, { type: 'ACCEPT' }, { type: 'ACCEPT' }, { type: 'ASSIGN', lib: 'icons', layer: 'Foundation' }, { type: 'ACCEPT' }, { type: 'ACCEPT' }, { type: 'ADD_SOURCE' }, { type: 'ACCEPT' }, { type: 'ACCEPT_PRODUCT' }, { type: 'ACCEPT' }] },
+  { title: '2. A lead names it for the team', start: { trigger: 'orchestrator', profile: 'none', runtime: 'figma' },
+    text: 'A design lead names the profile for the team, gives it a team owner and adds the Foundation rules document. In Figma it\'s saved as a page in the file; saving to GitHub shows as a later enhancement.',
+    steps: [{ type: 'CREATE' }, { type: 'ACCEPT' }, { type: 'RENAME' }, { type: 'SET_OWNER_TEAM' }, { type: 'ACCEPT' }, { type: 'ASSIGN', lib: 'icons', layer: 'Foundation' }, { type: 'ADD_RULES_DOC', layer: 'Foundation' }, { type: 'ACCEPT' }, { type: 'ACCEPT' }, { type: 'ADD_SOURCE' }, { type: 'ACCEPT' }, { type: 'ACCEPT_PRODUCT' }, { type: 'ACCEPT' }] },
   { title: '3. The rarely used library', start: { trigger: 'orchestrator', profile: 'none', runtime: 'figma' },
     text: '"Old Marketing Kit" is used three times, so it\'s left out and its assets get flagged as outside the stack. Include it: the skill can\'t place it, so it asks instead of guessing. Then leave it out again.',
     steps: [{ type: 'CREATE' }, { type: 'ACCEPT' }, { type: 'ACCEPT' }, { type: 'ASSIGN', lib: 'icons', layer: 'Foundation' }, { type: 'INCLUDE', lib: 'old' }, { type: 'EXCLUDE', lib: 'old' }, { type: 'ACCEPT' }] },
