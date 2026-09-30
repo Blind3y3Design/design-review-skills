@@ -162,6 +162,48 @@ test('an axis-level skipped entry is matched by its axis', () => {
   assert.deepEqual(compareReports(skipped(), { findings: [], coverage: [] }).differences, ['Missing Coverage research (whole axis)']);
 });
 
+// A merged report from /design-review: the A11Y-01 case's accessibility results, plus the design system adherence axis.
+const merged = () => {
+  const r = load('A11Y-01');
+  r.findings.push({ id: 'design-system/raw-value/node:5:5', axis: 'design-system', severity: 'moderate', certainty: 'confirmed' });
+  r.coverage.push({ axis: 'design-system', ref: 'raw-value', status: 'judged' });
+  return r;
+};
+
+test('with an axis, only that axis is compared, so a merged report passes a one-axis case', () => {
+  assert.equal(compareReports(load('A11Y-01'), merged()).pass, false);
+  const result = compareReports(load('A11Y-01'), merged(), { axis: 'accessibility' });
+  assert.deepEqual(result.differences, []);
+  assert.equal(result.pass, true);
+});
+
+test('with an axis, links to the other axes are left out, and a difference on the axis still fails', () => {
+  const linked = merged();
+  linked.findings[0].relatedFindings = ['design-system/raw-value/node:5:5'];
+  linked.findings[1].relatedFindings = ['accessibility/1.4.3/node:5:5'];
+  assert.deepEqual(compareReports(load('A11Y-01'), linked, { axis: 'accessibility' }).differences, []);
+
+  linked.findings[0].severity = 'serious';
+  assert.deepEqual(compareReports(load('A11Y-01'), linked, { axis: 'accessibility' }).differences, [
+    'Finding accessibility/1.4.3/node:5:5: severity is "serious", expected "moderate"',
+  ]);
+});
+
+test('the command compares one axis with --axis, and says so', () => {
+  const result = run(['A11Y-01', '-', '--axis', 'accessibility'], JSON.stringify(merged()));
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout, 'PASS A11Y-01 (accessibility only)\n');
+  assert.equal(run(['A11Y-01', '-'], JSON.stringify(merged())).status, 1);
+});
+
+test('the command exits with 2 when --axis has no axis, or one the case expects nothing on', () => {
+  assert.equal(run(['A11Y-01', '-', '--axis'], JSON.stringify(merged())).status, 2);
+  assert.equal(run(['A11Y-01', '-', '--axes', 'accessibility'], JSON.stringify(merged())).status, 2);
+  const nothing = run(['A11Y-01', '-', '--axis', 'research'], JSON.stringify(merged()));
+  assert.equal(nothing.status, 2);
+  assert.match(nothing.stderr, /research/);
+});
+
 test('the command passes a matching report for a case id, with exit code 0', () => {
   const markdown = `# Design review\n\n\`\`\`json\n${JSON.stringify(load('A11Y-01'), null, 2)}\n\`\`\`\n`;
   const result = run(['A11Y-01', saved('report.md', markdown)]);
@@ -224,6 +266,17 @@ test('each expected case passes against itself and fails when any compared field
       (r) => { r.coverage[0].ref = 'raw-value'; },
       (r) => { r.coverage = []; },
       (r) => { r.findings.push({ id: 'design-system/raw-value/node:45:18', axis: 'design-system', severity: 'moderate', certainty: 'confirmed' }); },
+    ],
+    'X-01': [
+      (r) => { r.findings[0].relatedFindings = []; },
+      (r) => { r.findings[1].relatedFindings = []; },
+      (r) => { r.findings[1].relatedFindings.push('design-system/raw-value/node:62:7'); },
+      (r) => { r.findings[0].axis = 'accessibility'; },
+      (r) => { r.findings[1].severity = 'serious'; },
+      (r) => { r.findings.pop(); },
+      (r) => { entry(r, 'raw-value').status = 'not-applicable'; },
+      (r) => { entry(r, '1.4.3').status = 'not-readable'; },
+      (r) => { r.coverage = r.coverage.filter((c) => c.axis !== 'design-system'); },
     ],
   };
   for (const [id, edits] of Object.entries(changes)) {
