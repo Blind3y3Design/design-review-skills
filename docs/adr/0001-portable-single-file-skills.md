@@ -4,6 +4,6 @@ Review Skills and the Orchestrator are standalone `SKILL.md` files following the
 
 ## Consequences
 
-- Organisation-specific standards can't be bundled with a skill. They come from a Review Profile or from sources the user names when running it. Public standards content, such as the WCAG criteria, lives in Reference Documents the skill is pointed to (ADR 0003), which can be inlined at publish only as a stopgap (ADR 0004).
+- Organisation-specific standards can't be bundled with a skill. They come from a Review Profile or from sources the user names when running it. Public standards content, such as the WCAG criteria, lives in Reference Documents the skill reads from where it is pointed, never inlined (ADR 0003, ADR 0007).
 - Figma Make is not a target runtime (ADR 0005).
 - Capabilities that need scripts, such as running axe, can only be optional additions for external agents. A skill must still produce useful Findings without them.

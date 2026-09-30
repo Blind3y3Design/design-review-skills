@@ -1,8 +1,8 @@
 ---
-status: superseded by ADR-0005
+status: superseded by ADR-0005 and ADR-0007
 ---
 
-> **Superseded.** Figma Design's agent can chain skills ([issue #14](https://github.com/Blind3y3Design/design-review-skills/issues/14)), so the report format is now its own skill, the Report Writer (ADR 0005). The build step described here copies only Reference Documents now (ADR 0003), and is deleted once Figma Design is shown to read them from a link or a connector.
+> **Superseded.** Figma Design's agent can chain skills ([issue #14](https://github.com/Blind3y3Design/design-review-skills/issues/14)), so the report format is now its own skill, the Report Writer (ADR 0005). The build step described here is deleted: nothing is inlined into a published skill (ADR 0007).
 
 # Report format written once and copied into each skill when publishing
 

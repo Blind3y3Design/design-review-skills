@@ -30,7 +30,7 @@ A skill that reads the design once and returns Design Facts for the Review Skill
 
 ### Review Profile (planned)
 
-Skills don't bundle any organisation's standards. A team's Review Profile names its design system layers, research sources, and accessibility target. If no profile exists, the skill walks the user through creating one on the first run.
+Skills don't bundle any organisation's standards. A team's Review Profile names its design system layers, research sources, and accessibility target. If no profile exists, the Orchestrator walks the user through creating one on its first run and, in Figma, saves it as a "Review Profile" page in the file. A Review Skill run on its own can work without a profile: it asks what to check against, for that run only.
 
 Every skill is a single portable `SKILL.md` that works inside Figma Design's agent and in external agents such as Claude Code, Codex and Cursor. Skills invoke each other rather than copying each other's content. Figma Make isn't supported. See [ADR 0001](docs/adr/0001-portable-single-file-skills.md) and [ADR 0005](docs/adr/0005-chained-skills-only-figma-make-out-of-scope.md).
 
@@ -39,15 +39,42 @@ Every skill is a single portable `SKILL.md` that works inside Figma Design's age
 - [Claude Code](https://claude.com/claude-code) or another agent that supports skills
 - The Figma MCP server, connected and authorised, so skills can read design context, screenshots, variables, and components
 
+## Installing (planned)
+
+Six skills make up the set, published and versioned together:
+
+| Skill | What it does |
+|---|---|
+| `design-review` | The Orchestrator: runs several reviews and merges them into one report |
+| `design-review-library` | Design system adherence: how a design uses its libraries |
+| `design-review-accessibility` | Accessibility |
+| `design-review-research` | Research alignment |
+| `design-review-report-writer` | Writes every report (used by the other skills) |
+| `design-review-scanner` | Reads the design and returns Design Facts (used by the other skills) |
+
+- **Figma Design:** an organisation's skill owners publish all six to the organisation, in the order in `docs/publishing.md`.
+- **Claude Code, Codex or Cursor:** `npx skills add Blind3y3Design/design-review-skills --all`, then `npx skills update` for new releases. Copying the `skills/` folder works too. The repo's location will change once it moves into Cat's systems.
+
+Nothing is built or edited before publishing: a published skill is the release file as it stands ([ADR 0007](docs/adr/0007-publish-skills-exactly-as-released.md)).
+
 ## Repository layout
 
+The design review folders are planned; the rest exists today.
+
 ```
-.agents/skills/     Vendored development skills (mattpocock/skills), pinned by skills-lock.json
-.claude/skills/     Symlinks exposing the vendored skills to Claude Code
-skills-lock.json    Lockfile for the vendored skills
+skills/<name>/SKILL.md     The six design review skills, one folder each, holding only SKILL.md
+reference-documents/       WCAG 2.2 criteria reference and the Design system baseline
+tests/smoke/               Smoke test: case list, expected Findings JSON, comparison script, link to the Figma test file
+docs/adr/                  Architecture decisions
+docs/agents/               Issue tracker, triage labels and domain docs for agents
+docs/setup/                Setup guides, starting with research tools
+docs/publishing.md         Release and publishing checklist
+.agents/skills/            Vendored development skills (mattpocock/skills), pinned by skills-lock.json
+.claude/skills/            Symlinks exposing the vendored skills to Claude Code
+skills-lock.json           Lockfile for the vendored skills
 ```
 
-Folders for the design review skills, the Orchestrator and the Report Writer will be added once their structure is decided.
+Research notes, hands-on test assets and prototypes live on their own branches (`research/*`, `task/*`, `prototype/*`).
 
 ## Development workflow
 

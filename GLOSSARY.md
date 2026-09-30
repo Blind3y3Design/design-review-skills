@@ -6,7 +6,7 @@ Portable skills that review design work, primarily in Figma, and report what the
 
 **Review Axis**:
 A single dimension a design is judged along, such as accessibility or design system adherence.
-_Avoid_: Vector, lens, dimension, category
+_Avoid_: Vector, lens, dimension, category; "library review" for design system adherence (the skill is named `design-review-library`, but the axis keeps its name)
 
 **Review Skill**:
 A skill that evaluates a design along exactly one Review Axis.
