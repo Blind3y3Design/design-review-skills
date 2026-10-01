@@ -78,7 +78,14 @@ const findings = {
 const coverage = {
   keyOf: (entry) => (entry.ref == null ? `${entry.axis} (whole axis)` : `${entry.axis} ${entry.ref}`),
   describe: (entry) => entry.status,
-  differ: (want, got) => (got.status === want.status ? [] : [`status is "${got.status}", expected "${want.status}"`]),
+  // A whole-axis skipped entry also compares its reasonCode, when the expected entry lists one. Its reason sentence is never compared.
+  differ(want, got) {
+    const differences = got.status === want.status ? [] : [`status is "${got.status}", expected "${want.status}"`];
+    if (want.reasonCode != null && got.reasonCode !== want.reasonCode) {
+      differences.push(`reasonCode is ${got.reasonCode == null ? 'missing' : `"${got.reasonCode}"`}, expected "${want.reasonCode}"`);
+    }
+    return differences;
+  },
 };
 
 // Matches expected and actual entries by key. A key the report repeats is reported once, and not compared further.

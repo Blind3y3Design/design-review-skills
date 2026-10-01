@@ -35,8 +35,8 @@ The inputs are settled when the scope, runtime and settings are known, or the ru
 
 Its location is the first of: given at run time or in answer to a question, the profile section's `Criteria reference` unless that's the skill's default, then the skill's default, `https://raw.githubusercontent.com/Blind3y3Design/design-review-skills/main/reference-documents/wcag-2.2-criteria.md`. Read the whole document, as Reading a location describes.
 
-- If a location the user or the profile gave can't be read, stop. Tell the user the location and the error, and write no report.
-- If the default link can't be read, the axis is skipped. Hand the Report Writer no Findings and one Coverage entry, `{ "axis": "accessibility", "status": "skipped", "reason": "the criteria reference couldn't be read: <location>: <error>" }`, and go to step 5.
+- If a location the user or the profile gave can't be read, stop. Tell the user the location and the error, and write no report. When another skill runs this review, skip the axis as the next line does instead.
+- If the default link can't be read, or another skill runs this review and a given location can't be read, the axis is skipped. Hand the Report Writer no Findings and one Coverage entry, `{ "axis": "accessibility", "status": "skipped", "reasonCode": "reference-unreadable", "reason": "the criteria reference couldn't be read: <location>: <error>" }`, and go to step 5.
 
 From the document's header, note its name, version and location for the report, and its `Covers` line. Its "How an entry reads" section says which criteria apply to the target.
 
@@ -94,7 +94,7 @@ Use the skill `design-review-report-writer`, handing over:
 - `profile`: `{ name, location, lastUpdated }` for the profile whose section you used, otherwise null.
 - `references`: the criteria reference's name, version and location.
 - `findings`, each with its `rootCause`, and `coverage`.
-- `notes`: the notes kept while settling what to check against, if any.
+- `notes`: the notes kept while settling what to check against, if any, and any the skill running this review handed over.
 - `reportSettings`: the profile's Report settings you noted, as `{ "<key>": "<value>" }`, or null.
 - `saveRequest`: "don't save" or "save to <location>" when the user said so, otherwise null.
 - `annotateRequest`: "annotate" or "don't annotate" when the user said so, otherwise null.
@@ -114,6 +114,7 @@ Then it settles the run, asks the user everything, and hands over:
 - the Review Profile it found, as `design-review-profile`'s `found` result
 - the Design Facts, when it has scanned
 - anything the user gave at run time for this review, such as a criteria reference location or a WCAG target
+- notes for the report, if any, such as a version warning
 
 The user has been asked everything already, so ask nothing. Where you'd ask what to check against, use what the question is pre-filled with, set `from` to `default`, and keep the note you'd keep for the report. When a fact group you need is neither read in the handed-over facts nor in their `unread`, scan for that group yourself, as step 3 describes.
 

@@ -35,8 +35,8 @@ The inputs are settled when the scope, runtime and anything given at run time ar
 
 Its location is the first of: given at run time, the `Baseline` line of the section you use unless that's the skill's default, then the skill's default, `https://raw.githubusercontent.com/Blind3y3Design/design-review-skills/main/reference-documents/design-system-baseline.md`. Read the whole document, as Reading a location describes.
 
-- If a location the user or the profile gave can't be read, stop. Tell the user the location and the error, and write no report.
-- If the default link can't be read, there's no baseline, so the axis is skipped. Hand the Report Writer no Findings and one Coverage entry, `{ "axis": "design-system", "status": "skipped", "reason": "no Design system baseline: the default link couldn't be read: <location>: <error>" }`, and go to step 5.
+- If a location the user or the profile gave can't be read, stop. Tell the user the location and the error, and write no report. When another skill runs this review, skip the axis as the next line does instead.
+- If the default link can't be read, or another skill runs this review and a given location can't be read, there's no baseline, so the axis is skipped. Hand the Report Writer no Findings and one Coverage entry, `{ "axis": "design-system", "status": "skipped", "reasonCode": "reference-unreadable", "reason": "no Design system baseline: <location> couldn't be read: <error>" }`, and go to step 5.
 
 From the document's header, note its name, version and location for the report.
 
@@ -79,7 +79,7 @@ Use the skill `design-review-report-writer`, handing over:
 - `profile`: the `profile` `design-review-profile` handed back, when you used its section, otherwise null.
 - `references`: the baseline's name, version and location, when it was read.
 - `findings`, each with its `rootCause`, and `coverage`.
-- `notes`: the notes kept while settling what to check against, if any.
+- `notes`: the notes kept while settling what to check against, if any, and any the skill running this review handed over.
 - `reportSettings`: the profile's Report settings you noted, as `{ "<key>": "<value>" }`, or null.
 - `saveRequest`: "don't save" or "save to <location>" when the user said so, otherwise null.
 - `annotateRequest`: "annotate" or "don't annotate" when the user said so, otherwise null.
@@ -99,8 +99,9 @@ Then it settles the run, asks the user everything, and hands over:
 - the Review Profile it found, as `design-review-profile`'s `found` result
 - the Design Facts, when it has scanned
 - anything the user gave at run time for this review, such as a baseline location or the Design System Layers
+- notes for the report, if any, such as a version warning
 
-The user has been asked everything already, so ask nothing. With no Design System Layers given at run time or in the profile, skip the axis: hand the Report Writer no Findings and one Coverage entry, `{ "axis": "design-system", "status": "skipped", "reason": "no Design System Layers: the Review Profile has no Design System Layers section" }`. When a fact group you need is neither read in the handed-over facts nor in their `unread`, scan for that group yourself, as step 3 describes.
+The user has been asked everything already, so ask nothing. With no Design System Layers given at run time or in the profile, skip the axis: hand the Report Writer no Findings and one Coverage entry, `{ "axis": "design-system", "status": "skipped", "reasonCode": "no-layers", "reason": "no Design System Layers: the Review Profile has no Design System Layers section" }`. When a fact group you need is neither read in the handed-over facts nor in their `unread`, scan for that group yourself, as step 3 describes.
 
 ## Attributing an asset
 
