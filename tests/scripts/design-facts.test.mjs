@@ -18,7 +18,8 @@ const white = { r: 1, g: 1, b: 1 };
 const solid = (color, props = {}) => ({ type: 'SOLID', color, visible: true, opacity: 1, blendMode: 'NORMAL', ...props });
 const rgb = (hex) => ({ r: parseInt(hex.slice(1, 3), 16) / 255, g: parseInt(hex.slice(3, 5), 16) / 255, b: parseInt(hex.slice(5, 7), 16) / 255 });
 
-function fakeFigma(pageSpec, { variables = {}, styles = {}, components = {} } = {}) {
+// `collections` are the file's variable collections by id, and `libraries` what figma.teamLibrary lists, or an Error it throws.
+function fakeFigma(pageSpec, { variables = {}, styles = {}, components = {}, collections = {}, libraries = [] } = {}) {
   let next = 1;
   const byId = new Map();
   const build = (spec, parent) => {
@@ -61,7 +62,16 @@ function fakeFigma(pageSpec, { variables = {}, styles = {}, components = {} } = 
     mixed: MIXED,
     async getNodeByIdAsync(id) { return byId.get(id) || null; },
     async getStyleByIdAsync(id) { return styles[id] || null; },
-    variables: { async getVariableByIdAsync(id) { return variables[id] || null; } },
+    variables: {
+      async getVariableByIdAsync(id) { return variables[id] || null; },
+      async getVariableCollectionByIdAsync(id) { return collections[id] || null; },
+    },
+    teamLibrary: {
+      async getAvailableLibraryVariableCollectionsAsync() {
+        if (libraries instanceof Error) throw libraries;
+        return libraries;
+      },
+    },
   };
 }
 
@@ -295,4 +305,161 @@ test('structure: over the output limit, paths are shortened, then left out, befo
   assert.deepEqual(tooMany.groups, []);
   assert.match(tooMany.unread[0].reason, /^output limit: 1000 layers are too many for one call/);
   assert.equal(tooMany.unread[0].scanInstead.length, 200);
+});
+
+// Library assets for the components and bindings scripts.
+const COMPONENTS = {
+  primary: { key: 'k-primary', name: 'Type=Primary', remote: true, parent: { type: 'COMPONENT_SET', key: 'k-button', name: 'Test Foundation/Button' } },
+  secondary: { key: 'k-secondary', name: 'Type=Secondary', remote: true, parent: { type: 'COMPONENT_SET', key: 'k-button', name: 'Test Foundation/Button' } },
+  check: { key: 'k-check', name: 'Test Foundation/Icon/Check', remote: true, parent: null },
+  promo: { key: 'k-promo', name: 'Test Unlisted/Promo Tile', remote: true, parent: null },
+  card: { key: 'k-card', name: 'Card', remote: false, parent: { type: 'PAGE', name: 'Components' } },
+};
+const buttonWithIcon = (id, name, main = 'primary') => ({ type: 'INSTANCE', id, name, main, x: 124, y: 224, children: [
+  { type: 'INSTANCE', id: `I${id};1:1`, name: 'Icon', main: 'check', x: 132, y: 232 },
+] });
+
+test('components: each instance gives its main component, grouped by component, with its set, whether it\'s remote, and the instances placed and nested', async () => {
+  const figma = fakeFigma(frameWith([
+    buttonWithIcon('5:2', 'Place order'),
+    { type: 'INSTANCE', id: '5:3', name: 'Cancel', main: 'secondary', x: 124, y: 270 },
+    { type: 'FRAME', id: '5:4', name: 'Aside', x: 124, y: 320, children: [
+      { type: 'INSTANCE', id: '5:5', name: 'Promo', main: 'promo', x: 124, y: 320 },
+      { type: 'INSTANCE', id: '5:6', name: 'Hidden promo', main: 'promo', x: 124, y: 320, visible: false },
+    ] },
+    { type: 'INSTANCE', id: '5:7', name: 'Card', main: 'card', x: 124, y: 400 },
+    buttonWithIcon('5:8', 'Pay now'),
+  ]), { components: COMPONENTS });
+  const result = await scan('The components script', figma, '5:1');
+  assert.deepEqual(result.groups, ['components']);
+  assert.deepEqual(result.unread, []);
+  const button = { key: 'k-button', name: 'Test Foundation/Button' };
+  assert.deepEqual(result.components, {
+    instances: 7,
+    components: [
+      { key: 'k-primary', name: 'Type=Primary', set: button, remote: true, library: null, instances: 2, nested: 0, nodes: [{ id: '5:2', path: 'A11Y-99 / Place order' }, { id: '5:8', path: 'A11Y-99 / Pay now' }] },
+      { key: 'k-check', name: 'Test Foundation/Icon/Check', set: null, remote: true, library: null, instances: 0, nested: 2, nodes: [
+        { id: 'I5:2;1:1', path: 'A11Y-99 / Place order / Icon', inside: '5:2' }, { id: 'I5:8;1:1', path: 'A11Y-99 / Pay now / Icon', inside: '5:8' },
+      ] },
+      { key: 'k-secondary', name: 'Type=Secondary', set: button, remote: true, library: null, instances: 1, nested: 0, nodes: [{ id: '5:3', path: 'A11Y-99 / Cancel' }] },
+      { key: 'k-promo', name: 'Test Unlisted/Promo Tile', set: null, remote: true, library: null, instances: 1, nested: 0, nodes: [{ id: '5:5', path: 'A11Y-99 / Aside / Promo' }] },
+      { key: 'k-card', name: 'Card', set: null, remote: false, library: null, instances: 1, nested: 0, nodes: [{ id: '5:7', path: 'A11Y-99 / Card' }] },
+    ],
+  });
+});
+
+test('components: a scanned layer inside an instance counts its instances as nested, and an instance whose main component can\'t be read says so', async () => {
+  const figma = fakeFigma(frameWith([
+    buttonWithIcon('5:2', 'Place order'),
+    { type: 'INSTANCE', id: '5:3', name: 'Ghost', main: 'missing', x: 124, y: 270 },
+  ]), { components: COMPONENTS });
+  const inside = await scan('The components script', figma, 'I5:2;1:1');
+  assert.deepEqual(inside.components.components.map((c) => [c.key, c.instances, c.nested, c.nodes[0].inside]), [['k-check', 0, 1, '5:2']]);
+  const whole = await scan('The components script', figma, '5:1');
+  assert.equal(whole.components.instances, 3);
+  assert.deepEqual(whole.components.components.map((c) => c.key), ['k-primary', 'k-check']);
+  assert.deepEqual(whole.unread, [{ what: 'main components', reason: '1 instances\' main components couldn\'t be read, such as 5:3' }]);
+});
+
+test('components: a page is handed back as its frames to scan instead, and over the output limit the frame\'s children are', async () => {
+  const pageResult = await scan('The components script', fakeFigma(frameWith([])), '0:1');
+  assert.deepEqual([pageResult.components, pageResult.groups, pageResult.unread[0].scanInstead], [null, [], ['5:1']]);
+  // `count` components, one instance each, nested 4 groups deep.
+  const many = (count) => {
+    const components = {};
+    const children = Array.from({ length: count }, (_, i) => {
+      components[`c${i}`] = { key: `k-${'x'.repeat(36)}-${i}`, name: `Test Foundation/Component ${i}`, remote: true, parent: null };
+      let layer = { type: 'INSTANCE', id: `6:${i}`, name: `Instance ${i}`, main: `c${i}` };
+      for (let d = 0; d < 4; d++) layer = { type: 'GROUP', id: `7:${i}:${d}`, name: `A long wrapper name ${d}`, children: [layer] };
+      return layer;
+    });
+    return fakeFigma(frameWith(children), { components });
+  };
+  const pathsOf = (result) => result.components.components.map((c) => c.nodes[0].path);
+  const few = await scan('The components script', many(5), '5:1');
+  assert.equal(Math.max(...pathsOf(few).map((p) => p.split(' / ').length)), 6, 'paths were shortened with no need');
+  const more = await scan('The components script', many(70), '5:1');
+  assert.equal(more.components.components.length, 70);
+  assert.equal(Math.max(...pathsOf(more).map((p) => p.split(' / ').length)), 3);
+  const most = await scan('The components script', many(85), '5:1');
+  assert.equal(most.components.components.length, 85);
+  assert.ok(pathsOf(most).every((p) => p === undefined));
+  for (const result of [more, most]) assert.ok(JSON.stringify(result).length <= 18000);
+  const tooMany = await scan('The components script', many(400), '5:1');
+  assert.equal(tooMany.components, null);
+  assert.deepEqual(tooMany.groups, []);
+  assert.match(tooMany.unread[0].reason, /^output limit: 400 components are too many for one call/);
+  assert.equal(tooMany.unread[0].scanInstead.length, 400);
+});
+
+// Two libraries whose collections share a name (#21): Foundation's and Product's Theme.
+const COLLECTIONS = {
+  'C:ftheme': { id: 'C:ftheme', key: 'k-ftheme', name: 'Theme', defaultModeId: 'm1' },
+  'C:ptheme': { id: 'C:ptheme', key: 'k-ptheme', name: 'Theme', defaultModeId: 'm1' },
+  'C:local': { id: 'C:local', key: 'k-local', name: 'Local tokens', defaultModeId: 'm1' },
+  'C:gone': { id: 'C:gone', key: 'k-gone', name: 'Theme', defaultModeId: 'm1' },
+};
+const LIBRARIES = [
+  { key: 'k-ftheme', name: 'Theme', libraryName: 'DRS Test Foundation' },
+  { key: 'k-ptheme', name: 'Theme', libraryName: 'DRS Test Product' },
+];
+const colourVariable = (id, key, name, collection, hex, { remote = true } = {}) => ({
+  id, key, name, resolvedType: 'COLOR', variableCollectionId: collection, remote,
+  valuesByMode: { m1: { ...rgb(hex), a: 1 } }, resolveForConsumer: () => ({ value: { ...rgb(hex), a: 1 } }),
+});
+const VARIABLES = {
+  'V:muted': colourVariable('V:muted', 'k-muted', 'color/surface/muted', 'C:ftheme', '#F2F2F2'),
+  'V:accent': colourVariable('V:accent', 'k-accent', 'color/product/accent', 'C:ptheme', '#0B5FFF'),
+  'V:local': colourVariable('V:local', 'k-localaccent', 'local/accent', 'C:local', '#1F8A70', { remote: false }),
+  'V:gone': colourVariable('V:gone', 'k-gonevar', 'color/old', 'C:gone', '#123456'),
+};
+const boundTo = (id, hex) => solid(rgb(hex), { boundVariables: { color: { type: 'VARIABLE_ALIAS', id } } });
+const swatch = (id, name, fills) => ({ type: 'RECTANGLE', id, name, x: 124, y: 224, width: 48, height: 48, fills });
+const usesOf = (bindings) => Object.fromEntries([...bindings.variables, ...bindings.styles].map((a) => [a.key, [a.uses, a.inComponents, a.nodes.map((x) => x.id)]]));
+
+test('bindings: each variable gives its library, found by its collection key, so two libraries\' collections with the same name are told apart', async () => {
+  const figma = fakeFigma(frameWith([
+    swatch('5:2', 'Foundation theme', [boundTo('V:muted', '#F2F2F2')]),
+    swatch('5:3', 'Product theme', [boundTo('V:accent', '#0B5FFF')]),
+    swatch('5:4', 'Local swatch', [boundTo('V:local', '#1F8A70')]),
+    swatch('5:5', 'Old swatch', [boundTo('V:gone', '#123456')]),
+  ]), { variables: VARIABLES, collections: COLLECTIONS, libraries: LIBRARIES });
+  const { bindings, unread } = await scan('The bindings script', figma, '5:1');
+  assert.deepEqual(bindings.variables.map((v) => [v.name, v.collection.name, v.library, v.remote]), [
+    ['color/surface/muted', 'Theme', 'DRS Test Foundation', true],
+    ['color/product/accent', 'Theme', 'DRS Test Product', true],
+    ['local/accent', 'Local tokens', null, false],
+    ['color/old', 'Theme', null, true],
+  ]);
+  assert.deepEqual(unread, [{ what: 'library names', reason: 'no library name for 1 library variables: their collections aren\'t among figma.teamLibrary\'s' }]);
+});
+
+test('bindings: when figma.teamLibrary fails, no library variable is named, and the result says why', async () => {
+  const figma = fakeFigma(frameWith([swatch('5:2', 'Foundation theme', [boundTo('V:muted', '#F2F2F2')])]),
+    { variables: VARIABLES, collections: COLLECTIONS, libraries: new Error('teamLibrary is not available') });
+  const { bindings, unread } = await scan('The bindings script', figma, '5:1');
+  assert.equal(bindings.variables[0].library, null);
+  assert.deepEqual(unread.map((u) => u.reason), [
+    'figma.teamLibrary failed: teamLibrary is not available',
+    'no library name for 1 library variables: their collections aren\'t among figma.teamLibrary\'s',
+  ]);
+});
+
+test('bindings: each variable and style counts the uses instances take unchanged from their components, and lists the layers that bind it themselves', async () => {
+  const STYLES = { 'S:body': { key: 'k-body', name: 'Test Foundation/Body', type: 'TEXT', remote: true, fontName: { family: 'Inter', style: 'Regular' }, fontSize: 16, lineHeight: { unit: 'PIXELS', value: 24 } } };
+  const figma = fakeFigma(frameWith([
+    swatch('5:2', 'Muted swatch', [boundTo('V:muted', '#F2F2F2')]),
+    { type: 'TEXT', id: '5:3', name: 'Body', x: 124, y: 280, characters: 'Delivery', textStyleId: 'S:body', fills: [boundTo('V:muted', '#F2F2F2')] },
+    { type: 'INSTANCE', id: '5:4', name: 'Promo', main: 'promo', x: 124, y: 320, overrides: [{ id: 'I5:4;1:2', overriddenFields: ['fills'] }], fills: [boundTo('V:muted', '#F2F2F2')], children: [
+      { type: 'TEXT', id: 'I5:4;1:1', name: 'title', x: 132, y: 328, characters: 'Free returns', textStyleId: 'S:body', fills: [boundTo('V:muted', '#F2F2F2')] },
+      swatch('I5:4;1:2', 'Badge', [boundTo('V:accent', '#0B5FFF')]),
+    ] },
+  ]), { variables: VARIABLES, collections: COLLECTIONS, libraries: LIBRARIES, styles: STYLES, components: COMPONENTS });
+  const { bindings } = await scan('The bindings script', figma, '5:1');
+  assert.deepEqual(usesOf(bindings), {
+    'k-muted': [4, 2, ['5:2', '5:3']],
+    'k-accent': [1, 0, ['I5:4;1:2']],
+    'k-body': [2, 1, ['5:3']],
+  });
+  assert.deepEqual(bindings.styles.map((s) => [s.name, s.library]), [['Test Foundation/Body', null]]);
 });

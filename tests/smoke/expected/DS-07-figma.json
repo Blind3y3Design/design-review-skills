@@ -1,17 +1,17 @@
 {
-  "case": "DS-01",
+  "case": "DS-07-figma",
   "findings": [
     {
-      "id": "design-system/raw-value/node:45:18",
+      "id": "design-system/unattributed/component:4bf5425db9d53db51af6a3e411b0b4c24d0fdc89",
       "axis": "design-system",
       "severity": "moderate",
-      "certainty": "confirmed",
+      "certainty": "needs-review",
       "relatedFindings": []
     }
   ],
   "coverage": [
     { "axis": "design-system", "ref": "raw-value", "status": "judged" },
     { "axis": "design-system", "ref": "outside-stack", "status": "judged" },
-    { "axis": "design-system", "ref": "unattributed", "status": "not-applicable" }
+    { "axis": "design-system", "ref": "unattributed", "status": "judged" }
   ]
 }
