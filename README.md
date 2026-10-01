@@ -41,20 +41,20 @@ Every skill is a single portable `SKILL.md` that works inside Figma Design's age
 
 ## Installing (planned)
 
-Eight skills make up the set, published and versioned together:
+The skills are published and versioned together. The first release has seven, and research alignment follows in v0.2 ([#50](https://github.com/Blind3y3Design/design-review-skills/issues/50)):
 
 | Skill | What it does |
 |---|---|
 | `design-review` | The Orchestrator: runs several reviews and merges them into one report |
 | `design-review-library` | Design system adherence: how a design uses its libraries |
 | `design-review-accessibility` | Accessibility |
-| `design-review-research` | Research alignment |
+| `design-review-research` | Research alignment (v0.2) |
 | `design-review-report-writer` | Writes every report (used by the other skills) |
 | `design-review-scanner` | Reads the design and returns Design Facts (used by the other skills) |
 | `design-review-profile` | Finds the team's Review Profile (used by the other skills) |
 | `design-review-figma-writer` | Writes report frames and layer annotations into the Figma file (used by the Report Writer) |
 
-- **Figma Design:** an organisation's skill owners publish all eight to the organisation, in the order in `docs/publishing.md`.
+- **Figma Design:** an organisation's skill owners publish them all to the organisation, in the order in `docs/publishing.md`.
 - **Claude Code, Codex or Cursor:** `npx skills add Blind3y3Design/design-review-skills --all`, then `npx skills update` for new releases. Copying the `skills/` folder works too. The repo's location will change once it moves into Cat's systems.
 
 Nothing is built or edited before publishing: a published skill is the release file as it stands ([ADR 0007](docs/adr/0007-publish-skills-exactly-as-released.md)).
@@ -64,7 +64,7 @@ Nothing is built or edited before publishing: a published skill is the release f
 `skills/`, `reference-documents/` and `tests/` are being built; `docs/setup/` and `docs/publishing.md` are planned.
 
 ```
-skills/<name>/SKILL.md     The eight design review skills, one folder each, holding only SKILL.md
+skills/<name>/SKILL.md     The design review skills, one folder each, holding only SKILL.md
 reference-documents/       WCAG 2.2 criteria reference and the Design system baseline
 tests/smoke/               Smoke test: case list, expected Findings JSON, comparison script, link to the Figma test file
 tests/scripts/             Tests for the scripts in the skills, run against a fake of the Figma Plugin API

@@ -92,13 +92,17 @@ test('a Coverage entry with a different status fails', () => {
   ]);
 });
 
-test('a missing or unexpected Coverage entry fails', () => {
+test('a missing Coverage entry fails, and one the expected JSON does not list is left out', () => {
   const actual = report();
   actual.coverage = [{ axis: 'accessibility', ref: '1.4.11', status: 'judged' }];
-  assert.deepEqual(compareReports(report(), actual).differences, [
-    'Missing Coverage accessibility 1.4.3',
-    'Unexpected Coverage accessibility 1.4.11 (judged)',
-  ]);
+  assert.deepEqual(compareReports(report(), actual).differences, ['Missing Coverage accessibility 1.4.3']);
+});
+
+test('with fullCoverage, a Coverage entry the expected JSON does not list fails', () => {
+  const expected = { ...report(), fullCoverage: true };
+  const actual = report();
+  actual.coverage.push({ axis: 'accessibility', ref: '1.4.11', status: 'judged' });
+  assert.deepEqual(compareReports(expected, actual).differences, ['Unexpected Coverage accessibility 1.4.11 (judged)']);
 });
 
 test('prose and other fields are never compared', () => {
@@ -230,13 +234,11 @@ test('each expected case passes against itself and fails when any compared field
       (r) => { r.findings[0].relatedFindings = ['design-system/DS-RAW/node:5:5']; },
       (r) => { r.findings = []; },
       (r) => { entry(r, '1.4.3').status = 'not-readable'; },
-      (r) => { entry(r, '4.1.2').status = 'not-applicable'; },
     ],
     'A11Y-01-override': [
       (r) => { r.findings[0].severity = 'moderate'; },
       (r) => { r.findings[0].certainty = 'likely'; },
       (r) => { entry(r, '1.4.3').status = 'not-readable'; },
-      (r) => { entry(r, '4.1.2').status = 'not-applicable'; },
     ],
     'CLEAN-01': [
       (r) => { r.findings.push({ id: 'accessibility/1.4.3/node:5:8', axis: 'accessibility', severity: 'moderate', certainty: 'confirmed' }); },
@@ -258,7 +260,6 @@ test('each expected case passes against itself and fails when any compared field
       (r) => { r.findings[1].severity = 'serious'; },
       (r) => { r.findings[0].certainty = 'needs-review'; },
       (r) => { entry(r, '2.5.8').status = 'not-readable'; },
-      (r) => { entry(r, '1.4.3').status = 'judged'; },
     ],
     'A11Y-03-native': [
       (r) => { r.findings[0].id = 'accessibility/2.5.8/node:64:9'; },
