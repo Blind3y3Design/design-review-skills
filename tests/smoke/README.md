@@ -10,9 +10,9 @@ It must pass before every release, and after Figma changes its agent or its help
 
 **Page convention.** Every case is one top-level frame on the **Cases** page (`5:2`). The frame's name is its case id, such as `A11Y-01`, and its content is made up. Each case prefix (A11Y, DS, X, RES, CLEAN, RUN) has a row of its own. Add a case at the end of its prefix's row, and start a new prefix as a row below the others. Reviews scan whole frames, so keep a case's frame free of anything the case doesn't need. A variant of a case, such as `A11Y-01-override`, runs on its base case's frame with other settings. Leave "Page 1", the file's original page, empty.
 
-**The Review Profile page** (`16:2`) holds the test profile as one text layer, a copy of [`profiles/smoke-test-profile.md`](profiles/smoke-test-profile.md). Its Design System Layers are DRS Test Foundation, then DRS Test Product, and its Product context is `Target platforms: Web`. The other profiles in `profiles/` are the same profile with one change each: the override profiles add a Severity Overrides section, [`profiles/local-folder.md`](profiles/local-folder.md) a Report settings section, [`profiles/native.md`](profiles/native.md) `Target platforms: iOS`, and [`profiles/coverage-only.md`](profiles/coverage-only.md) `Missing annotations: coverage only`. Keep them all the same otherwise: a ticket that adds a profile section, such as Design System Layers, adds it to each.
+**The Review Profile page** (`16:2`) holds the test profile as one text layer, a copy of [`profiles/smoke-test-profile.md`](profiles/smoke-test-profile.md). Its Design System Layers are DRS Test Foundation, then DRS Test Product, and its Product context is `Target platforms: Web`. The other profiles in `profiles/` are the same profile with one change each: the override profiles add a Severity Overrides section, [`profiles/local-folder.md`](profiles/local-folder.md) a Report settings section, [`profiles/annotate.md`](profiles/annotate.md) one with `Annotate layers: on`, [`profiles/native.md`](profiles/native.md) `Target platforms: iOS`, and [`profiles/coverage-only.md`](profiles/coverage-only.md) `Missing annotations: coverage only`. Keep them all the same otherwise: a ticket that adds a profile section, such as Design System Layers, adds it to each.
 
-**Annotations on case frames.** A case frame carries the native annotations, in the Accessibility category, that the criteria it triggers need, other than the one the case is about. A11Y-04's photo, for instance, has no text alternative, but its heading is annotated, so the case raises only the 1.1.1 Finding.
+**Annotations on case frames.** A case frame carries the native annotations, in the Accessibility category, that the criteria it triggers need, other than the one the case is about. A11Y-04's photo, for instance, has no text alternative, but its heading is annotated, so the case raises only the 1.1.1 Finding. Case frames hold none of the review's own annotations, in the `Design review: <axis>` categories: delete any that a run leaves, unless the case needs them.
 
 ## Running a case
 
@@ -64,6 +64,7 @@ Each built case has a frame on the Cases page and, if its result is a report, an
 | A11Y-06 | Reflow with no section marked for it: a 1024 × 480 screen of text, with its heading, page title, ways to find it and language annotated | `38:5` | [`A11Y-06.json`](expected/A11Y-06.json): no Findings. 1.4.10 `needs-section`, whose note names the title "Reflow". 1.3.1, 2.4.2, 2.4.5 and 3.1.1 `judged` from their annotations, and 1.3.3 from the tracking instruction |
 | A11Y-07 | A missing reading-order annotation that affects 1.3.2 and 2.4.3: two plan cards side by side, each with a bordered button, in a 640 × 180 frame. Its headings and structure are annotated | `38:9` | [`A11Y-07.json`](expected/A11Y-07.json): one Finding on the frame, standard 1.3.2, `serious`, `needs-review`, whose evidence names 2.4.3. 1.3.2 and 2.4.3 `needs-annotation`, 2.4.7 `needs-section`, 3.2.1 `needs-state`, and 1.3.1, 1.4.11 and 2.5.8 `judged` |
 | A11Y-08 | A "Focus states" section whose focus indicator fails 1.4.11: a button's `Default` and `Focused` variants, the focused one with a 2 px outside `#C7C7C7` stroke on white (1.69:1) | `38:20` | [`A11Y-08.json`](expected/A11Y-08.json): one 1.4.11 Finding on the `State=Focused` variant (`38:24`), `moderate`, `confirmed`. 1.4.1 (the focused state), 1.4.11, 2.4.7 and 2.5.8 `judged`, 3.2.1 `needs-state` |
+| A11Y-09 | Layer annotations: A11Y-04's title and photo, with `#8A8A8A` 16 px body text (`109:4070`) between them, which carries a designer's own annotation in the Content category | `109:4067` | [`A11Y-09.json`](expected/A11Y-09.json): a 1.1.1 missing-annotation Finding on the photo (`109:4069`), `serious`, `needs-review`, and a 1.4.3 Finding on the body text, `moderate`, `confirmed`. Coverage as for A11Y-04. Its annotation runs are in Layer annotation checks |
 | DS-01 | Raw hex fill matching exactly one stack token: a `Raw swatch` filled `#E0115F`, beside a `Token swatch` bound to Foundation's `signal/500` (`#E0115F`), on a frame bound to `color/surface/default` | `45:16` | [`DS-01.json`](expected/DS-01.json): one `raw-value` Finding on the raw swatch (`45:18`), `moderate`, `confirmed`. Coverage: `raw-value` `judged`. Checked by hand: the fix names `signal/500` |
 | DS-01-no-baseline | DS-01 with the profile given at run time and no baseline location, while the baseline's default link can't be read. Until the baseline is on `main`, that's any run without its location. After that, block the link for the run | `45:16` | [`DS-01-no-baseline.json`](expected/DS-01-no-baseline.json): no Findings, and a whole-axis `skipped` entry whose reason says the baseline couldn't be read |
 | DS-02 | Raw value no token matches: a `Raw swatch` filled `#7A3EF0`, beside a `Token swatch` bound to `color/action/primary` (`#0B5FFF`) | `45:19` | [`DS-02.json`](expected/DS-02.json): one `raw-value` Finding on the raw swatch (`45:21`), `moderate`, `confirmed`. Coverage as for DS-01. Checked by hand: the fix names no token |
@@ -136,4 +137,29 @@ await page.loadAsync();
 const frames = [...page.children].reverse().map((n) => ({ id: n.id, name: n.name, x: n.x, y: n.y, jsonLength: n.getSharedPluginData('designreview', 'report').length }));
 const frame = FRAME_ID ? await figma.getNodeByIdAsync(FRAME_ID) : page.children[page.children.length - 1];
 return { page: page.id, frames, json: frame ? JSON.parse(frame.getSharedPluginData('designreview', 'report') || 'null') : null };
+```
+
+## Layer annotation checks
+
+Checked by hand in an external agent, because the JSON seam doesn't say what was written on the canvas. These runs ask for annotations, with "Annotate the layers." or [`profiles/annotate.md`](profiles/annotate.md), and still end with "Don't save the report." Read a frame's annotations back with the script below. Delete the review's annotations once a check has passed, so the case frames hold none.
+
+| Check | Set-up | Expected |
+|---|---|---|
+| Marking Findings | A11Y-09 with the test profile and "Annotate the layers." | Passes `A11Y-09`. Body and the photo each hold one annotation in `Design review: Accessibility`, whose text starts with the Finding's short id. Body's Content annotation and the frame's heading annotation are as they were. The Annotated line says 2 Findings on 2 layers, and, in a file without the category, that the run added it |
+| A fixed Finding | Then Body's fill set to `#5C5C5C` (6.86:1), and A11Y-09 run with `profiles/annotate.md` | Only the 1.1.1 Finding. Body holds only its Content annotation, and the photo one review annotation, not two. The Annotated line says 2 annotations from earlier reviews were cleared. Set Body back to `#8A8A8A` afterwards |
+| A file holding review annotations | A11Y-04 with "Annotate the layers.", then again without it | Both pass `A11Y-04`: the review's annotation on the photo isn't read as its text alternative, and the facts count it in `excluded`. The second run has no Annotated line and leaves the annotation as it is |
+| Another axis | DS-01, run with `design-review-library` and "Annotate the layers." | Passes `DS-01`. Raw swatch holds one annotation in `Design review: Design system adherence` |
+| Without edit access | A11Y-01 with "Annotate the layers.", run by someone with view access to the test file | The Annotated line starts "Not annotated:", with Figma's error, and no annotation in the file changes |
+
+To read the annotations back, run this through `use_figma` on the test file, with the case frame's id in `FRAME_ID`. It lists each layer in the frame that holds annotations, with each annotation's category and text.
+
+```js
+const FRAME_ID = '109:4067';
+const frame = await figma.getNodeByIdAsync(FRAME_ID);
+let page = frame;
+while (page.type !== 'PAGE') page = page.parent;
+await page.loadAsync();
+const labels = new Map((await figma.annotations.getAnnotationCategoriesAsync()).map((c) => [c.id, c.label]));
+const layers = [frame, ...frame.findAll()].filter((n) => 'annotations' in n && n.annotations.length);
+return layers.map((n) => ({ id: n.id, name: n.name, annotations: n.annotations.map((a) => ({ category: labels.get(a.categoryId) || null, text: a.labelMarkdown || a.label || '' })) }));
 ```
