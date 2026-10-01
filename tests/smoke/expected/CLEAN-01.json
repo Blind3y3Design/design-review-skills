@@ -1,5 +1,6 @@
 {
   "case": "CLEAN-01",
+  "fullCoverage": true,
   "findings": [],
   "coverage": [
     { "axis": "accessibility", "ref": "1.1.1", "status": "not-applicable" },

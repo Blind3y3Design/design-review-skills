@@ -41,13 +41,14 @@ export function readReport(text) {
 
 // With an axis, only that axis's Findings and Coverage entries are compared, as when a merged report is checked against a one-axis case.
 // Its Findings' relatedFindings are left out, since they only link to other axes.
+// Coverage is compared on the entries the expected JSON lists. A report's other entries fail only when it sets "fullCoverage": true.
 export function compareReports(expected, actual, { axis } = {}) {
   const absent = ['findings', 'coverage'].filter((list) => !Array.isArray(actual[list]));
   if (absent.length) return { pass: false, differences: absent.map((list) => `The report has no "${list}" array`) };
   const [want, got] = axis ? [oneAxis(expected, axis), oneAxis(actual, axis)] : [expected, actual];
   const differences = [
     ...matchByKey('Finding', want.findings, got.findings, findings),
-    ...matchByKey('Coverage', want.coverage, got.coverage, coverage),
+    ...matchByKey('Coverage', want.coverage, got.coverage, coverage, { extraFails: expected.fullCoverage === true }),
   ];
   return { pass: differences.length === 0, differences };
 }
@@ -81,7 +82,8 @@ const coverage = {
 };
 
 // Matches expected and actual entries by key. A key the report repeats is reported once, and not compared further.
-function matchByKey(kind, expectedEntries, actualEntries, { keyOf, describe, differ }) {
+// An entry the expected JSON doesn't list fails unless extraFails is false.
+function matchByKey(kind, expectedEntries, actualEntries, { keyOf, describe, differ }, { extraFails = true } = {}) {
   const differences = [];
   const actualByKey = new Map();
   const repeated = new Set();
@@ -102,7 +104,7 @@ function matchByKey(kind, expectedEntries, actualEntries, { keyOf, describe, dif
     else differences.push(...differ(want, got).map((d) => `${kind} ${key}: ${d}`));
   }
   for (const [key, got] of actualByKey) {
-    if (!expectedKeys.has(key)) differences.push(`Unexpected ${kind} ${key} (${describe(got)})`);
+    if (extraFails && !expectedKeys.has(key)) differences.push(`Unexpected ${kind} ${key} (${describe(got)})`);
   }
   return differences;
 }
