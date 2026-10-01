@@ -81,7 +81,7 @@ Each failure becomes part of a Finding:
 - **Locations:** `{ "kind": "node", "fileKey", "nodeId", "layerPath" }` for each layer in the facts, after the library component's `{ "kind": "component", "key", "name", "library" }` when the failure is the design system's. When a facts group's `count` is more than its sample `nodes`, the evidence says how many more layers share it.
 - **Standard:** `{ "source": "WCAG <version>", "ref": "<number>", "url": "<its W3C line>" }`, with the url the reference gives for the target's version. For an additional requirement, `{ "source": "Additional requirement", "ref": "<id>" }`.
 
-Judging is done when every criterion that applies to the target (or an uncovered target itself), every above-target check that's on, and every additional requirement has one Coverage entry, and every failure, measurement that couldn't be made, and missing annotation (unless `coverage only`) is in a Finding, with the owner of every measured failure settled. The reference's header says how many criteria apply at each target it covers: check your Coverage against it.
+Judging is done when every criterion that applies to the target (or an uncovered target itself), every above-target check that's on, and every additional requirement has one Coverage entry, and every failure, measurement that couldn't be made, and missing annotation (unless `coverage only`) is in a Finding, with every measured failure given its owner by Whose failure it is. The reference's header says how many criteria apply at each target it covers: check your Coverage against it.
 
 ## 5. Report
 
@@ -101,6 +101,29 @@ Use the skill `design-review-report-writer`, handing over:
 
 The review is done when the Report Writer has delivered the report. In `json only` mode, it's done when you've handed the Report Writer's reply, its notes and JSON block, back to the skill that ran this review.
 
+## Whose failure it is
+
+A failure measured from layers, such as a contrast ratio or a size, is the design system's when it exists in the library as published, and the designer's otherwise. A missing annotation, and a judgement of wording or meaning, are the designer's. A library is any component with `remote: true`, whatever the profile's Design System Layers say. Settle each failing layer's owner from the facts' `components`, taking the first line that fits:
+
+1. **The designer's, outside a library instance.** An id shows the instances around a layer: inside the instance `152:62`, a layer's id looks like `I152:62;1004:35`, and inside the instance `12:3` nested in it, `I152:62;12:3;45:6`. A layer's instance is the first id in its chain, the outermost, or the layer itself when it is an instance listed in `components`. A layer in no instance, in a frame detached from one, or in an instance whose component has `remote: false`, is the designer's.
+2. **The designer's, on a surface it placed.** The layer its colour is measured against (`background.node` or `against.node`, the group's first layer's, which stands for every layer in the group) sits outside the instance: a library component placed on a surface that makes it fail.
+3. **The designer's, by an override.** The facts' `overrides` list, by `node.id`, a change on a failing property of the failing layer or the layer behind it, or a swapped nested instance (`component`) holding the failing layer. A change with `carried: true` came from the library's own component, so it falls to line 5.
+   - **The failing properties** are what the measurement reads. For a contrast ratio: the `fill` or `stroke` of the failing layer and of the layer behind it, `visible` of the layer behind it, `opacity` of each layer from the failing layer up to and including the instance, and a text layer's font, size and weight (`text`, apart from its words, `content`). For a size: `size`, `layout` and `spacing`. For any other measurement: every property.
+   - The evidence names the instance's component and the properties overridden.
+4. **The designer's, with the override state unsettled.** A change on those layers in `variables` or `other`, or with an `uncertain` reason, or `components` or the instance's main component among the facts' `unread`. The Finding's Root Cause is `node:<id>` of the failing layer, whatever its colour is bound to, instead of step 4's `variable` or `style`. Its evidence says "possibly inherited from <component>" with the reason, such as "its `locked` and `exportSettings` changed, which the facts can't class".
+5. **The system's.** Any other layer: its instance has no change on a failing property. Changes to other properties, such as a label set through a component property, or the resize that follows it, leave it here.
+
+Only the sampled `nodes` of a group are checked. One Finding per owner: a group whose sampled layers have different owners gives each owner's layers a Finding of their own.
+
+**The system's failure:**
+
+- **Root Cause:** `component:<key>` of the outermost instance's main component, the set's key for a variant, with a Finding per component per criterion.
+- **Evidence:** the criterion's evidence, then that the failure is in the published component, how many instances take it unchanged, and the properties with no override.
+- **Fix:** names the library as the owner, from the component's `library` in the facts, such as "Owned by <library>: change `<component>` so its text meets 4.5:1." With `library` null, it names the component and says its library couldn't be named. Then the criterion's fix.
+- **Severity** and **Certainty** are the same as for any Finding of the criterion, as step 4 gives them.
+
+**The designer's failure** is written as step 4 says, apart from line 4's Root Cause.
+
 ## Run by another skill
 
 Another skill, such as `design-review`, can run this review as one part of a larger one. It loads this skill first, for two lines:
@@ -116,28 +139,6 @@ Then it settles the run, asks the user everything, and hands over:
 - anything the user gave at run time for this review, such as a criteria reference location or a WCAG target
 
 The user has been asked everything already, so ask nothing. Where you'd ask what to check against, use what the question is pre-filled with, set `from` to `default`, and keep the note you'd keep for the report. When a fact group you need is neither read in the handed-over facts nor in their `unread`, scan for that group yourself, as step 3 describes.
-
-## Whose failure it is
-
-A failure measured from layers, such as a contrast ratio or a size, is the design system's when it exists in the library as published, and the designer's otherwise. A missing annotation, and a judgement of wording or meaning, are the designer's. Settle each failing layer's owner from the facts' `components`:
-
-1. **Find its instance.** An id shows the instances around a layer: inside the instance `152:62`, a layer's id looks like `I152:62;1004:35`, and inside the instance `12:3` nested in it, `I152:62;12:3;45:6`. A layer's instance is the first id in its chain, or the layer itself when it is an instance listed in `components`. A layer in no instance, in a frame detached from one, or in an instance whose component has `remote: false`, is the designer's.
-2. **Find what changed.** The failing property is what the measurement reads: for a contrast ratio, the `fill` or `stroke` of the failing layer and of the layer behind it (`background.node` or `against.node`, which stands for every layer in a group), their `opacity`, and a text layer's `text`; for a size, `size`, `layout` and `spacing`; for any other measurement, every property. Look up those layers in the facts' `overrides`, by `node.id`:
-   - **A layer behind it outside the instance** makes the failure the designer's: a library component placed on a surface that makes it fail.
-   - **A change on a failing property,** or a swapped nested instance (`component`) holding the layer, makes it the designer's: an override. A change with `carried: true` came from the library's own component, so it isn't one.
-   - **A change in `variables` or `other`, or with an `uncertain` reason,** or `components` or its main components among the facts' `unread`, means you can't tell whether the failing property was overridden. The Finding is the designer's, with `node:<id>` of the failing layer as its Root Cause whatever its colour is bound to, and its evidence says "possibly inherited from <component>" with the reason, such as "its `locked` and `exportSettings` changed, which the facts can't class".
-   - **No change on a failing property** makes it the system's: an unmodified instance. Changes to other properties, such as a label set through a component property, don't count.
-
-A group of layers whose sample `nodes` is shorter than its `count` is settled by the sample, and the evidence says how many more weren't checked. Layers of one group can have different owners: give each owner's layers their own Finding, since each has its own Root Cause.
-
-**The system's failure:**
-
-- **Root Cause:** `component:<key>` of the instance's main component, the set's key for a variant. One Finding per component per criterion, with every failing layer in its instances in `locations`, after the component.
-- **Evidence:** the criterion's evidence, then that the failure is in the published component, how many instances take it unchanged, and the properties with no override.
-- **Fix:** names the library as the owner, from the component's `library` in the facts, such as "Owned by DRS Test Product: change `Test Product/Badge` so its text meets 4.5:1." With `library` null, name the component and say its library couldn't be named. Then the criterion's fix.
-- **Severity** and **Certainty** are the criterion's, as for any Finding: being inherited lowers neither.
-
-**The designer's failure** is written as step 4 says. For an override, the evidence also names the instance's component and the properties overridden.
 
 ## Annotations and states
 
