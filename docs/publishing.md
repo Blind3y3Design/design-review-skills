@@ -45,7 +45,7 @@ A release sets the version in three places in every skill. `scripts/release.mjs`
    4. `design-review`
 
    Later releases replace the file's skills and use **Publish changes**. Figma Community publishing waits for a stable 1.0.
-6. **Check the published set.** Run `/design-review` in Figma Design's agent on a smoke case frame, such as X-01 with the test profile. The report's Skills line must name the new version, and the report must carry no warning that a skill is at a different version. That line is the Orchestrator's own version, and the warning is the only per-skill check in the report, so also open each of the seven published skills in Figma and check its `Version` line.
+6. **Check the published set.** In Figma Design's agent, ask `/design-review` which versions of the review skills are installed (RUN-05 in the smoke test). It must list the seven skills, each at the new version, `design-review-research` as not installed until v0.2, and end "All installed skills are at <version>." Then run `/design-review` on a smoke case frame, such as X-01 with the test profile: the report's Skills line must name the new version, and the report must carry no version warning.
 7. **Start the next version.** On a branch from `main`:
    ```
    node scripts/release.mjs set <next>-dev
