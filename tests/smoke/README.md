@@ -100,6 +100,7 @@ Each built case has a frame on the Cases page and, if its result is a report, an
 | Every case through `/design-review` | Each case above that has an expected file, run as `/design-review` with all reviews, the case's profile and its Reference Documents | Each passes its case with `--axis` set to the case's axis. The other axis's results on the frame aren't compared |
 | One review named | A11Y-01 as `/design-review` with "just accessibility", and DS-01 with "just design system adherence" | Hands off to the Review Skill in `full report` mode, so each passes its case without `--axis`, as the Review Skill on its own does |
 | One scan | Every run with two reviews | The scanner is used once for the run, one call per node and fact group, and no Review Skill scans |
+| No review set up | X-01 as `/design-review` with "just research alignment", which the test profile doesn't set up | Stops before the scan, saying research alignment isn't set up and which reviews the profile covers. No report |
 
 ## Review Profile checks
 
