@@ -35,7 +35,10 @@ function setVersion(root, version) {
   const errors = [];
   for (const folder of skillFolders(root)) {
     const file = skillPath(root, folder);
-    if (!existsSync(file)) continue;
+    if (!existsSync(file)) {
+      errors.push(`${folder}: has no SKILL.md`);
+      continue;
+    }
     let text = readFileSync(file, 'utf8');
     if (!META_VERSION.test(text)) errors.push(`${folder}: no metadata.version`);
     if (!BODY_VERSION.test(text)) errors.push(`${folder}: no "Version … of the design review skills" line`);
@@ -89,8 +92,8 @@ function checkRelease(root, { release = false, version = null } = {}) {
 
 function installCheck(root, source) {
   const scratch = mkdtempSync(join(tmpdir(), 'install-check-'));
-  const cli = process.env.SKILLS_CLI || 'npx -y skills';
-  const run = spawnSync(`${cli} add ${JSON.stringify(source)} --all`, { cwd: scratch, shell: true, encoding: 'utf8' });
+  const [bin, ...prefix] = (process.env.SKILLS_CLI || 'npx -y skills').split(' ');
+  const run = spawnSync(bin, [...prefix, 'add', source, '--all'], { cwd: scratch, encoding: 'utf8' });
   if (run.status !== 0) return { problems: [`the skills CLI failed with status ${run.status}: ${(run.stderr || run.stdout || '').trim().split('\n').pop()}`], scratch };
   const dir = join(scratch, '.agents', 'skills');
   const installed = existsSync(dir) ? readdirSync(dir, { withFileTypes: true }).filter((e) => e.isDirectory() || e.isSymbolicLink()).map((e) => e.name).sort() : [];
@@ -116,7 +119,13 @@ function main(argv) {
   const args = [...argv];
   let root = fileURLToPath(new URL('..', import.meta.url));
   const at = args.indexOf('--root');
-  if (at !== -1) root = args.splice(at, 2)[1] ?? '';
+  if (at !== -1) {
+    root = args.splice(at, 2)[1];
+    if (!root) {
+      console.error(USAGE);
+      return 2;
+    }
+  }
   const [command, ...rest] = args;
   const usage = () => {
     console.error(USAGE);
@@ -138,7 +147,7 @@ function main(argv) {
     const others = rest.filter((a) => a !== '--release');
     if (others.length > 1 || (others[0] && !SEMVER.test(others[0]))) return usage();
     const result = checkRelease(root, { release, version: others[0] || null });
-    return report('check', result.problems, `${result.count} skills at ${result.setAt}, links pinned to ${refFor(result.setAt)}`);
+    return report('check', result.problems, result.setAt ? `${result.count} skills at ${result.setAt}, links pinned to ${refFor(result.setAt)}` : '');
   }
   if (command === 'install-check') {
     if (rest.length !== 1) return usage();

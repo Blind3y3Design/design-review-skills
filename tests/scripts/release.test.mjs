@@ -151,3 +151,44 @@ test('install-check says what to give it when it is not given a source', () => {
   assert.equal(result.status, 2);
   assert.match(result.stderr, /Usage/);
 });
+
+test('check fails, without crashing, on a root with no skills or no versions', () => {
+  const result = run(makeRoot([]), ['check']);
+  assert.equal(result.status, 1);
+  assert.match(result.stdout, /^FAIL/);
+  assert.match(result.stdout, /no skills found/);
+  assert.equal(result.stderr, '');
+});
+
+test('a --root without a folder prints the usage', () => {
+  const result = spawnSync(process.execPath, [script, 'check', '--root'], { encoding: 'utf8' });
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /Usage/);
+});
+
+test('set and check read a SKILL.md saved with Windows line endings', () => {
+  const root = makeRoot([{ name: 'a', link: 'main' }]);
+  const file = join(root, 'skills', 'a', 'SKILL.md');
+  writeFileSync(file, skillText({ name: 'a', link: 'main' }).replace(/\n/g, '\r\n'));
+  assert.equal(run(root, ['check']).status, 0);
+  assert.equal(run(root, ['set', '0.2.0']).status, 0);
+  assert.equal(read(root, 'a'), skillText({ name: 'a', version: '0.2.0', link: 'v0.2.0' }).replace(/\n/g, '\r\n'));
+});
+
+test('set stops and changes nothing when a skill folder has no SKILL.md', () => {
+  const root = makeRoot([{ name: 'a' }], { 'skills/empty/README.md': 'x' });
+  const result = run(root, ['set', '0.2.0']);
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /empty: has no SKILL.md/);
+  assert.equal(read(root, 'a'), skillText({ name: 'a' }));
+});
+
+test('install-check passes a source with a space or a dollar sign to the CLI as it was given', () => {
+  const root = makeRoot([{ name: 'a' }]);
+  const log = join(mkdtempSync(join(tmpdir(), 'args-')), 'args.txt');
+  const cli = join(mkdtempSync(join(tmpdir(), 'stub-')), 'cli.sh');
+  writeFileSync(cli, `#!/bin/sh\nprintf '%s\\n' "$2" > "${log}"\nmkdir -p .agents/skills/a\n`);
+  chmodSync(cli, 0o755);
+  assert.equal(run(root, ['install-check', 'my dir/$HOME'], { SKILLS_CLI: cli }).status, 0);
+  assert.equal(readFileSync(log, 'utf8').trim(), 'my dir/$HOME');
+});

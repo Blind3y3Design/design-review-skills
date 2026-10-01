@@ -2,14 +2,14 @@
 
 The skills are released together, under one version, and published exactly as they stand in the release ([ADR 0007](adr/0007-publish-skills-exactly-as-released.md)). A skill owner follows this checklist for each release. It needs Node 18 or later, the [`gh` CLI](https://cli.github.com/) logged in to this repo, push rights, and publishing rights for skills in the owning team's Figma file.
 
-The first release has seven skills: the Orchestrator `design-review`, the Review Skills `design-review-accessibility` and `design-review-library`, the Report Writer `design-review-report-writer`, the Design Scanner `design-review-scanner`, the Profile Finder `design-review-profile` and the Figma Writer `design-review-figma-writer`. `design-review-research` joins with research alignment ([#50](https://github.com/Blind3y3Design/design-review-skills/issues/50)): add it to the publishing order below, between the Report Writer and the Orchestrator, when it does.
+The first release has seven skills: the Orchestrator `design-review`, the Review Skills `design-review-accessibility` and `design-review-library`, the Report Writer `design-review-report-writer`, the Design Scanner `design-review-scanner`, the Profile Finder `design-review-profile` and the Figma Writer `design-review-figma-writer`. `design-review-research` joins with research alignment ([#50](https://github.com/Blind3y3Design/design-review-skills/issues/50)): publish it with the other Review Skills, after the Report Writer and before the Orchestrator, when it does.
 
 ## Where the version lives
 
 A release sets the version in three places in every skill. `scripts/release.mjs` writes and checks all three.
 
 - **`metadata.version`** in the frontmatter.
-- **The `Version <version> of the design review skills.` line** under the title. Claude Code and Figma's agent strip a skill's frontmatter when they load it, so this line is what a skill reads at run time. Every report's `run.setVersion` comes from it, and so does the Orchestrator's check that the skills it invokes are at one version.
+- **The `Version <version> of the design review skills.` line** under the title. Claude Code strips a skill's frontmatter when it loads it, so this line is what a skill reads at run time. Every report's `run.setVersion` comes from it, and so does the Orchestrator's warning that a skill it invokes is at a different version (ADR 0007).
 - **The default Reference Document links**, `https://raw.githubusercontent.com/Blind3y3Design/design-review-skills/<ref>/reference-documents/…`. A release pins `<ref>` to its tag, `v<version>`, so a published skill reads the documents it was released with. A version ending in `-dev` uses `main`.
 
 ## Checklist
@@ -37,6 +37,7 @@ A release sets the version in three places in every skill. `scripts/release.mjs`
      ```
    - **Install check.** `node scripts/release.mjs install-check Blind3y3Design/design-review-skills` runs `npx skills add Blind3y3Design/design-review-skills --all` in a scratch project and fails unless exactly the skills in `skills/` arrive: all seven, and none of the vendored development skills in `.agents/skills/`. The repo's default branch must be at the release commit when it runs, so run it before step 7.
    - **Update check,** from the second release on: in a scratch project installed from the previous release, `npx skills update` brings every skill to the new version. Look at the `Version` line in `.agents/skills/<name>/SKILL.md`.
+   - Record the install check's result, and the update check's, in the release notes.
 5. **Publish by hand in Figma.** Use one dedicated file in the owning team, and publish to the organisation. Take each skill's `SKILL.md` from the tag (`git show v<version>:skills/<name>/SKILL.md`), unedited. Publish in dependency order, so a skill is published after the skills it invokes:
    1. `design-review-figma-writer`, `design-review-profile` and `design-review-scanner`, which invoke no other skill
    2. `design-review-report-writer`
@@ -44,7 +45,7 @@ A release sets the version in three places in every skill. `scripts/release.mjs`
    4. `design-review`
 
    Later releases replace the file's skills and use **Publish changes**. Figma Community publishing waits for a stable 1.0.
-6. **Check the published set.** Run `/design-review` in Figma Design's agent on a smoke case frame, such as X-01 with the test profile. The report's Skills line must name the new version, and the report must carry no warning that a skill is at a different version. Then open each of the seven published skills in Figma and check its `Version` line.
+6. **Check the published set.** Run `/design-review` in Figma Design's agent on a smoke case frame, such as X-01 with the test profile. The report's Skills line must name the new version, and the report must carry no warning that a skill is at a different version. That line is the Orchestrator's own version, and the warning is the only per-skill check in the report, so also open each of the seven published skills in Figma and check its `Version` line.
 7. **Start the next version.** On a branch from `main`:
    ```
    node scripts/release.mjs set <next>-dev
