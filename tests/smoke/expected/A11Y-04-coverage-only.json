@@ -1,16 +1,8 @@
 {
-  "case": "A11Y-01",
-  "findings": [
-    {
-      "id": "accessibility/1.4.3/node:5:5",
-      "axis": "accessibility",
-      "severity": "moderate",
-      "certainty": "confirmed",
-      "relatedFindings": []
-    }
-  ],
+  "case": "A11Y-04-coverage-only",
+  "findings": [],
   "coverage": [
-    { "axis": "accessibility", "ref": "1.1.1", "status": "not-applicable" },
+    { "axis": "accessibility", "ref": "1.1.1", "status": "needs-annotation" },
     { "axis": "accessibility", "ref": "1.2.1", "status": "not-applicable" },
     { "axis": "accessibility", "ref": "1.2.2", "status": "not-applicable" },
     { "axis": "accessibility", "ref": "1.2.3", "status": "not-applicable" },
@@ -25,7 +17,7 @@
     { "axis": "accessibility", "ref": "1.4.2", "status": "not-applicable" },
     { "axis": "accessibility", "ref": "1.4.3", "status": "judged" },
     { "axis": "accessibility", "ref": "1.4.4", "status": "needs-code" },
-    { "axis": "accessibility", "ref": "1.4.5", "status": "not-applicable" },
+    { "axis": "accessibility", "ref": "1.4.5", "status": "judged" },
     { "axis": "accessibility", "ref": "1.4.10", "status": "not-applicable" },
     { "axis": "accessibility", "ref": "1.4.11", "status": "not-applicable" },
     { "axis": "accessibility", "ref": "1.4.12", "status": "needs-code" },
