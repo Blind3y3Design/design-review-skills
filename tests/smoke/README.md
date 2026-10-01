@@ -93,12 +93,12 @@ Each built case has a frame on the Cases page and, if its result is a report, an
 
 ## Orchestrator checks
 
-`/design-review` runs the Review Skills in JSON-only mode from one shared scan, then merges their reports. These checks show that gives each axis the same results as its Review Skill on its own.
+`/design-review` runs the Review Skills in `json only` mode from one shared scan, then merges their reports. These checks show that gives each axis the same results as its Review Skill on its own.
 
 | Check | Set-up | Expected |
 |---|---|---|
 | Every case through `/design-review` | Each case above that has an expected file, run as `/design-review` with all reviews, the case's profile and its Reference Documents | Each passes its case with `--axis` set to the case's axis. The other axis's results on the frame aren't compared |
-| One review named | A11Y-01 as `/design-review` with "just accessibility", and DS-01 with "just design system adherence" | Hands off to the Review Skill in full-report mode, so each passes its case without `--axis`, as the Review Skill on its own does |
+| One review named | A11Y-01 as `/design-review` with "just accessibility", and DS-01 with "just design system adherence" | Hands off to the Review Skill in `full report` mode, so each passes its case without `--axis`, as the Review Skill on its own does |
 | One scan | Every run with two reviews | The scanner is used once for the run, one call per node and fact group, and no Review Skill scans |
 
 ## Review Profile checks

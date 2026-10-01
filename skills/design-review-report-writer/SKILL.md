@@ -15,7 +15,7 @@ Turns a review's Findings and Coverage into its report: Markdown for people, the
 
 The calling skill hands over:
 
-- `mode`: `full report`, the default, or `json only`. A Review Skill that another skill runs as part of a larger review asks for `json only`, and the skill running it merges the JSON into one full report. Only that full report is delivered.
+- `mode`: `full report`, the default, or `json only`, for a review whose JSON another skill merges into its own full report.
 - `run`: `date`, `scope` (`fileKey`, and `nodes` as `{ id, name }`), `runtime`, `setVersion`, `factsVersion`, `factGroups`, and `settings` (the settings this run used that no Review Profile gave, or null).
 - `profile`: `{ name, location, lastUpdated }` of the Review Profile the run used, or null.
 - `references[]`: `{ name, version, location }` for each Reference Document used.
@@ -30,7 +30,7 @@ The calling skill hands over:
 1. **Check the hand-over.** Every Finding has each required field, and every axis, Severity, Certainty and Coverage status is one from the lists below. If anything is missing or out of range, write no report. Tell the calling skill which Finding or entry and which field, so it can hand over again.
 2. **Give each Finding its id** from its `rootCause`, as Finding ids below describes, and each `node` location its `url`. The `rootCause` itself stays out of the report.
 3. **Link Findings across axes.** Findings on different axes that share a Root Cause stay separate, and each lists the ids of the others in its `relatedFindings`.
-4. **Write the report JSON** as described below. In `json only` mode, stop here: hand back the `notes`, if any, as a list headed "Notes:", then the report JSON in one fenced `json` block, and nothing else. Write no Markdown and deliver nothing.
+4. **Write the report JSON** as described below. In `json only` mode, stop here, and hand back only the `notes`, if any, as a list headed "Notes:", then the report JSON in one fenced `json` block.
 5. **Write the Markdown,** in the layout below, ending with the JSON in one fenced `json` block.
 6. **Deliver** the report, as Delivery below describes: save it, then show the whole report in the chat.
 

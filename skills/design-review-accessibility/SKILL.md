@@ -46,7 +46,7 @@ From the document's header, note its name, version and location for the report, 
 
 Use the skill `design-review-scanner`. Give it the scope's node ids, the runtime, and the fact groups to judge from: those on the `Facts` lines of the criteria you'll judge in step 4, and those holding what each additional requirement is about. Judge from the Design Facts it hands back.
 
-When another skill handed over Design Facts, the design is already scanned: judge from those.
+When another skill handed over Design Facts, the design is already scanned: judge from those, as Run by another skill describes.
 
 ## 4. Judge
 
@@ -96,18 +96,19 @@ The review is done when the Report Writer has delivered the report. In `json onl
 
 ## Run by another skill
 
-Another skill, such as `design-review`, can run this review as one part of a larger one. It settles the run first, asks the user everything, and hands over:
+Another skill, such as `design-review`, can run this review as one part of a larger one. It loads this skill first, for two lines:
+
+- **Fact groups:** `colourPairs`, `text`, `structure`, `components`, `annotations`: every group a criteria reference's `Facts` lines can name. The caller scans for them once, for every review in the run.
+- **For the caller to ask:** nothing. With no Accessibility section, this review uses its default target, WCAG 2.2 AA, and says so.
+
+Then it settles the run, asks the user everything, and hands over:
 
 - the scope, the runtime, and the `mode` for step 5
 - the Review Profile it found, as the scanner's `found` result
-- the Design Facts, from one scan for every review in the run. It scans for the fact groups this review judges from, the groups the criteria reference's `Facts` lines name.
+- the Design Facts, when it has scanned
 - anything the user gave at run time for this review, such as a criteria reference location or a WCAG target
 
-**Fact groups:** `colourPairs`, `text`, `structure`, `components`, `annotations`.
-
-A fact group you need that the handed-over facts neither read nor list in `unread` counts as unread, with the reason "not in the Design Facts handed over".
-
-In `json only` mode, the user has been asked everything already, so ask nothing. Where you'd ask what to check against, use what the question is pre-filled with, set `from` to `default`, and keep the note you'd keep for the report.
+The user has been asked everything already, so ask nothing. Where you'd ask what to check against, use what the question is pre-filled with, set `from` to `default`, and keep the note you'd keep for the report. When a fact group you need is neither read in the handed-over facts nor in their `unread`, scan for that group yourself, as step 3 describes.
 
 ## Review Profile
 
@@ -115,7 +116,7 @@ A team's Review Profile names the standards its reviews are judged against. This
 
 ### Finding the profile
 
-Use the skill `design-review-scanner` to find the Review Profile, as its Finding the Review Profile describes. Give it the reviewed file's key, the runtime, and the profile given at run time, if any. When another skill hands over the profile it found, that's the result, and there's no lookup. It hands back one of three results:
+When another skill hands over the profile it found, use that result. Otherwise use the skill `design-review-scanner` to find the Review Profile, as its Finding the Review Profile describes. Give it the reviewed file's key, the runtime, and the profile given at run time, if any. It hands back one of three results:
 
 - **found:** the profile's `text`, where the lookup found it (`from`), and the `profile` to name in the report.
 - **none:** where it looked (`searched`).

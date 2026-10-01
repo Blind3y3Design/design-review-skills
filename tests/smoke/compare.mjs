@@ -44,14 +44,18 @@ export function readReport(text) {
 export function compareReports(expected, actual, { axis } = {}) {
   const absent = ['findings', 'coverage'].filter((list) => !Array.isArray(actual[list]));
   if (absent.length) return { pass: false, differences: absent.map((list) => `The report has no "${list}" array`) };
-  const onAxis = (entries) => (axis ? entries.filter((entry) => entry.axis === axis) : entries);
-  const unlinked = (entries) => (axis ? entries.map(({ relatedFindings, ...finding }) => finding) : entries);
+  const [want, got] = axis ? [oneAxis(expected, axis), oneAxis(actual, axis)] : [expected, actual];
   const differences = [
-    ...matchByKey('Finding', unlinked(onAxis(expected.findings)), unlinked(onAxis(actual.findings)), findings),
-    ...matchByKey('Coverage', onAxis(expected.coverage), onAxis(actual.coverage), coverage),
+    ...matchByKey('Finding', want.findings, got.findings, findings),
+    ...matchByKey('Coverage', want.coverage, got.coverage, coverage),
   ];
   return { pass: differences.length === 0, differences };
 }
+
+const oneAxis = (report, axis) => ({
+  findings: report.findings.filter((f) => f.axis === axis).map(({ relatedFindings, ...finding }) => finding),
+  coverage: report.coverage.filter((entry) => entry.axis === axis),
+});
 
 const relatedOf = (finding) => [...(finding.relatedFindings || [])].sort();
 
