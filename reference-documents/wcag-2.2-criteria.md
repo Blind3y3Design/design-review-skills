@@ -39,10 +39,8 @@ Target sizes (2.5.8 and 2.5.5) are in CSS px. The Design Facts give Figma px, wh
 
 - **The frame's platform** comes from the Product context's `Target platforms`. A platform whose name includes "web", such as `Web` or `Mobile web`, is a web platform. Any other, such as `iOS`, `Android` or `Windows`, is native. When the target platforms are all web or all native, every frame is too. With both kinds, a frame takes the kind of the platform its name includes, such as "Checkout · iOS", and a frame whose name includes none has an unknown platform.
 - **The frame's density** is stated in its name as `@<n>x`, such as `@1x`, `@2x` or `@3x`.
-- **A web frame:** CSS px are Figma px divided by the stated density. With none stated, a web frame is at 1x, so its Figma px are CSS px.
-- **A native frame:** CSS px are Figma px divided by the stated density, since a native platform's density-independent unit (a point on iOS, a dp on Android) counts as a CSS px, as W3C's WCAG2ICT guidance applies WCAG to software. With no density stated, the frame's sizes can't be converted.
-
-A frame with an unknown platform, or a native frame with no stated density, gives `needs-review` for its target sizes, as 2.5.8 says.
+- **Converting:** CSS px are Figma px divided by the stated density. On a native platform, its density-independent unit (a point on iOS, a dp on Android) counts as a CSS px, as W3C's WCAG2ICT guidance applies WCAG to software.
+- **With no density stated,** a web frame is at 1x, so its Figma px are CSS px. A native frame's sizes can't be converted, and neither can those of a frame with an unknown platform.
 
 ## Criteria
 
@@ -674,7 +672,7 @@ Exceptions: real-time events such as an auction, limits essential to the activit
 - Default Severity: moderate
 - W3C: https://www.w3.org/TR/WCAG22/#target-size-minimum
 
-**How to judge.** Measure each target's box: its `width` and `height` in the structure facts, converted to CSS px as Target sizes in CSS px says. The targets are the layers the facts show act on a tap or click, by their names, components and prototype `reactions`, and the links in the text facts. A layer inside a target, such as a button's icon, is part of that target.
+**How to judge.** Measure each target's box: its `width` and `height` in the structure facts, converted to CSS px as Target sizes in CSS px says. The targets are the layers the facts show act on a tap or click, by their names, types and prototype `reactions`, and the links in the text facts. A layer inside a target, such as a button's icon, is part of that target.
 
 - **Threshold:** at least 24 by 24 CSS px.
 - **Exceptions:**

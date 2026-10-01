@@ -58,7 +58,7 @@ Give each exactly one Coverage entry, `{ "axis": "accessibility", "ref": "<crite
 
 1. `needs-code` when its group is `code`. It's never a Finding.
 2. `not-readable` when a fact group it needs is in the facts' `unread`, or none of its measurements could be made. A criterion whose Markers line isn't `none` also needs the sections the scanner reads, so it's `not-readable` while `unread` names `sections`. The note gives the scanner's reason.
-3. `not-applicable` when its trigger isn't in the scope. The facts show what a layer is by its name, its component, its prototype `reactions`, and the text in and beside it.
+3. `not-applicable` when its trigger isn't in the scope. The facts show what a layer is by its name, its type, its prototype `reactions`, and the text in and beside it.
 4. `judged` otherwise, following its How to judge.
 
 Work out any measurement the facts don't give, such as the spacing between two targets or the contrast between two runs' colours, from the facts' values, with code where you can run it.
@@ -71,7 +71,7 @@ Each failure becomes part of a Finding:
 - **Certainty:**
   - `confirmed` for a measurement from facts with no `flags`.
   - `likely` for a measurement from facts with a flag, such as `opacity` or `blend-mode`, which the evidence names; or for a judgement of wording or meaning, such as whether a heading describes its section.
-  - `needs-review` when a measurement couldn't be made, such as text over an image, or a size in a frame whose density isn't known. The evidence gives the scanner's `reason`, or why the size couldn't be converted. This is always a Finding, since it may fail.
+  - `needs-review` when a measurement couldn't be made, such as text over an image. The evidence gives why, from the scanner's `reason` or the criterion's How to judge. This is always a Finding, since it may fail.
 - **Title:** one line naming the layer and what fails.
 - **Evidence** and **fix,** as the criterion's How to judge says.
 - **Locations:** `{ "kind": "node", "fileKey", "nodeId", "layerPath" }` for each layer in the facts. When a facts group's `count` is more than its sample `nodes`, the evidence says how many more layers share it.
@@ -145,7 +145,7 @@ The **Product context** section says where the product runs, for the checks that
 | `Target platforms`: the platforms, separated by commas, such as `Web, iOS`. The criteria reference says how each one's frames are measured | `Web` |
 | `Supported viewport widths`: the widths designed for, such as `375px, 768px, 1440px` | none |
 
-Use the Product context of any profile the lookup found, unless the user said no to it, and name it when you ask before using that profile. Settings given at run time take its place. With no Product context, add its settings, pre-filled with their defaults, to any question you ask about what to check against. When there's nothing to ask, use the defaults, and keep a note for the report: "No Product context was given, so this run measured every frame as a web frame."
+Use the Product context of any profile the lookup found, unless the user said no to it, and name it when you ask before using that profile. Settings given at run time take its place. With no Product context, add its settings, pre-filled with their defaults, to any question you ask about what to check against. When there's nothing to ask, use the defaults, and keep a note for the report: "No Product context was given, so this run used `Target platforms: Web`."
 
 ### Severity Overrides
 

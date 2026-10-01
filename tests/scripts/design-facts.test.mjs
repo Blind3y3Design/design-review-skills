@@ -1,16 +1,9 @@
 // Tests the Design Scanner's fact group scripts, run as the skill gives them, against a small fake of the Figma Plugin API.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { AsyncFunction, scriptUnder } from './scanner-script.mjs';
 
-const skill = readFileSync(new URL('../../skills/design-review-scanner/SKILL.md', import.meta.url), 'utf8');
-const scriptUnder = (heading) => {
-  const section = skill.split(/^## /m).find((s) => s.startsWith(heading));
-  return section && /^```js\n([\s\S]*?)^```/m.exec(section)[1];
-};
-
-// Sets NODE_ID on the script's first line, as the skill says, then runs it with top-level await and return.
-const AsyncFunction = (async () => {}).constructor;
+// Sets NODE_ID on the script's first line, as the skill says, then runs it.
 const scan = (heading, figma, id) => {
   const script = scriptUnder(heading);
   assert.ok(script, `no js block under "## ${heading}"`);
@@ -179,32 +172,29 @@ test('structure: gives the top-level frame\'s name and size, and each layer belo
   ]);
 });
 
-test('structure: a layer gives its prototype triggers, its component when it\'s an instance, and whether it shows an image', async () => {
-  const set = { type: 'COMPONENT_SET', name: 'Test Foundation/Button' };
-  const components = {
-    button: { key: 'k-button', name: 'Type=Primary', remote: true, parent: set },
-    icon: { key: 'k-check', name: 'Test Foundation/Icon/Check', remote: true, parent: { type: 'PAGE' } },
-  };
+test('structure: a layer gives its prototype triggers and whether it shows an image, and inside an instance only nested instances are listed', async () => {
   const figma = fakeFigma(frameWith([
     { type: 'FRAME', id: '5:2', name: 'Close', x: 110, y: 210, width: 20, height: 20, reactions: [
       { trigger: { type: 'ON_CLICK' }, actions: [] }, { trigger: { type: 'ON_HOVER' }, actions: [] }, { trigger: { type: 'ON_CLICK' }, actions: [] },
     ] },
     { type: 'RECTANGLE', id: '5:3', name: 'Photo', x: 124, y: 240, width: 312, height: 140, fills: [{ type: 'IMAGE', visible: true, opacity: 1, imageHash: 'h' }] },
-    { type: 'INSTANCE', id: '5:4', name: 'Place order', main: 'button', x: 124, y: 390, width: 102, height: 36, children: [
+    { type: 'RECTANGLE', id: '5:5', name: 'Faded photo', x: 124, y: 240, width: 312, height: 140, fills: [{ type: 'IMAGE', visible: true, opacity: 0, imageHash: 'h' }] },
+    { type: 'INSTANCE', id: '5:4', name: 'Place order', x: 124, y: 390, width: 102, height: 36, children: [
       { type: 'FRAME', id: 'I5:4;1:1', name: 'Content', x: 132, y: 398, width: 86, height: 20, children: [
-        { type: 'INSTANCE', id: 'I5:4;1:2', name: 'Icon', main: 'icon', x: 132, y: 400, width: 16, height: 16, children: [
+        { type: 'INSTANCE', id: 'I5:4;1:2', name: 'Icon', x: 132, y: 400, width: 16, height: 16, children: [
           { type: 'VECTOR', id: 'I5:4;1:3', name: 'Check', x: 134, y: 402, width: 12, height: 12 },
         ] },
         { type: 'TEXT', id: 'I5:4;1:4', name: 'Label', x: 152, y: 398, characters: 'Place order' },
       ] },
     ] },
-  ]), { components });
+  ]));
   const { structure } = await scan('The structure script', figma, '5:1');
   assert.deepEqual(structure.layers, [
     { id: '5:2', path: 'A11Y-99 / Close', type: 'FRAME', x: 10, y: 10, width: 20, height: 20, reactions: ['ON_CLICK', 'ON_HOVER'] },
     { id: '5:3', path: 'A11Y-99 / Photo', type: 'RECTANGLE', x: 24, y: 40, width: 312, height: 140, image: true },
-    { id: '5:4', path: 'A11Y-99 / Place order', type: 'INSTANCE', x: 24, y: 190, width: 102, height: 36, component: { key: 'k-button', name: 'Test Foundation/Button, Type=Primary', remote: true } },
-    { id: 'I5:4;1:2', path: 'A11Y-99 / Place order / Content / Icon', type: 'INSTANCE', x: 32, y: 200, width: 16, height: 16, component: { key: 'k-check', name: 'Test Foundation/Icon/Check', remote: true } },
+    { id: '5:5', path: 'A11Y-99 / Faded photo', type: 'RECTANGLE', x: 24, y: 40, width: 312, height: 140 },
+    { id: '5:4', path: 'A11Y-99 / Place order', type: 'INSTANCE', x: 24, y: 190, width: 102, height: 36 },
+    { id: 'I5:4;1:2', path: 'A11Y-99 / Place order / Content / Icon', type: 'INSTANCE', x: 32, y: 200, width: 16, height: 16 },
   ]);
 });
 
@@ -241,7 +231,23 @@ test('colour pairs: a non-text pair is flagged for opacity or a blend mode, and 
   ]));
   const result = await scan('The colour pairs script', figma, '5:1');
   assert.deepEqual(result.colourPairs.nonText.map((p) => [p.nodes[0].id, p.flags]), [['5:2', ['opacity']], ['5:3', ['blend-mode']]]);
+  assert.equal(result.colourPairs.nonTextLayers, 2, 'layers with no solid paint were counted as measured');
   assert.deepEqual(result.unread, [{ what: 'gradient paints', reason: '1 gradient paints on non-text layers weren\'t measured' }]);
+});
+
+test('colour pairs: a line is measured by its rendered stroke, and a translucent stroke against its own fill as it shows there', async () => {
+  const figma = fakeFigma(frameWith([
+    { type: 'LINE', id: '5:2', name: 'Divider', x: 124, y: 300, width: 312, height: 0, absoluteRenderBounds: { x: 124, y: 299.5, width: 312, height: 1 }, strokes: [solid(rgb(GREY))], strokeWeight: 1 },
+    { type: 'FRAME', id: '5:3', name: 'Field', x: 124, y: 320, width: 200, height: 40, fills: [solid(rgb(BLUE))], strokes: [solid(white, { opacity: 0.5 })], strokeWeight: 1 },
+  ]));
+  const { colourPairs } = await scan('The colour pairs script', figma, '5:1');
+  assert.deepEqual(colourPairs.nonText.map((p) => [p.nodes[0].id, p.part, p.colour.hex, p.ratio]), [
+    ['5:2', 'stroke', GREY, 6.68],
+    ['5:3', 'fill', BLUE, 8.31],
+    ['5:3', 'stroke', '#FFFFFF', 1],
+  ]);
+  // Half-white over the blue fill, as the stroke shows inside the layer: #8FA7C6 on #1F4E8C, worked by hand to 3.35:1.
+  assert.deepEqual(colourPairs.nonText[2].inside, { hex: BLUE, ratio: 3.35 });
 });
 
 test('colour pairs: text pairs are measured as before, beside the non-text pairs', async () => {
