@@ -15,10 +15,11 @@ Turns a review's Findings and Coverage into its report: Markdown for people, the
 
 The calling skill hands over:
 
+- `mode`: `full report`, the default, or `json only`, for a review whose JSON another skill merges into its own full report.
 - `run`: `date`, `scope` (`fileKey`, and `nodes` as `{ id, name }`), `runtime`, `setVersion`, `factsVersion`, `factGroups`, and `settings` (the settings this run used that no Review Profile gave, or null).
 - `profile`: `{ name, location, lastUpdated }` of the Review Profile the run used, or null.
 - `references[]`: `{ name, version, location }` for each Reference Document used.
-- `findings[]`: each Finding's fields from the table below, with a `rootCause` in place of `id`, and each location without its `url`.
+- `findings[]`: each Finding's fields from the table below, with a `rootCause` in place of `id`, and each location without its `url`. A Finding merged from a `json only` report comes with its `id` and urls instead: keep them.
 - `coverage[]`: the Coverage entries.
 - `notes[]`, optional: sentences on how the run's settings were settled, such as a Severity Override that wasn't applied. They go in the Markdown header only.
 - `reportSettings`: the Report settings section of the Review Profile the run used, as `{ "<key>": "<value>" }`, or null.
@@ -29,11 +30,12 @@ The calling skill hands over:
 
 1. **Check the hand-over.** Every Finding has each required field, and every axis, Severity, Certainty and Coverage status is one from the lists below. If anything is missing or out of range, write no report. Tell the calling skill which Finding or entry and which field, so it can hand over again.
 2. **Give each Finding its id** from its `rootCause`, as Finding ids below describes, and each `node` location its `url`. The `rootCause` itself stays out of the report.
-3. **Write the report JSON** as described below.
-4. **Write the Markdown,** in the layout below, ending with the JSON in one fenced `json` block.
-5. **Deliver** the report, as Delivery below describes: mark its Findings on their layers when annotations are on, save it, then show the whole report in the chat.
+3. **Link Findings across axes.** Findings on different axes that share a Root Cause stay separate, and each lists the ids of the others in its `relatedFindings`.
+4. **Write the report JSON** as described below. In `json only` mode, stop here, and hand back only the `notes`, if any, as a list headed "Notes:", then the report JSON in one fenced `json` block.
+5. **Write the Markdown,** in the layout below, ending with the JSON in one fenced `json` block.
+6. **Deliver** the report, as Delivery below describes: mark its Findings on their layers when annotations are on, save it, then show the whole report in the chat.
 
-The report is done when the chat shows the Markdown and its JSON block, every Finding and Coverage entry handed over is in both, the report is saved where Delivery says or the Saved line says why it isn't, and, with annotations on, the Annotated line says what was marked or why nothing was.
+A `json only` report is done when its JSON holds every Finding and Coverage entry handed over, and it's been handed back. A full report is done when the chat shows the Markdown and its JSON block, every Finding and Coverage entry handed over is in both, the report is saved where Delivery says or the Saved line says why it isn't, and, with annotations on, the Annotated line says what was marked or why nothing was.
 
 ## Axes
 
@@ -70,7 +72,7 @@ An id is a fingerprint of the Finding's axis, its standard's `ref` and its Root 
 - `node:<node id>` for a single layer
 - `component:<key>`, `style:<key>` or `variable:<key>` for a library asset
 
-Build the id from exactly these parts, so the same Root Cause always gives the same id and two reports can be compared.
+Build the id from exactly these parts, so the same Root Cause always gives the same id and two reports can be compared. A Root Cause holds no `/`, so it's always the id's last part: two Findings share a Root Cause when their ids end in the same one.
 
 The Markdown shows a **short id**: the axis's short name, the ref, and the Root Cause without its kind, cut to its first 8 characters. For example, `a11y/1.4.3/5:5`.
 
@@ -126,7 +128,7 @@ In this order. Leave out a section that has nothing in it, except Coverage.
    - Skills: "design review skills `<setVersion>`, Design Facts `<factsVersion>` (`<factGroups>`), `<runtime>`"
    - The Saved line, under Delivery
    - The Annotated line, under Annotations, when annotations are on
-3. **Fixes by Root Cause:** one numbered item per Root Cause across all axes: its fix and the short ids of the Findings it clears. Order them by how many Findings each clears, most first, then by their highest Severity.
+3. **Fixes by Root Cause:** one numbered item per Root Cause across all axes: its fix and the short ids of the Findings it clears. When those Findings are on several axes, give each axis's fix. Order them by how many Findings each clears, most first, then by their highest Severity.
 4. **Findings, one `##` section per axis,** headed with the axis's name in the report. List its Findings from the most severe down, `confirmed` before `likely` before `needs-review`. Each is a `###` heading with its short id and title, then:
    - Severity and Certainty
    - Where: each location as a link, `[<layerPath>](<url>)`
