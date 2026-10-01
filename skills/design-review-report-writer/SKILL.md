@@ -21,14 +21,14 @@ The calling skill hands over:
 - `references[]`: `{ name, version, location }` for each Reference Document used.
 - `findings[]`: each Finding's fields from the table below, with a `rootCause` in place of `id`, and each location without its `url`. A Finding merged from a `json only` report comes with its `id` and urls instead: keep them.
 - `coverage[]`: the Coverage entries.
-- `notes[]`, optional: sentences on how the run's settings were settled, such as a Severity Override that wasn't applied. They go in the Markdown header only.
+- `notes[]`, optional: sentences about the run for the reader, such as a Severity Override that wasn't applied or a version warning. They go in the Markdown header only.
 - `reportSettings`: the Report settings section of the Review Profile the run used, as `{ "<key>": "<value>" }`, or null.
 - `saveRequest`: what the user asked for this run's report, `"don't save"` or `"save to <location>"`, or null.
 - `annotateRequest`: what the user asked for this run's annotations, `"annotate"` or `"don't annotate"`, or null.
 
 ## Steps
 
-1. **Check the hand-over.** Every Finding has each required field, and every axis, Severity, Certainty and Coverage status is one from the lists below. If anything is missing or out of range, write no report. Tell the calling skill which Finding or entry and which field, so it can hand over again.
+1. **Check the hand-over.** Every Finding has each required field, and every axis, Severity, Certainty and Coverage status is one from the lists below, and every `skipped` entry has a `reasonCode` from the list under Coverage entries. If anything is missing or out of range, write no report. Tell the calling skill which Finding or entry and which field, so it can hand over again.
 2. **Give each Finding its id** from its `rootCause`, as Finding ids below describes, and each `node` location its `url`. The `rootCause` itself stays out of the report.
 3. **Write the prose** as Writing rules below describes, so the JSON and the Markdown carry the same words.
 4. **Link Findings across axes.** Findings on different axes that share a Root Cause stay separate, and each lists the ids of the others in its `relatedFindings`.
@@ -113,7 +113,15 @@ A `node` location's `url` is `https://www.figma.com/design/<fileKey>/?node-id=<n
 **Coverage entries**
 
 - For one standard: `{ axis, ref, status }`, adding `note` when there's a reason to give. The status is one of `judged`, `not-applicable`, `needs-annotation`, `needs-state`, `needs-section`, `needs-code`, `not-readable` or `stale`.
-- For a whole axis that didn't run: `{ axis, status: "skipped", reason }`.
+- For a whole axis that didn't run: `{ axis, status: "skipped", reasonCode, reason }`. `reason` is the sentence for people. `reasonCode` is a fixed code:
+
+  | `reasonCode` | The axis didn't run because |
+  |---|---|
+  | `skill-not-installed` | its Review Skill isn't installed or wouldn't load |
+  | `skill-failed` | its Review Skill failed partway through |
+  | `reference-unreadable` | a Reference Document couldn't be read |
+  | `no-layers` | there are no Design System Layers to check against |
+  | `no-topic` | no research topic was given |
 
 ## Markdown layout
 
