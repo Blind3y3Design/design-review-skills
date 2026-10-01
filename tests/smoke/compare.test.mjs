@@ -327,6 +327,44 @@ test('each expected case passes against itself and fails when any compared field
       (r) => { entry(r, '1.4.3').status = 'not-readable'; },
       (r) => { r.coverage = r.coverage.filter((c) => c.axis !== 'design-system'); },
     ],
+    'DS-07': [
+      (r) => { r.findings[0].id = 'design-system/unattributed/component:4bf5425db9d53db51af6a3e411b0b4c24d0fdc89'; },
+      (r) => { r.findings[0].certainty = 'likely'; },
+      (r) => { r.findings = []; },
+      (r) => { entry(r, 'unattributed').status = 'not-applicable'; },
+    ],
+    'DS-07-figma': [
+      (r) => { r.findings[0].id = 'design-system/outside-stack/component:4bf5425db9d53db51af6a3e411b0b4c24d0fdc89'; },
+      (r) => { r.findings[0].certainty = 'confirmed'; },
+      (r) => { entry(r, 'outside-stack').status = 'not-readable'; },
+    ],
+    'DS-08': [
+      (r) => { r.findings[0].id = 'design-system/unattributed/node:88:49'; },
+      (r) => { r.findings[0].certainty = 'confirmed'; },
+      (r) => { r.findings[0].severity = 'serious'; },
+      (r) => { r.findings.push({ ...r.findings[0], id: `${r.findings[0].id}-2` }); },
+    ],
+    'DS-09': [
+      (r) => { r.findings[0].id = 'design-system/outside-stack/node:88:53'; },
+      (r) => { r.findings[0].certainty = 'needs-review'; },
+      (r) => { r.findings.push({ id: 'design-system/raw-value/node:88:53', axis: 'design-system', severity: 'moderate', certainty: 'confirmed' }); },
+      (r) => { entry(r, 'outside-stack').status = 'not-applicable'; },
+    ],
+    'DS-09-listed': [
+      (r) => { r.findings.push({ id: 'design-system/outside-stack/variable:b990b604c1c8586a12db5558fbe247207ad10b9c', axis: 'design-system', severity: 'moderate', certainty: 'confirmed' }); },
+      (r) => { entry(r, 'outside-stack').status = 'not-applicable'; },
+    ],
+    'DS-14': [
+      (r) => { r.findings.push({ id: 'design-system/outside-stack/variable:ba3f4e8e57bfa23dae3bee3bdae61193bc8f47dc', axis: 'design-system', severity: 'moderate', certainty: 'confirmed' }); },
+      (r) => { entry(r, 'raw-value').status = 'not-applicable'; },
+      (r) => { r.coverage.pop(); },
+    ],
+    'DS-14-foundation-only': [
+      (r) => { r.findings.pop(); },
+      (r) => { r.findings[1].id = 'design-system/outside-stack/variable:b21ee6f6713d038eea6c6687060d9e168e20c201'; },
+      (r) => { r.findings.push({ id: 'design-system/outside-stack/variable:4eebcb0ed3b44b911ef9fd7c65a57edaeef66fe5', axis: 'design-system', severity: 'moderate', certainty: 'confirmed' }); },
+      (r) => { r.findings[0].certainty = 'likely'; },
+    ],
   };
   for (const [id, edits] of Object.entries(changes)) {
     assert.equal(compareReports(load(id), load(id)).pass, true, id);

@@ -18,7 +18,7 @@ All reading goes through **fixed scripts**, tested as written, so every review r
 The calling skill gives you:
 
 - **Scope:** the node ids to scan, one or more. Scripts can't see the user's selection, so the caller passes the ids of the selected or named frames.
-- **Fact groups:** the groups of facts it needs. This version reads five groups: `colourPairs`, with The colour pairs script, `bindings`, with The bindings script, `text`, with The text script, `structure`, with The structure script, and `annotations`, with The annotations script.
+- **Fact groups:** the groups of facts it needs. This version reads six groups: `colourPairs`, with The colour pairs script, `bindings`, with The bindings script, `components`, with The components script, `text`, with The text script, `structure`, with The structure script, and `annotations`, with The annotations script.
 - **Annotation kits,** optionally: the kits whose instances count as annotations, each named by what its components' names start with, such as `A11y annotations/`.
 - **Runtime:** `figma-agent` inside Figma Design's agent, or `external-agent` for an agent using the Figma MCP server.
 
@@ -28,23 +28,28 @@ The calling skill gives you:
 2. **Scan each node id.** For each fact group asked for that has a script, copy the script and replace `NODE_ID` on its first line with one id, such as `const NODE_ID = '5:3';`. In The annotations script, also put the annotation kits on its second line as quoted strings, such as `const KITS = ['A11y annotations/'];`, or leave the list empty. Run everything else exactly as written. Run one call per id and group, in parallel where the runtime allows. If a call errors, run it once more unchanged. If it errors again, record the id, the group and the error message in that result's `unread`.
 3. **Follow `scanInstead`.** A result whose `unread` lists `scanInstead` ids (for a page, or a frame too large for one call's output) is replaced by the results of running the same script on each of those ids.
 4. **Record groups you can't read.** For each fact group the caller asked for that has no script here, add `{ "what": "<group>", "reason": "not read by this version of the scanner" }` to every result's `unread`.
+5. **Name the libraries of components and styles,** when the caller asked for `components` or `bindings`. The bindings script names each library variable's library, but the Plugin API has no lookup for components or styles, so the scripts leave their `library` null. Name them by key with the Figma MCP server's `get_libraries` and `search_design_system` tools. Without those tools, as inside Figma Design's agent, do only 5.1 and 5.4.
+   1. List the remote assets the design uses itself, across all the results, each once: each component set or component in `components.components` with `remote: true` and either `instances` above 0 or its key among the components in `bindings.inherited`, counting a set once however many of its variants appear, and each style in `bindings.styles` with `remote: true` and `uses` above `inComponents`. Any other asset comes only inside an instance and belongs with that instance's component, so it isn't looked up. Keep the first 20, in the order they first appear. With none, this step is done.
+   2. Call `get_libraries` once, with the file key. Keep the `libraryKey` of each library in `libraries_added_to_file`.
+   3. For each asset you kept, call `search_design_system` with the file key, `includeLibraryKeys` set to the kept library keys, and one query: `entity` `component` (for a set too) or `style`, and `query` the asset's name, or its set's name for a variant. Find the result whose key is the asset's: `componentKey` against the set's key for a variant, or else the component's key, and `key` for a style. Set the asset's `library` to that result's `libraryName`, in every result that holds the asset. Never take a library from a name that matches without its key.
+   4. In each result that still holds one of the assets listed in step 5.1 with no `library`, add `{ "what": "component and style libraries", "reason": "no library name for <n> components and styles: <why>" }` to its `unread`. The why is "`search_design_system` didn't find their keys among the libraries added to this file", "the lookup stops at 20 assets per scan", or, without the tools, as inside Figma Design's agent, "this runtime has no library lookup for components and styles". Give each reason that applies.
 
-The scan is done when every id in the scope has a result for every fact group asked for, and every result has been handed back.
+The scan is done when every id in the scope has a result for every fact group asked for, every asset listed in step 5.1 has a `library` or is counted in its result's `unread`, and every result has been handed back.
 
 ## Hand back
 
-Return the Design Facts to the calling skill: a JSON array holding one result per scanned node, with `"runtime"` added. When several scripts ran on a node, merge their outputs into one result: `factsVersion`, `fileKey` and `scope` from any of them, their `groups` and their `unread` joined, and each group's field from its script. Pass the values on as the scripts returned them.
+Return the Design Facts to the calling skill: a JSON array holding one result per scanned node, with `"runtime"` added. When several scripts ran on a node, merge their outputs into one result: `factsVersion`, `fileKey` and `scope` from any of them, their `groups` and their `unread` joined, and each group's field from its script. Pass the values on as the scripts returned them, with the libraries step 5 named.
 
 ## Design Facts format
 
-`factsVersion` 0.2. Each result holds:
+`factsVersion` 0.3. Each result holds:
 
 - `factsVersion`, and `runtime` (added by you).
 - `fileKey`: the file's key, or null when the runtime doesn't give it.
 - `scope`: the node scanned: `id`, `name`, `type`, `page`, and `topLevelFrame` when the node sits inside a top-level frame.
 - `groups`: the fact groups read.
 - `unread[]`: what couldn't be read, each `{ what, reason }`, with `scanInstead` ids when the answer is to scan those instead.
-- `colourPairs`, `bindings`, `text`, `structure` and `annotations`: each group's facts, or null when it wasn't read.
+- `colourPairs`, `bindings`, `components`, `text`, `structure` and `annotations`: each group's facts, or null when it wasn't read.
 
 Positions and sizes are in Figma px. `x` and `y` are measured from the top-level frame's top-left corner.
 
@@ -80,13 +85,27 @@ How each visible layer in the scope uses variables and styles, and the raw value
   - A radius or spacing of 0 is Figma's default for a layer with none set, so it isn't listed. An image fill can't be bound, so it isn't listed either. Gradient paints aren't read: `unread` counts them.
   - `instance`: `{ id, name }` of the outermost instance the layer sits in, when there is one. Inside an instance, `raw` lists only the values the instance overrides.
 - `inherited[]`: the raw values that instances take unchanged from their components, grouped by the component of the nearest instance each layer sits in: `{ component: { key, name, remote }, count, values[], instances, nodes[] }`. `count` is how many raw values, `values` up to 10 distinct ones, `instances` how many instances hold them, and `nodes` up to 10 of the layers, each `{ id, path }`.
-- `variables[]`: each variable bound in the scope, and each one reached from those through an alias, once: `{ key, name, type, collection: { key, name }, library, remote, value, alias, uses, properties }`.
-  - `library` is the library's name, found by the collection's key through `figma.teamLibrary`. It's null for a local variable (`remote` is false), or for a library variable whose library can't be named, and `unread` then says so.
+- `variables[]`: each variable bound in the scope, and each one reached from those through an alias, once: `{ key, name, type, collection: { key, name }, library, remote, value, alias, uses, inComponents, properties, nodes }`.
+  - `library` is the library's name, found by the collection's key through `figma.teamLibrary`, never by the collection's name. It's null for a local variable (`remote` is false), or for a library variable whose library can't be named, and `unread` then says so.
   - `value` is the resolved value in the mode of the first layer that uses the variable. `alias` is the key of the variable it points to, or null.
-  - `uses` counts the bindings to it in the scope, 0 for one reached only through an alias. `properties` lists the properties bound to it.
-- `styles[]`: each style used in the scope, once: `{ key, name, type, remote, value, uses, properties }`. A paint style with anything but one solid paint gives its paint count as `value`.
+  - `uses` counts the bindings to it in the scope, 0 for one reached only through an alias. `inComponents` counts those that instances take unchanged from their components. `properties` lists the properties bound to it.
+  - `nodes[]`: up to 10 of the layers that bind it themselves, outside an instance or as an instance's override, each `{ id, path }`.
+- `styles[]`: each style used in the scope, once: `{ key, name, type, remote, library, value, uses, inComponents, properties, nodes }`. `library` is the library's name, found by key in step 5 of Steps, or null: for a local style (`remote` is false), or when it couldn't be named, and `unread` then says why. A paint style with anything but one solid paint gives its paint count as `value`. The other fields are as for variables.
 
 **Values.** A colour is `#RRGGBB`, or `#RRGGBBAA` below full opacity. A radius or spacing is a number in px. Text is `<family> <style> <size>/<line height>`, such as `Inter Regular 16/24`, with any letter spacing after it. An effect is `<type> <colour> <x> <y> <blur> <spread>` for a shadow, or `<type> <blur>` for a blur.
+
+### Components
+
+Each visible instance in the scope, grouped by its main component. Hidden instances and instances at zero opacity are skipped.
+
+- `instances`: how many instances were read.
+- `components[]`: one per main component, in the order first found: `{ key, name, set, remote, library, instances, nested, nodes }`.
+  - `set`: `{ key, name }` of the component set a variant belongs to, or null. A set's variants are separate entries with the same `set`.
+  - `remote`: true for a component from another file, such as a library's. False for one defined in the reviewed file.
+  - `library`: the library's name, found by key in step 5 of Steps, or null: for a local component, or one whose library couldn't be named, and `unread` then says why.
+  - `instances`: how many of its instances are placed in the scope, outside any other instance. `nested`: how many sit inside another instance, and so come with that instance's component.
+  - `nodes[]`: up to 10 of its instances, each `{ id, path }`, plus `inside`, the id of the outermost instance a nested one sits in.
+- An instance whose main component can't be read counts in `instances`, and `unread` says so.
 
 ### Text
 
@@ -128,7 +147,7 @@ Comments aren't read. When the runtime can't read annotations, `unread` says why
 ```js
 const NODE_ID = 'NODE_ID';
 
-const FACTS_VERSION = '0.2';
+const FACTS_VERSION = '0.3';
 const LIMIT = 18000;
 const SAMPLES = 10;
 const out = { factsVersion: FACTS_VERSION, fileKey: figma.fileKey || null, scope: null, groups: ['colourPairs'], unread: [], colourPairs: null };
@@ -358,7 +377,7 @@ return out;
 ```js
 const NODE_ID = 'NODE_ID';
 
-const FACTS_VERSION = '0.2';
+const FACTS_VERSION = '0.3';
 const LIMIT = 18000;
 const SAMPLES = 10;
 const out = { factsVersion: FACTS_VERSION, fileKey: figma.fileKey || null, scope: null, groups: ['bindings'], unread: [], bindings: null };
@@ -405,10 +424,19 @@ const collectionOf = async (id) => {
   if (!collections.has(id)) collections.set(id, await figma.variables.getVariableCollectionByIdAsync(id));
   return collections.get(id);
 };
+// The layer being read, and whether a property's value on it is taken unchanged from an instance's component.
+let currentLayer = { node: null, fromComponent: () => false };
+const noteUse = (entry, property) => {
+  entry.uses++;
+  entry.properties.add(property);
+  if (currentLayer.fromComponent(property)) entry.inComponents++;
+  else if (entry.nodes.length < SAMPLES && !entry.nodes.some(x => x.id === currentLayer.node.id)) entry.nodes.push({ ...currentLayer.node });
+};
+const noUses = () => ({ uses: 0, inComponents: 0, properties: new Set(), nodes: [] });
 const useVariable = async (id, consumer, property, direct = true) => {
   if (!variables.has(id)) {
     const v = await figma.variables.getVariableByIdAsync(id);
-    if (!v) variables.set(id, { id, name: null, reason: 'variable not found', uses: 0, properties: new Set() });
+    if (!v) variables.set(id, { id, name: null, reason: 'variable not found', ...noUses() });
     else {
       const collection = await collectionOf(v.variableCollectionId);
       const mode = (consumer.resolvedVariableModes || {})[v.variableCollectionId] || (collection && collection.defaultModeId) || Object.keys(v.valuesByMode)[0];
@@ -418,12 +446,12 @@ const useVariable = async (id, consumer, property, direct = true) => {
       try { value = valueOf(v.resolveForConsumer(consumer).value); } catch (e) { value = aliasId ? null : valueOf(modeValue); }
       const library = v.remote ? (collection && libraries.get(collection.key)) || null : null;
       if (v.remote && !library) unnamedLibraryVariables++;
-      const entry = { key: v.key, name: v.name, type: v.resolvedType, collection: collection ? { key: collection.key, name: collection.name } : null, library, remote: v.remote, value, aliasId, uses: 0, properties: new Set() };
+      const entry = { key: v.key, name: v.name, type: v.resolvedType, collection: collection ? { key: collection.key, name: collection.name } : null, library, remote: v.remote, value, aliasId, ...noUses() };
       variables.set(id, entry);
       if (aliasId) await useVariable(aliasId, consumer, property, false);
     }
   }
-  if (direct) { const entry = variables.get(id); entry.uses++; entry.properties.add(property); }
+  if (direct) noteUse(variables.get(id), property);
 };
 // Variables bound on a text run or an effect. True when any is bound.
 const useAliases = async (boundVariables, consumer, property) => {
@@ -440,14 +468,13 @@ const styleValue = (s) => {
   if (s.type === 'EFFECT') return s.effects.filter(e => e.visible !== false).map(effectValue).join(', ');
   return s.type;
 };
+// A style's library has no lookup in the Plugin API, so `library` stays null here (see Steps).
 const useStyle = async (id, property) => {
   if (!styles.has(id)) {
     const s = await figma.getStyleByIdAsync(id);
-    styles.set(id, s ? { key: s.key, name: s.name, type: s.type, remote: s.remote, value: styleValue(s), uses: 0, properties: new Set() } : { id, name: null, reason: 'style not found', uses: 0, properties: new Set() });
+    styles.set(id, s ? { key: s.key, name: s.name, type: s.type, remote: s.remote, library: null, value: styleValue(s), ...noUses() } : { id, name: null, reason: 'style not found', ...noUses() });
   }
-  const entry = styles.get(id);
-  entry.uses++;
-  entry.properties.add(property);
+  noteUse(styles.get(id), property);
 };
 
 // Raw values: set on a layer, bound to no variable or style. A radius or spacing of 0 is Figma's unset default, so it isn't listed.
@@ -551,13 +578,14 @@ const walk = async (n, outerInstance, nearestInstance, parentPath) => {
     if (!outerInstance) { outerInstance = n; noteOverrides(n); }
     nearestInstance = n;
   }
+  const fields = (outerInstance && overridden.get(n.id)) || new Set();
+  const fromComponent = (property) => Boolean(outerInstance) && !fields.has('boundVariables') && !OVERRIDE_FIELDS[property].some(f => fields.has(f));
+  currentLayer = { node: { id: n.id, path }, fromComponent };
   let values = await rawValuesOf(n);
   if (outerInstance) {
-    const fields = overridden.get(n.id) || new Set();
-    const isOverridden = (v) => fields.has('boundVariables') || OVERRIDE_FIELDS[v.property].some(f => fields.has(f));
-    const fromComponent = values.filter(v => !isOverridden(v));
-    if (fromComponent.length) await noteInherited(nearestInstance, n, path, fromComponent);
-    values = values.filter(isOverridden);
+    const unchanged = values.filter(v => fromComponent(v.property));
+    if (unchanged.length) await noteInherited(nearestInstance, n, path, unchanged);
+    values = values.filter(v => !fromComponent(v.property));
   }
   if (values.length) raw.push({ node: { id: n.id, path }, ...(outerInstance ? { instance: { id: outerInstance.id, name: outerInstance.name } } : {}), values });
   if ('children' in n) for (const c of n.children) await walk(c, outerInstance, nearestInstance, path);
@@ -584,9 +612,10 @@ if (gradients) out.unread.push({ what: 'gradient paints', reason: `${gradients} 
 
 // Keep the output under the smaller runtime limit (about 20 kB through use_figma).
 const size = () => JSON.stringify(out).length;
-const located = () => [...raw.map(r => r.node), ...out.bindings.inherited.flatMap(i => i.nodes)];
+const sampled = () => [...out.bindings.inherited, ...out.bindings.variables, ...out.bindings.styles];
+const located = () => [...raw.map(r => r.node), ...sampled().flatMap(i => i.nodes)];
 if (size() > LIMIT) for (const x of located()) x.path = x.path.split(' / ').slice(-3).join(' / ');
-if (size() > LIMIT) for (const i of out.bindings.inherited) i.nodes = i.nodes.slice(0, 3);
+if (size() > LIMIT) for (const i of sampled()) i.nodes = i.nodes.slice(0, 3);
 if (size() > LIMIT) for (const x of located()) delete x.path;
 if (size() > LIMIT) {
   out.bindings = null;
@@ -601,7 +630,7 @@ return out;
 ```js
 const NODE_ID = 'NODE_ID';
 
-const FACTS_VERSION = '0.2';
+const FACTS_VERSION = '0.3';
 const LIMIT = 18000;
 const out = { factsVersion: FACTS_VERSION, fileKey: figma.fileKey || null, scope: null, groups: ['text'], unread: [], text: null };
 const childIds = (n) => ('children' in n ? n.children.map(c => c.id) : []);
@@ -689,7 +718,7 @@ return out;
 ```js
 const NODE_ID = 'NODE_ID';
 
-const FACTS_VERSION = '0.2';
+const FACTS_VERSION = '0.3';
 const LIMIT = 18000;
 const out = { factsVersion: FACTS_VERSION, fileKey: figma.fileKey || null, scope: null, groups: ['structure'], unread: [], structure: null };
 const childIds = (n) => ('children' in n ? n.children.map(c => c.id) : []);
@@ -780,13 +809,85 @@ if (size() > LIMIT) {
 return out;
 ```
 
+## The components script
+
+```js
+const NODE_ID = 'NODE_ID';
+
+const FACTS_VERSION = '0.3';
+const LIMIT = 18000;
+const SAMPLES = 10;
+const out = { factsVersion: FACTS_VERSION, fileKey: figma.fileKey || null, scope: null, groups: ['components'], unread: [], components: null };
+const childIds = (n) => ('children' in n ? n.children.map(c => c.id) : []);
+
+const node = await figma.getNodeByIdAsync(NODE_ID);
+if (!node) { out.unread.push({ what: NODE_ID, reason: 'no node with this id' }); return out; }
+let page = node;
+while (page.parent && page.type !== 'PAGE') page = page.parent;
+if (page.type === 'PAGE') await page.loadAsync();
+if (node.type === 'PAGE' || node.type === 'DOCUMENT') {
+  out.groups = [];
+  out.unread.push({ what: NODE_ID, reason: 'a page, not a layer: scan each id in scanInstead', scanInstead: childIds(node) });
+  return out;
+}
+let topFrame = node;
+while (topFrame.parent && topFrame.parent.type !== 'PAGE') topFrame = topFrame.parent;
+out.scope = { id: node.id, name: node.name, type: node.type, page: page.name, topLevelFrame: topFrame.id === node.id ? null : { id: topFrame.id, name: topFrame.name } };
+
+// Each visible instance's main component, grouped by component. An instance inside another instance is nested: it comes with the outer one's component.
+const components = new Map(), missing = [];
+let instances = 0;
+const walk = async (n, outerInstance, parentPath) => {
+  if (n.visible === false || ('opacity' in n && n.opacity === 0)) return;
+  const path = parentPath ? `${parentPath} / ${n.name}` : n.name;
+  if (n.type === 'INSTANCE') {
+    instances++;
+    const main = await n.getMainComponentAsync();
+    if (!main) missing.push(n.id);
+    else {
+      if (!components.has(main.key)) {
+        const set = main.parent && main.parent.type === 'COMPONENT_SET' ? { key: main.parent.key, name: main.parent.name } : null;
+        components.set(main.key, { key: main.key, name: main.name, set, remote: main.remote, library: null, instances: 0, nested: 0, nodes: [] });
+      }
+      const entry = components.get(main.key);
+      if (outerInstance) entry.nested++; else entry.instances++;
+      if (entry.nodes.length < SAMPLES) entry.nodes.push(outerInstance ? { id: n.id, path, inside: outerInstance.id } : { id: n.id, path });
+    }
+    if (!outerInstance) outerInstance = n;
+  }
+  if ('children' in n) for (const c of n.children) await walk(c, outerInstance, path);
+};
+// A scanned node inside an instance starts with the outermost instance above it.
+let outerAbove = null, parentPath = '';
+for (let x = node.parent; x && x.type !== 'PAGE'; x = x.parent) {
+  if (x.type === 'INSTANCE') outerAbove = x;
+  parentPath = parentPath ? `${x.name} / ${parentPath}` : x.name;
+}
+await walk(node, outerAbove, parentPath);
+if (missing.length) out.unread.push({ what: 'main components', reason: `${missing.length} instances' main components couldn't be read, such as ${missing[0]}` });
+
+// Keep the output under the smaller runtime limit (about 20 kB through use_figma).
+out.components = { instances, components: [...components.values()] };
+const size = () => JSON.stringify(out).length;
+const located = () => out.components.components.flatMap(c => c.nodes);
+if (size() > LIMIT) for (const x of located()) x.path = x.path.split(' / ').slice(-3).join(' / ');
+if (size() > LIMIT) for (const c of out.components.components) c.nodes = c.nodes.slice(0, 3);
+if (size() > LIMIT) for (const x of located()) delete x.path;
+if (size() > LIMIT) {
+  out.components = null;
+  out.groups = [];
+  out.unread = [{ what: 'components', reason: `output limit: ${components.size} components are too many for one call; scan each id in scanInstead`, scanInstead: childIds(node) }];
+}
+return out;
+```
+
 ## The annotations script
 
 ```js
 const NODE_ID = 'NODE_ID';
 const KITS = [];
 
-const FACTS_VERSION = '0.2';
+const FACTS_VERSION = '0.3';
 const LIMIT = 18000;
 const NEAR = 200;
 const out = { factsVersion: FACTS_VERSION, fileKey: figma.fileKey || null, scope: null, groups: ['annotations'], unread: [], annotations: null };
