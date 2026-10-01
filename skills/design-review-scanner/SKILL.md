@@ -28,12 +28,12 @@ The calling skill gives you:
 3. **Follow `scanInstead`.** A result whose `unread` lists `scanInstead` ids (for a page, or a frame too large for one call's output) is replaced by the results of running the same script on each of those ids.
 4. **Record groups you can't read.** For each fact group the caller asked for that has no script here, add `{ "what": "<group>", "reason": "not read by this version of the scanner" }` to every result's `unread`.
 5. **Name the libraries of components and styles,** when the caller asked for `components` or `bindings`. The bindings script names each library variable's library, but the Plugin API has no lookup for components or styles, so the scripts leave their `library` null. Name them by key with the Figma MCP server's `get_libraries` and `search_design_system` tools. Without those tools, as inside Figma Design's agent, do only 5.1 and 5.4.
-   1. List the remote assets the design uses itself, across all the results, each once: each component set or component in `components.components` with `remote: true` and `instances` above 0, counting a set once however many of its variants appear, and each style in `bindings.styles` with `remote: true` and `uses` above `inComponents`. An asset that comes only inside an instance belongs with that instance's component, so it isn't looked up. Keep the first 20, in the order they first appear. With none, this step is done.
+   1. List the remote assets the design uses itself, across all the results, each once: each component set or component in `components.components` with `remote: true` and either `instances` above 0 or its key among the components in `bindings.inherited`, counting a set once however many of its variants appear, and each style in `bindings.styles` with `remote: true` and `uses` above `inComponents`. Any other asset comes only inside an instance and belongs with that instance's component, so it isn't looked up. Keep the first 20, in the order they first appear. With none, this step is done.
    2. Call `get_libraries` once, with the file key. Keep the `libraryKey` of each library in `libraries_added_to_file`.
    3. For each asset you kept, call `search_design_system` with the file key, `includeLibraryKeys` set to the kept library keys, and one query: `entity` `component` (for a set too) or `style`, and `query` the asset's name, or its set's name for a variant. Find the result whose key is the asset's: `componentKey` against the set's key for a variant, or else the component's key, and `key` for a style. Set the asset's `library` to that result's `libraryName`, in every result that holds the asset. Never take a library from a name that matches without its key.
    4. In each result that still holds one of the assets listed in step 5.1 with no `library`, add `{ "what": "component and style libraries", "reason": "no library name for <n> components and styles: <why>" }` to its `unread`. The why is "`search_design_system` didn't find their keys among the libraries added to this file", "the lookup stops at 20 assets per scan", or, without the tools, as inside Figma Design's agent, "this runtime has no library lookup for components and styles". Give each reason that applies.
 
-The scan is done when every id in the scope has a result for every fact group asked for, the libraries in step 5 are looked up, and every result has been handed back.
+The scan is done when every id in the scope has a result for every fact group asked for, every asset listed in step 5.1 has a `library` or is counted in its result's `unread`, and every result has been handed back.
 
 ## Hand back
 
@@ -411,18 +411,18 @@ const collectionOf = async (id) => {
   return collections.get(id);
 };
 // The layer being read, and whether a property's value on it is taken unchanged from an instance's component.
-let reading = { node: null, fromComponent: () => false };
+let currentLayer = { node: null, fromComponent: () => false };
 const noteUse = (entry, property) => {
   entry.uses++;
   entry.properties.add(property);
-  if (reading.fromComponent(property)) entry.inComponents++;
-  else if (entry.nodes.length < SAMPLES && !entry.nodes.some(x => x.id === reading.node.id)) entry.nodes.push({ ...reading.node });
+  if (currentLayer.fromComponent(property)) entry.inComponents++;
+  else if (entry.nodes.length < SAMPLES && !entry.nodes.some(x => x.id === currentLayer.node.id)) entry.nodes.push({ ...currentLayer.node });
 };
-const unused = () => ({ uses: 0, inComponents: 0, properties: new Set(), nodes: [] });
+const noUses = () => ({ uses: 0, inComponents: 0, properties: new Set(), nodes: [] });
 const useVariable = async (id, consumer, property, direct = true) => {
   if (!variables.has(id)) {
     const v = await figma.variables.getVariableByIdAsync(id);
-    if (!v) variables.set(id, { id, name: null, reason: 'variable not found', ...unused() });
+    if (!v) variables.set(id, { id, name: null, reason: 'variable not found', ...noUses() });
     else {
       const collection = await collectionOf(v.variableCollectionId);
       const mode = (consumer.resolvedVariableModes || {})[v.variableCollectionId] || (collection && collection.defaultModeId) || Object.keys(v.valuesByMode)[0];
@@ -432,7 +432,7 @@ const useVariable = async (id, consumer, property, direct = true) => {
       try { value = valueOf(v.resolveForConsumer(consumer).value); } catch (e) { value = aliasId ? null : valueOf(modeValue); }
       const library = v.remote ? (collection && libraries.get(collection.key)) || null : null;
       if (v.remote && !library) unnamedLibraryVariables++;
-      const entry = { key: v.key, name: v.name, type: v.resolvedType, collection: collection ? { key: collection.key, name: collection.name } : null, library, remote: v.remote, value, aliasId, ...unused() };
+      const entry = { key: v.key, name: v.name, type: v.resolvedType, collection: collection ? { key: collection.key, name: collection.name } : null, library, remote: v.remote, value, aliasId, ...noUses() };
       variables.set(id, entry);
       if (aliasId) await useVariable(aliasId, consumer, property, false);
     }
@@ -458,7 +458,7 @@ const styleValue = (s) => {
 const useStyle = async (id, property) => {
   if (!styles.has(id)) {
     const s = await figma.getStyleByIdAsync(id);
-    styles.set(id, s ? { key: s.key, name: s.name, type: s.type, remote: s.remote, library: null, value: styleValue(s), ...unused() } : { id, name: null, reason: 'style not found', ...unused() });
+    styles.set(id, s ? { key: s.key, name: s.name, type: s.type, remote: s.remote, library: null, value: styleValue(s), ...noUses() } : { id, name: null, reason: 'style not found', ...noUses() });
   }
   noteUse(styles.get(id), property);
 };
@@ -566,7 +566,7 @@ const walk = async (n, outerInstance, nearestInstance, parentPath) => {
   }
   const fields = (outerInstance && overridden.get(n.id)) || new Set();
   const fromComponent = (property) => Boolean(outerInstance) && !fields.has('boundVariables') && !OVERRIDE_FIELDS[property].some(f => fields.has(f));
-  reading = { node: { id: n.id, path }, fromComponent };
+  currentLayer = { node: { id: n.id, path }, fromComponent };
   let values = await rawValuesOf(n);
   if (outerInstance) {
     const unchanged = values.filter(v => fromComponent(v.property));
@@ -795,7 +795,7 @@ out.scope = { id: node.id, name: node.name, type: node.type, page: page.name, to
 // Each visible instance's main component, grouped by component. An instance inside another instance is nested: it comes with the outer one's component.
 const components = new Map(), missing = [];
 let instances = 0;
-const walk = async (n, outermost, parentPath) => {
+const walk = async (n, outerInstance, parentPath) => {
   if (n.visible === false || ('opacity' in n && n.opacity === 0)) return;
   const path = parentPath ? `${parentPath} / ${n.name}` : n.name;
   if (n.type === 'INSTANCE') {
@@ -808,12 +808,12 @@ const walk = async (n, outermost, parentPath) => {
         components.set(main.key, { key: main.key, name: main.name, set, remote: main.remote, library: null, instances: 0, nested: 0, nodes: [] });
       }
       const entry = components.get(main.key);
-      if (outermost) entry.nested++; else entry.instances++;
-      if (entry.nodes.length < SAMPLES) entry.nodes.push(outermost ? { id: n.id, path, inside: outermost.id } : { id: n.id, path });
+      if (outerInstance) entry.nested++; else entry.instances++;
+      if (entry.nodes.length < SAMPLES) entry.nodes.push(outerInstance ? { id: n.id, path, inside: outerInstance.id } : { id: n.id, path });
     }
-    if (!outermost) outermost = n;
+    if (!outerInstance) outerInstance = n;
   }
-  if ('children' in n) for (const c of n.children) await walk(c, outermost, path);
+  if ('children' in n) for (const c of n.children) await walk(c, outerInstance, path);
 };
 // A scanned node inside an instance starts with the outermost instance above it.
 let outerAbove = null, parentPath = '';

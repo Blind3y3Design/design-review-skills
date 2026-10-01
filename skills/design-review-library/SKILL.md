@@ -143,7 +143,7 @@ The design systems this work is checked against, most general first. A more spec
 - Each layer is a `###` heading, numbered from 1 for the most general, with its name.
   - `Owner`: optional.
   - `Libraries`: each library's name as Figma shows it, with its file link in brackets, separated by commas. Library assets are matched to a library by that name, and local assets by the file key in its link, so a team can list its working file to cover its local variables, styles and components.
-  - `Match hints`: name prefixes for components and styles, each written prefix `<prefix>`, separated by commas.
+  - `Match hints`: name prefixes for components and styles, each written prefix `<prefix>`, separated by commas, or `none`.
   - `Rules document`: the location of the layer owner's rules, or `none`. This version judges the baseline only. When a layer names a rules document, keep a note for the report: "This version judges the Design system baseline only, so the rules document for <layer> wasn't read."
   - `Docs`: optional guideline links.
 
