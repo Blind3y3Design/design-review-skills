@@ -41,7 +41,7 @@ Under the lines, **How to judge** gives the test and its thresholds, what fails,
 - Since: 2.0
 - Group: annotation/prototype
 - Facts: structure, annotations
-- Trigger: images, icons, charts or other non-text content, including icon-only controls
+- Trigger: images, icons, charts or other non-text content, including icon-only controls. A part of a control that has a visible text label, such as a checkbox's check mark, doesn't trigger it
 - Needs: annotation: text alternative
 - Markers: none
 - Default Severity: serious
@@ -146,7 +146,7 @@ Under the lines, **How to judge** gives the test and its thresholds, what fails,
 - Since: 2.0
 - Group: annotation/prototype
 - Facts: structure, annotations
-- Trigger: content that could be read in more than one order, such as columns, a row or grid of cards, side panels, or content laid over other content
+- Trigger: content laid out so it could be read in more than one order: two or more columns, a row or grid of cards, side panels, or content laid over other content. A single column read from top to bottom doesn't trigger it, even where a label sits beside its control
 - Needs: annotation: reading order
 - Markers: none
 - Default Severity: serious

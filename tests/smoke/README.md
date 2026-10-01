@@ -50,7 +50,7 @@ Each built case has a frame on the Cases page and, if its result is a report, an
 |---|---|---|---|
 | A11Y-01 | Body text at 3.4:1: `#8A8A8A` 16 px text on a `#FFFFFF` frame (3.45:1), under a title that passes | `5:3` | [`A11Y-01.json`](expected/A11Y-01.json): one 1.4.3 Finding on the body text (`5:5`), `moderate`, `confirmed`. Coverage has all 55 WCAG 2.2 A/AA criteria: 1.4.3 `judged`, the 8 code-only criteria `needs-code`, 22 `not-readable` until the scanner reads text, components, target sizes and what images show, and 24 `not-applicable`, since the frame holds nothing that triggers them and is too small to be a screen |
 | A11Y-01-override | A11Y-01 with [`profiles/override-serious.md`](profiles/override-serious.md) given at run time, whose Severity Override is "WCAG AA failures: serious" | `5:3` | [`A11Y-01-override.json`](expected/A11Y-01-override.json): the same Finding at `serious`. Coverage as for A11Y-01. Checked by hand: its evidence names the override |
-| CLEAN-01 | A frame that follows every rule. For now, every text pair passes 1.4.3, on a frame's fill, a nested frame's fill and a rectangle beneath the text | `5:6` | [`CLEAN-01.json`](expected/CLEAN-01.json): no Findings. Coverage as for A11Y-01. Nothing in it triggers an annotation criterion, so those the scanner can read are `not-applicable` |
+| CLEAN-01 | A frame that follows every rule. For now, every text pair passes 1.4.3, on a frame's fill, a nested frame's fill and a rectangle beneath the text | `5:6` | [`CLEAN-01.json`](expected/CLEAN-01.json): no Findings. At 360 × 384 with a checkbox and a button, it's a screen with focusable components, so its frame carries native annotations for its page title, language, orientation, reading and focus order, and behaviour on focus and input. Those criteria (1.3.4, 2.4.2, 2.4.3, 3.1.1, 3.2.1, 3.2.2) are `judged`, with 1.4.3 and 1.4.11. 1.4.10 and 2.4.7 are `needs-section`. The rest as for A11Y-01 |
 | RUN-04 | A run with `design-review-report-writer` or `design-review-scanner` missing | any case frame | Checked by hand: the run stops, names the missing skill and writes no report |
 | A11Y-02 | Text over an image | | `needs-review`, or `not-readable` in Coverage |
 | A11Y-03 | Target smaller than 24×24 px | | Target size Finding (2.5.8) |
@@ -99,6 +99,14 @@ Checked by hand in an external agent, on A11Y-01 unless the check names another 
 | An unreadable pointer | Page off. `AGENTS.md` points to a file that doesn't exist | Stops with the location and the reason, and writes no report |
 | An unreadable pointer on the page | Page off. A temporary page named `Review Profile` holds only `Review Profile: <link to a file with no Review Profile page>`, such as [DRS Test Unlisted](https://www.figma.com/design/8DhePf1jHSsrvwFxpiYoQf/DRS-Test-Unlisted). Delete it afterwards | Stops with the location and the reason, and writes no report |
 | A critical override without a core task | [`profiles/override-critical.md`](profiles/override-critical.md) given at run time | Passes `A11Y-01`, and the header's Notes say the override wasn't applied |
+
+## Annotation checks
+
+Checked by hand in an external agent, because they need something on the canvas that would change other cases if it stayed there.
+
+| Check | Set-up | Expected |
+|---|---|---|
+| A free-text note on the canvas | A temporary text layer, "Alt text: IMG_2041.jpg", on the page 20 px below A11Y-04. Delete it afterwards | 1.1.1 `judged` from the note, and `accessibility/1.1.1/node:38:4` at `serious`, `likely`, since a file name isn't a text alternative and the judgement rests on a canvas note |
 
 ## Saving checks
 

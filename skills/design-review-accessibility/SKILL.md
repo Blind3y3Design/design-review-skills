@@ -58,7 +58,7 @@ Give each exactly one Coverage entry, `{ "axis": "accessibility", "ref": "<crite
 
 1. `needs-code` when its group is `code`. It's never a Finding.
 2. `not-readable` when a fact group it needs, or the part of one its Facts line names in brackets, is in the facts' `unread`, or none of its measurements could be made. The note gives the scanner's reason.
-3. `not-applicable` when its trigger isn't in the scope.
+3. `not-applicable` when its trigger isn't in the scope. The trigger alone decides this: an annotation never brings a criterion in.
 4. `needs-section` when it has markers and no marked section lets it be judged, as Marked sections describes.
 5. `needs-annotation` or `needs-state` when the annotation or state its Needs line names is missing for one of its triggers, as Annotations and states describes.
 6. `judged` otherwise, following its How to judge.
