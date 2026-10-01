@@ -1,6 +1,6 @@
 ---
 name: design-review-library
-description: Design system adherence review of Figma frames. Judges how a design uses the team's Design System Layers, such as raw values where a variable or style could be bound, and reports Findings and Coverage. Use when the user asks for a design system adherence, design token or variable review of a Figma design.
+description: Design system adherence review of Figma frames. Judges how a design uses the team's Design System Layers, such as raw values where a variable or style could be bound, or assets from outside the stack, and reports Findings and Coverage. Use when the user asks for a design system adherence, design token or variable review of a Figma design.
 metadata:
   version: "0.1.0-dev"
 ---
@@ -56,12 +56,12 @@ Judge every check in the baseline, and give each exactly one Coverage entry, `{ 
 
 Each Finding its How to judge calls for is written this way:
 
-- **Root Cause** and **evidence,** as the check's How to judge says. A Root Cause is written `node:<id>` for a layer, or `variable:<key>`, `style:<key>` or `component:<key>` for a library asset. Give one Finding per Root Cause per check, with every layer it covers in `locations`.
+- **Root Cause** and **evidence,** as the check's How to judge says. A Root Cause is written `node:<id>` for a layer, or `variable:<key>`, `style:<key>` or `component:<key>` for an asset. Give one Finding per Root Cause per check, with every layer it covers in `locations`.
 - **Severity:** the check's Default Severity.
 - **Certainty:** the check's Certainty line.
 - **Title:** one line naming the layer or component and what's wrong.
 - **Fix:** as the check's How to judge says, with tokens only from Token suggestions below.
-- **Locations:** `{ "kind": "node", "fileKey", "nodeId", "layerPath" }` for each layer in the facts. A component goes first as `{ "kind": "component", "key", "name", "library" }`, with `library` null when the facts don't give it.
+- **Locations:** `{ "kind": "node", "fileKey", "nodeId", "layerPath" }` for each layer in the facts. A library asset or local asset that the Finding is about goes first: a component as `{ "kind": "component", "key", "name", "library" }` (for a set, the set's key and name), a style as `{ "kind": "style", "key", "name", "library" }`, or a variable as `{ "kind": "variable", "collection", "name", "library" }`, with `collection` its collection's name. Its `library` is as Attributing an asset gives it.
 - **Standard:** `{ "source": "Design system baseline", "ref": "<check id>", "url": "<the baseline's location>" }`, leaving out `url` when the location isn't a link.
 
 Judging is done when every check in the baseline has one Coverage entry, and every Finding that each check's How to judge calls for is written.
@@ -80,17 +80,32 @@ Use the skill `design-review-report-writer`, handing over:
 
 The review is done when the Report Writer has delivered the report.
 
+## Attributing an asset
+
+Every variable, style and component in the facts belongs to one Design System Layer, or to none. Attribute each by the first of these that fits:
+
+1. **By its library,** `confirmed`: the asset's `library` in the facts, which the scanner found by key. The asset belongs to the layer whose `Libraries` lists a library of that name. When no layer lists it, it's outside the stack.
+2. **Local,** `confirmed`: an asset with `remote: false`, defined in the reviewed file. It belongs to the layer whose `Libraries` links to the reviewed file, matched by the file key in the link. When no layer does, it's outside the stack.
+3. **By match hint,** `likely`: a component or style with no `library`, whose name (its set's name, for a variant) starts with a layer's match hint. It belongs to that layer, the longest hint winning when several layers' hints fit.
+4. **Unattributed:** a component or style with no `library` and no matching hint.
+
+A library variable with no `library` has a library whose name couldn't be read, so it can't be placed either way. No check judges it, and the Coverage notes in step 4 say why, from the facts' `unread`.
+
+Attribution goes only by a library's name as the scanner found it by key, or by a file's key, never by a collection's name: two libraries can share collection names such as `Theme`. With no layers settled, nothing is in the stack.
+
+In a location, an asset's `library` is the library it was attributed to: its `library` in the facts; for a local asset, the name of the layer's library that links to this file; by match hint, the layer's library, or its libraries joined by " or " when it lists several. It's null for a local asset no layer covers, and for an unattributed one. When a location's library comes from a match hint, the Finding's evidence says so.
+
 ## Token suggestions
 
 A fix names a token only when one was found in the design: a variable or style in the bindings facts' `variables` or `styles`, including one reached only through an alias. A suggestion never changes a Finding's Certainty.
 
-1. **Keep the stack's tokens.** A token is in the stack when it's a library variable whose `library` is one that a layer lists, a local variable (`remote: false`) when the reviewed file is one of a layer's libraries, or a style whose name starts with one of a layer's match hints. With no layers, nothing is in the stack.
+1. **Keep the stack's tokens:** the variables and styles that Attributing an asset puts in a layer.
 2. **Keep the matches.** A token matches a raw value when it's for the same kind of property and has the same value:
    - a fill or stroke: a colour variable, or a paint style with one solid paint, of the same hex, alpha included
    - a radius or spacing: a number variable of the same number
    - text: a text style of the same value, such as `Inter Regular 16/24`
    - an effect: an effect style of the same value
-3. **Name what's left.** Name each match with its library, such as "`color/surface/muted` (Foundation Tokens)", or for a style the layer whose match hint it has.
+3. **Name what's left.** Name each match with its library, as Attributing an asset gives it, such as "`color/surface/muted` (Foundation Tokens)".
 
 ## Review Profile
 
@@ -127,8 +142,8 @@ The design systems this work is checked against, most general first. A more spec
 - `Baseline`: the baseline's location, or `the skill's default`.
 - Each layer is a `###` heading, numbered from 1 for the most general, with its name.
   - `Owner`: optional.
-  - `Libraries`: each library's name as Figma shows it, with its file link in brackets, separated by commas. A team can list its working file, to cover its local variables and styles.
-  - `Match hints`: name prefixes for components and styles, each written prefix `<prefix>`, separated by commas.
+  - `Libraries`: each library's name as Figma shows it, with its file link in brackets, separated by commas. Library assets are matched to a library by that name, and local assets by the file key in its link, so a team can list its working file to cover its local variables, styles and components.
+  - `Match hints`: name prefixes for components and styles, each written prefix `<prefix>`, separated by commas, or `none`.
   - `Rules document`: the location of the layer owner's rules, or `none`. This version judges the baseline only. When a layer names a rules document, keep a note for the report: "This version judges the Design system baseline only, so the rules document for <layer> wasn't read."
   - `Docs`: optional guideline links.
 
@@ -138,7 +153,7 @@ Settle the layers by what the lookup found:
 
 - **A profile given at run time (`from` is `run time`), with a Design System Layers section:** use the section without asking. Giving the profile is the user's agreement.
 - **A profile found on the page or through a pointer in a project file, with the section:** ask before using it, with any other question still open. For example: "I found the Review Profile "<name>" on the "Review Profile" page in this file. Use its Design System Layers for this review? They're 1. Foundation (Foundation Tokens) and 2. Web Platform (Web Platform Kit), with the default baseline. I'll use only them and where it saves reports, and I won't change it." Name where it saves reports from its Report settings, if it has them. On yes, use the section. On no, go on as below.
-- **No profile, no section, or the user said no:** the layers are asked after the scan in step 3, pre-filled from the file. Say why you're asking, from the lookup's `searched` when there's no profile, then ask which libraries make up the design system, most general first. Pre-fill each library named in the facts' `variables`, one layer each, placing a library before any whose variables alias its own. With no library named there, offer no layers. For example: "I couldn't find a Review Profile: none was given, this file has no "Review Profile" page, and AGENTS.md has no pointer to one. Which libraries make up your design system, most general first? This design uses variables from Foundation Tokens and Web Platform Kit, so I'll use them as two layers in that order unless you name others. The layers decide which tokens I can suggest in fixes. Your answer is for this run only, and isn't saved to a profile." With the layers already given at run time, there's nothing to ask. For a profile without the section, keep a note for the report: "The Review Profile "<name>" has no Design System Layers section, so this run used the layers below."
+- **No profile, no section, or the user said no:** the layers are asked after the scan in step 3, pre-filled from the file. Say why you're asking, from the lookup's `searched` when there's no profile, then ask which libraries make up the design system, most general first. Pre-fill each library named in the facts' `variables`, one layer each, placing a library before any whose variables alias its own, then each other library named in the facts' `components` and `styles`. With no library named there, offer no layers. For example: "I couldn't find a Review Profile: none was given, this file has no "Review Profile" page, and AGENTS.md has no pointer to one. Which libraries make up your design system, most general first? This design uses variables from Foundation Tokens and Web Platform Kit, so I'll use them as two layers in that order unless you name others. The layers decide what's outside your design system and which tokens I can suggest in fixes. Your answer is for this run only, and isn't saved to a profile." With the layers already given at run time, there's nothing to ask. For a profile without the section, keep a note for the report: "The Review Profile "<name>" has no Design System Layers section, so this run used the layers below."
 
 Layers given at run time or in an answer have the libraries they name, and match hints only when the user gives some. From a profile whose section you use, also note its `profile`. From any profile the lookup found, unless the user said no to it, note its Report settings.
 

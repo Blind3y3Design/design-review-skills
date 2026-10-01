@@ -1,14 +1,6 @@
 {
-  "case": "DS-01",
-  "findings": [
-    {
-      "id": "design-system/raw-value/node:45:18",
-      "axis": "design-system",
-      "severity": "moderate",
-      "certainty": "confirmed",
-      "relatedFindings": []
-    }
-  ],
+  "case": "DS-14",
+  "findings": [],
   "coverage": [
     { "axis": "design-system", "ref": "raw-value", "status": "judged" },
     { "axis": "design-system", "ref": "outside-stack", "status": "judged" },

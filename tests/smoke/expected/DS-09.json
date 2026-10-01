@@ -1,8 +1,8 @@
 {
-  "case": "DS-01",
+  "case": "DS-09",
   "findings": [
     {
-      "id": "design-system/raw-value/node:45:18",
+      "id": "design-system/outside-stack/variable:b990b604c1c8586a12db5558fbe247207ad10b9c",
       "axis": "design-system",
       "severity": "moderate",
       "certainty": "confirmed",
