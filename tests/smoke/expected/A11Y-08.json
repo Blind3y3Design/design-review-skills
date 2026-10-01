@@ -21,7 +21,7 @@
     { "axis": "accessibility", "ref": "1.3.3", "status": "not-applicable" },
     { "axis": "accessibility", "ref": "1.3.4", "status": "not-applicable" },
     { "axis": "accessibility", "ref": "1.3.5", "status": "not-applicable" },
-    { "axis": "accessibility", "ref": "1.4.1", "status": "not-applicable" },
+    { "axis": "accessibility", "ref": "1.4.1", "status": "judged" },
     { "axis": "accessibility", "ref": "1.4.2", "status": "not-applicable" },
     { "axis": "accessibility", "ref": "1.4.3", "status": "judged" },
     { "axis": "accessibility", "ref": "1.4.4", "status": "needs-code" },

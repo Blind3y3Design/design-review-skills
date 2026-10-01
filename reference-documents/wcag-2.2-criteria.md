@@ -216,7 +216,7 @@ Target sizes (2.5.8 and 2.5.5) are in CSS px. The Design Facts give Figma px, wh
 - Since: 2.0
 - Group: static
 - Facts: text, colourPairs, structure
-- Trigger: colour that carries meaning: links in running text, states such as error, required or selected, status indicators, or charts and their legends
+- Trigger: colour that carries meaning: links in running text, states such as error, required, selected or focused, status indicators, or charts and their legends
 - Needs: none
 - Markers: none
 - Default Severity: serious
