@@ -1,4 +1,4 @@
-# Review Profile: Smoke test, coverage only
+# Review Profile: Smoke test, native
 
 Profile version: 0.1
 
@@ -6,7 +6,7 @@ Profile version: 0.1
 
 What this profile is called and who maintains it.
 
-- Name: Smoke test, coverage only
+- Name: Smoke test, native
 - Owner: Design review skills maintainers
 - Last updated: 2026-09-30
 
@@ -36,11 +36,10 @@ The accessibility standard designs are judged against.
 - Version: 2.2
 - Level: AA
 - Criteria reference: the skill's default
-- Missing annotations: coverage only
 
 ## Product context
 
 Where the product runs, used by checks that depend on screen size.
 
-- Target platforms: Web
+- Target platforms: iOS
 - Supported viewport widths: 360px, 1440px
