@@ -21,7 +21,7 @@ The calling skill hands over:
 - `references[]`: `{ name, version, location }` for each Reference Document used.
 - `findings[]`: each Finding's fields from the table below, with a `rootCause` in place of `id`, and each location without its `url`. A Finding merged from a `json only` report comes with its `id` and urls instead: keep them.
 - `coverage[]`: the Coverage entries.
-- `notes[]`, optional: sentences on how the run's settings were settled, such as a Severity Override that wasn't applied. They go in the Markdown header only.
+- `notes[]`, optional: sentences about the run for the reader, such as a Severity Override that wasn't applied or a version warning. They go in the Markdown header only.
 - `reportSettings`: the Report settings section of the Review Profile the run used, as `{ "<key>": "<value>" }`, or null.
 - `saveRequest`: what the user asked for this run's report, `"don't save"` or `"save to <location>"`, or null.
 - `annotateRequest`: what the user asked for this run's annotations, `"annotate"` or `"don't annotate"`, or null.
@@ -112,7 +112,7 @@ A `node` location's `url` is `https://www.figma.com/design/<fileKey>/?node-id=<n
 **Coverage entries**
 
 - For one standard: `{ axis, ref, status }`, adding `note` when there's a reason to give. The status is one of `judged`, `not-applicable`, `needs-annotation`, `needs-state`, `needs-section`, `needs-code`, `not-readable` or `stale`.
-- For a whole axis that didn't run: `{ axis, status: "skipped", reasonCode, reason }`. `reason` is the sentence for people. `reasonCode` is a fixed code, so a test can compare reasons:
+- For a whole axis that didn't run: `{ axis, status: "skipped", reasonCode, reason }`. `reason` is the sentence for people. `reasonCode` is a fixed code:
 
   | `reasonCode` | The axis didn't run because |
   |---|---|

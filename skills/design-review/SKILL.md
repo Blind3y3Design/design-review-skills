@@ -1,6 +1,6 @@
 ---
 name: design-review
-description: Reviews Figma frames along every Review Axis the team has set up, such as design system adherence and accessibility, and merges their Findings into one report. Use when the user asks for a design review, or for several kinds of review of a Figma design at once. Also reports the version of every skill in the set.
+description: Reviews Figma frames along every Review Axis the team has set up, such as design system adherence and accessibility, and merges their Findings into one report. Use when the user asks for a design review, or for several kinds of review of a Figma design at once, or asks which versions of the review skills are installed.
 metadata:
   version: "0.1.0-dev"
 ---
@@ -34,9 +34,9 @@ The profile is found when the lookup has handed back `found`, or the run has sto
 
 Take the axes from the user and the profile, never from the design: the axes the user names, such as "just accessibility", or else every axis the profile covers. For each of those the profile covers, you MUST use its Review Skill. Load it now, and note its Version line and two lines in its Run by another skill section: `Fact groups`, for the scan, and `For the caller to ask`, for your questions. You run it in step 4 or 5.
 
-A Review Skill that isn't installed or won't load is **not loaded**. Its axis is skipped (step 3), and the axis stays in the review: the skill's exact name goes in its Coverage entry. If none of these Review Skills loads, stop before asking anything. Reply with only: "This review can't run: the Review Skills `<name>`, `<name>` couldn't be loaded. Install them, or run each review in its own prompt, such as `/design-review-accessibility`." Write no report.
+A Review Skill that isn't installed or won't load is **not loaded**. Its axis is skipped (step 3), and the axis stays in the review: its Coverage entry names the skill's exact name. If none of these Review Skills loads, stop before asking anything. Reply with only: "This review can't run: the Review Skills `<name>`, `<name>` couldn't be loaded. Install them, or run each review in its own prompt, such as `/design-review-accessibility`." Write no report.
 
-This step is done when the Review Skill of every axis that may run is loaded and its two lines noted, the others are marked not loaded, or the run has stopped.
+This step is done when the Review Skill of every axis that may run is loaded with its Version line and two lines noted, the others are marked not loaded, or the run has stopped.
 
 ## 3. Settle the run
 
@@ -57,12 +57,12 @@ For example: "I'll use the Review Profile "Checkout team profile" from this file
 
 A chosen axis is **skipped**, with one Coverage entry that you keep for step 6, when:
 
-- its Review Skill is not loaded: `{ "axis": "<axis>", "status": "skipped", "reasonCode": "skill-not-installed", "reason": "the skill `<exact name>` isn't installed" }`
+- its Review Skill is not loaded: `{ "axis": "<axis>", "status": "skipped", "reasonCode": "skill-not-installed", "reason": "the skill <exact name> isn't installed" }`
 - it is research alignment with no topic: `{ "axis": "research", "status": "skipped", "reasonCode": "no-topic", "reason": "no topic given" }`
 
 The **runnable axes** are the chosen axes that aren't skipped. Go on by how many there are:
 
-- **None:** stop. If a chosen axis's Review Skill is not loaded, reply as step 2 does, naming those skills. Otherwise say which axes the profile covers, and that each review can run on its own with its Review Skill. Write no report.
+- **None:** stop. If a chosen axis's Review Skill is not loaded, reply as step 2 does, naming those skills. If a chosen axis was skipped for another reason, say which and why. If none was chosen, say which axes the profile covers, and that each review can run on its own with its Review Skill. Write no report.
 - **One, with no axis skipped:** hand off to its Review Skill. You MUST use that skill in `full report` mode, handing over what its Run by another skill section lists, without Design Facts, and your version warning as a note, if Versions below gives one. It scans, judges and delivers its own report, and the run is done when it has.
 - **Otherwise,** one runnable axis with a skipped one, or two or more: go on to step 4.
 
@@ -80,7 +80,7 @@ Where your runtime can run subagents, run each Review Skill in its own subagent,
 
 Each hands back its notes, if any, and a report JSON. That JSON may hold no Findings and one `skipped` Coverage entry for its axis, such as when a Reference Document can't be read. Keep it as it came.
 
-A Review Skill **fails** when it ends without a report JSON: it errored, a subagent your runtime stopped for running out of time, or it replied with only a message. Keep the others running, and don't run the failed skill yourself. Its axis is skipped, with the Coverage entry `{ "axis": "<axis>", "status": "skipped", "reasonCode": "skill-failed", "reason": "the skill `<name>` failed: <its error, or its reply>" }`, and a note: "<Review Skill's axis name> wasn't assessed. Run it on its own with `/<name>`."
+A Review Skill **fails** when it ends without a report JSON: it errored, your runtime reports its subagent as timed out or stopped, or it replied with only a message. Keep the others running, and leave the failed skill's axis to its Coverage entry: you never run its review yourself. The axis is skipped, with the Coverage entry `{ "axis": "<axis>", "status": "skipped", "reasonCode": "skill-failed", "reason": "the skill <name> failed: <its error, or its reply>" }`, and a note: "<Review Skill's axis name> wasn't assessed. Run it on its own with `/<name>`."
 
 This step is done when every runnable axis has handed back its report JSON or been skipped as failed.
 
@@ -98,14 +98,14 @@ Use the skill `design-review-report-writer` in `full report` mode, handing over 
 - `saveRequest`: "don't save" or "save to <location>" when the user said so, otherwise null.
 - `annotateRequest`: "annotate" or "don't annotate" when the user said so, otherwise null.
 
-Only this call delivers a report. The review is done when the Report Writer has delivered it, with every chosen axis's Findings and Coverage in it, the skipped axes included.
+Only this call delivers a report, even when every runnable axis was skipped as failed: its Coverage then says so. The review is done when the Report Writer has delivered it, with every chosen axis's Findings and Coverage in it, the skipped axes included.
 
 ## Versions
 
 Every skill in the set opens with a Version line: "Version <version> of the design review skills." The set shares one version.
 
-- **Warn on a mismatch.** Note each skill's Version line as you load it for a run. When any differs from this skill's, hand over one note: "Version warning: `<skill>` is at <version> and `<skill>` at <version>, but `design-review` is at <this version>. Install one version of every skill in the set." naming each such skill. With none, no note.
-- **Report the versions,** when the user asks for them. Load every skill in the set that is installed, and read only its Version line: run no lookup, scan or review. Reply with one line per skill, `<skill>: <version>`, or `<skill>: not installed`, then, judging only the installed skills, "All installed skills are at <version>." when they share one version, or "The installed skills are at different versions: install one version of every skill in the set." when they don't. A skill that isn't installed doesn't count as a different version. The set is `design-review`, the Review Skills in the Axes table, `design-review-profile`, `design-review-scanner`, `design-review-report-writer` and `design-review-figma-writer`.
+- **Warn on a mismatch.** Note the Version line of each skill you load for a run: the Profile Finder in step 1, each Review Skill in step 2, the scanner in step 4 and the Report Writer in step 6. When any differs from this skill's, hand over one note: "Version warning: `<skill>` is at <version> and `<skill>` at <version>, but `design-review` is at <this version>. Install one version of every skill in the set." naming each such skill. With none, no note.
+- **Report the versions,** when the user asks for them. Load every skill in the set that is installed, and read only its Version line: do only that. Reply with one line per skill, `<skill>: <version>`, or `<skill>: not installed`, then, judging only the installed skills, "All installed skills are at <version>." when they share one version, or "The installed skills are at different versions: install one version of every skill in the set." when they don't. A skill that isn't installed doesn't count as a different version. The set is `design-review`, the Review Skills in the Axes table, `design-review-profile`, `design-review-scanner`, `design-review-report-writer` and `design-review-figma-writer`.
 
 ## Axes
 

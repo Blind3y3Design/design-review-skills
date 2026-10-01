@@ -35,8 +35,8 @@ The inputs are settled when the scope, runtime and settings are known, or the ru
 
 Its location is the first of: given at run time or in answer to a question, the profile section's `Criteria reference` unless that's the skill's default, then the skill's default, `https://raw.githubusercontent.com/Blind3y3Design/design-review-skills/main/reference-documents/wcag-2.2-criteria.md`. Read the whole document, as Reading a location describes.
 
-- If a location the user or the profile gave can't be read, stop. Tell the user the location and the error, and write no report. When another skill runs this review, skip the axis as the next line does instead.
-- If the default link can't be read, or another skill runs this review and a given location can't be read, the axis is skipped. Hand the Report Writer no Findings and one Coverage entry, `{ "axis": "accessibility", "status": "skipped", "reasonCode": "reference-unreadable", "reason": "the criteria reference couldn't be read: <location>: <error>" }`, and go to step 5.
+- If a location the user or the profile gave can't be read, and nothing is running this review for another skill, stop. Tell the user the location and the error, and write no report.
+- Any other unreadable criteria reference, the default link or a given location when another skill runs this review, skips the axis. Hand the Report Writer no Findings and one Coverage entry, `{ "axis": "accessibility", "status": "skipped", "reasonCode": "reference-unreadable", "reason": "the criteria reference couldn't be read: <location>: <error>" }`, and go to step 5.
 
 From the document's header, note its name, version and location for the report, and its `Covers` line. Its "How an entry reads" section says which criteria apply to the target.
 
