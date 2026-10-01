@@ -202,6 +202,26 @@ test('each expected case passes against itself and fails when any compared field
       (r) => { entry(r, '1.1.1').status = 'needs-annotation'; },
       (r) => { r.coverage.pop(); },
       (r) => { r.coverage = []; },
+      (r) => { entry(r, '2.5.8').status = 'not-applicable'; },
+      (r) => { entry(r, '1.4.11').status = 'not-readable'; },
+    ],
+    'A11Y-02': [
+      (r) => { r.findings[0].certainty = 'confirmed'; },
+      (r) => { r.findings[0].id = 'accessibility/1.4.3/node:64:3'; },
+      (r) => { entry(r, '1.4.3').status = 'not-readable'; },
+      (r) => { entry(r, '1.4.5').status = 'not-applicable'; },
+    ],
+    'A11Y-03': [
+      (r) => { r.findings.pop(); },
+      (r) => { r.findings[1].severity = 'serious'; },
+      (r) => { r.findings[0].certainty = 'needs-review'; },
+      (r) => { entry(r, '2.5.8').status = 'not-readable'; },
+      (r) => { entry(r, '1.4.3').status = 'judged'; },
+    ],
+    'A11Y-03-native': [
+      (r) => { r.findings[0].id = 'accessibility/2.5.8/node:64:9'; },
+      (r) => { r.findings[0].certainty = 'confirmed'; },
+      (r) => { entry(r, '2.5.8').status = 'judged'; },
     ],
     'DS-01': [
       (r) => { r.findings[0].id = 'design-system/raw-value/node:45:17'; },

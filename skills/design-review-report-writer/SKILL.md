@@ -133,7 +133,7 @@ In this order. Leave out a section that has nothing in it, except Coverage.
    - Fix
    With no Findings, write "No Findings." under the axis heading.
 5. **Coverage:** a `## Coverage` section with a `###` heading for each axis, then its entries, where entries with the same status and the same note share one line: `<status>: <ref>, <ref>, …`, then the note. A skipped axis gets one line with its reason.
-6. **The design-stage line,** after the Coverage section, in every report whose axes include accessibility, whatever its Findings or Coverage: "This is a design-stage review, not a WCAG conformance evaluation. Criteria marked needs-code or needs-annotation in Coverage were not assessed."
+6. **The design-stage line,** after the Coverage section, in every report whose axes include accessibility, whatever its Findings or Coverage: "This is a design-stage review, not a WCAG conformance evaluation. Criteria marked needs-code or needs-annotation in Coverage were not assessed." When `run.runtime` is `figma-agent`, follow it with: "To cross-check contrast and target sizes, you can also run Figma's accessibility checker. This review doesn't rely on it."
 7. **The report JSON,** in one fenced `json` block, pretty-printed with 2-space indentation.
 
 ## Delivery

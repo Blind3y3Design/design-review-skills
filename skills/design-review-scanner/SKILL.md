@@ -18,7 +18,7 @@ All reading goes through **fixed scripts**, tested as written, so every review r
 The calling skill gives you:
 
 - **Scope:** the node ids to scan, one or more. Scripts can't see the user's selection, so the caller passes the ids of the selected or named frames.
-- **Fact groups:** the groups of facts it needs. This version reads two groups: `colourPairs`, with The colour pairs script, and `bindings`, with The bindings script.
+- **Fact groups:** the groups of facts it needs. This version reads four groups: `colourPairs`, with The colour pairs script, `bindings`, with The bindings script, `text`, with The text script, and `structure`, with The structure script.
 - **Runtime:** `figma-agent` inside Figma Design's agent, or `external-agent` for an agent using the Figma MCP server.
 
 ## Steps
@@ -43,11 +43,13 @@ Return the Design Facts to the calling skill: a JSON array holding one result pe
 - `scope`: the node scanned: `id`, `name`, `type`, `page`, and `topLevelFrame` when the node sits inside a top-level frame.
 - `groups`: the fact groups read.
 - `unread[]`: what couldn't be read, each `{ what, reason }`, with `scanInstead` ids when the answer is to scan those instead.
-- `colourPairs` and `bindings`: each group's facts, or null when it wasn't read.
+- `colourPairs`, `bindings`, `text` and `structure`: each group's facts, or null when it wasn't read.
+
+Positions and sizes are in Figma px. `x` and `y` are measured from the top-level frame's top-left corner.
 
 ### Colour pairs
 
-Each visible, non-empty text layer in the scope, measured against the layers painted beneath it. Hidden layers and layers at zero opacity are skipped. A text layer with several colours, sizes or weights gives one pair per run of text.
+Each visible, non-empty text layer in the scope, and each other layer with a fill or a stroke, measured against the layers painted beneath it. Hidden layers and layers at zero opacity are skipped. A text layer with several colours, sizes or weights gives one pair per run of text.
 
 - `textLayers`: how many text layers were measured.
 - `groups[]`: pairs grouped by Root Cause. Pairs share a group when they have the same text colour source, background, font size, weight and flags. A raw text colour's source is its own layer, so each raw-coloured text layer is its own group, while text bound to one variable or style on one background shares a group. Each group has:
@@ -58,6 +60,14 @@ Each visible, non-empty text layer in the scope, measured against the layers pai
   - `flags[]`: `opacity` when translucency is involved (on the text, its background or a parent layer), and `blend-mode` when a blend mode is. With a flag, the colours and ratio are an estimate.
   - `reason`: why the pair couldn't be computed, such as text over an image or a gradient, a background that covers only part of the text, or no opaque background. Null otherwise.
   - `count`: the text layers in the group. `nodes[]`: up to 10 of them, each `{ id, path }`, where `path` is the layer path from the top-level frame.
+- `nonTextLayers`: how many other layers were measured, each by its rendered bounds, so a line counts by its stroke. The top-level frame isn't one, since nothing in the design is painted beneath it.
+- `nonText[]`: their pairs, grouped by Root Cause as the text pairs are, one pair for a layer's solid fills and one for its solid strokes. Each group has:
+  - `part`: `fill` or `stroke`.
+  - `colour`: `{ hex, source }`, as `text` above. A raw colour's source is its own layer.
+  - `against`: `{ hex, source, node }`: the colour behind the layer. Null when it couldn't be computed.
+  - `inside`: for a stroke on a layer with a solid fill, `{ hex, ratio }`: the layer's own fill, and the stroke's ratio against it as the stroke shows there.
+  - `ratio`, `flags[]`, `reason`, `count` and `nodes[]`, as for text pairs.
+- Gradient fills and strokes on these layers aren't measured, and `unread` counts them. Image fills aren't colour pairs.
 
 ### Bindings
 
@@ -76,6 +86,28 @@ How each visible layer in the scope uses variables and styles, and the raw value
 - `styles[]`: each style used in the scope, once: `{ key, name, type, remote, value, uses, properties }`. A paint style with anything but one solid paint gives its paint count as `value`.
 
 **Values.** A colour is `#RRGGBB`, or `#RRGGBBAA` below full opacity. A radius or spacing is a number in px. Text is `<family> <style> <size>/<line height>`, such as `Inter Regular 16/24`, with any letter spacing after it. An effect is `<type> <colour> <x> <y> <blur> <spread>` for a shadow, or `<type> <blur>` for a blur.
+
+### Text
+
+Each visible, non-empty text layer in the scope, in layer order.
+
+- `textLayers`: how many there are.
+- `layers[]`: each `{ id, path, x, y, width, height, content, runs[] }`, where `content` is the layer's text.
+  - `runs[]`: one per run of text with its own style, each `{ fontSize, fontWeight, font, textStyle, colour }`, plus `text` when the layer has more than one run, `decoration` (`UNDERLINE` or `STRIKETHROUGH`) when it has one, and `link` (a URL, or `node:<id>` for a link to a layer) when it's a link.
+  - `font` is the family and style, such as `Inter Semi Bold`. `textStyle` is `{ key, name, remote }` when a text style is applied, otherwise null. `colour` is the top visible paint's `#RRGGBB`, or null when it isn't solid. Contrast is in the colour pairs.
+  - `truncated`: true when `content` was cut to fit the output limit, which `unread` then says.
+
+### Structure
+
+The top-level frame and every other visible layer in the scope, other than text.
+
+- `frame`: `{ id, name, width, height }` of the top-level frame.
+- `layers[]`: each `{ id, path, type, x, y, width, height }`, in layer order, plus:
+  - `reactions`: the prototype triggers set on the layer, such as `ON_CLICK`.
+  - `image`: true when it shows an image or video fill.
+
+  Inside an instance, only nested instances and layers with reactions or images are listed. An instance's main component is in the components facts. Paths are shortened, then left out, when the output limit needs it.
+- Sections aren't read, and `unread` says so.
 
 ## The colour pairs script
 
@@ -114,10 +146,12 @@ const alpha = (paint) => paint.opacity ?? 1;
 const paintBlended = (paint) => Boolean(paint.blendMode) && paint.blendMode !== 'NORMAL';
 const layerBlended = (n) => 'blendMode' in n && n.blendMode !== 'NORMAL' && n.blendMode !== 'PASS_THROUGH';
 const shown = (fills) => (Array.isArray(fills) ? fills.filter(p => p.visible !== false && alpha(p) > 0) : []);
+const strokesOf = (n) => ('strokes' in n && (n.strokeWeight === figma.mixed || n.strokeWeight > 0) ? shown(n.strokes) : []);
 
 // Paint order: a pre-order walk of the top-level frame, children back to front.
 // Everything earlier in the walk is painted below everything later.
-const texts = [], painted = [];
+// `candidates` are the non-text layers in the scope with a fill or a stroke, measured by their rendered bounds.
+const texts = [], painted = [], candidates = [];
 let order = 0;
 const walk = (n, inScope, parentTranslucent, parentBlended, clip, parentPath) => {
   if (n.visible === false || ('opacity' in n && n.opacity === 0)) return;
@@ -133,8 +167,10 @@ const walk = (n, inScope, parentTranslucent, parentBlended, clip, parentPath) =>
   const box = n.absoluteBoundingBox;
   if (n.type === 'TEXT') {
     if (scoped) texts.push(layer);
-  } else if (!n.isMask && 'fills' in n && shown(n.fills).length && box) {
-    painted.push({ ...layer, box: intersect(box, clip) });
+  } else if (!n.isMask && box) {
+    const filled = 'fills' in n && shown(n.fills).length > 0;
+    if (filled) painted.push({ ...layer, box: intersect(box, clip) });
+    if (scoped && n !== topFrame && (filled || strokesOf(n).length)) candidates.push({ ...layer, box: intersect(n.absoluteRenderBounds || box, clip) });
   }
   if ('children' in n && n.type !== 'BOOLEAN_OPERATION') {
     let inner = 'clipsContent' in n && n.clipsContent && box ? intersect(box, clip) : clip;
@@ -172,20 +208,20 @@ const luminance = (c) => {
 const ratio = (a, b) => { const x = luminance(a), y = luminance(b); return Math.floor(((Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05)) * 100) / 100; };
 const kindOf = (p) => (p.type === 'IMAGE' || p.type === 'VIDEO' ? 'an image' : p.type.startsWith('GRADIENT') ? 'a gradient' : p.type);
 
-// The background: layers painted below the text, top down, until one is opaque.
-const backgroundOf = async (text, box) => {
+// The background: layers painted below the text or layer, top down, until one is opaque.
+const backgroundOf = async (above, box, what = 'text') => {
   const layers = [];
   const flags = new Set();
   for (let k = painted.length - 1; k >= 0; k--) {
     const below = painted[k];
-    if (below.order >= text.order || isEmpty(intersect(below.box, box))) continue;
-    if (!covers(below.box, box)) return { reason: `background varies: "${below.n.name}" covers only part of the text` };
+    if (below.order >= above.order || isEmpty(intersect(below.box, box))) continue;
+    if (!covers(below.box, box)) return { reason: `background varies: "${below.n.name}" covers only part of the ${what}` };
     if (below.translucent) flags.add('opacity');
     if (below.blended) flags.add('blend-mode');
     const fills = shown(below.n.fills);
     for (let j = fills.length - 1; j >= 0; j--) {
       const paint = fills[j];
-      if (paint.type !== 'SOLID') return { reason: `text over ${kindOf(paint)} in "${below.n.name}"` };
+      if (paint.type !== 'SOLID') return { reason: `${what} over ${kindOf(paint)} in "${below.n.name}"` };
       if (alpha(paint) < 1) flags.add('opacity');
       if (paintBlended(paint)) flags.add('blend-mode');
       layers.push({ node: below.n, paint });
@@ -193,14 +229,46 @@ const backgroundOf = async (text, box) => {
         let c = { ...paint.color, a: 1 };
         for (let l = layers.length - 2; l >= 0; l--) c = over({ ...layers[l].paint.color, a: alpha(layers[l].paint) }, c);
         const topmost = layers[0];
-        return { color: c, hex: hex(c), node: topmost.node.id, source: await sourceOf(topmost.paint, topmost.node.fillStyleId), flags };
+        return { color: c, fact: { hex: hex(c), source: await sourceOf(topmost.paint, topmost.node.fillStyleId), node: topmost.node.id }, flags };
       }
     }
   }
-  return { reason: 'no opaque background behind the text' };
+  return { reason: `no opaque background behind the ${what}` };
 };
 
-const pairs = new Map(), seen = new Map();
+// Pairs are grouped by Root Cause. A group counts each layer once, and lists up to SAMPLES of them.
+const grouped = () => {
+  const groups = new Map(), seen = new Map();
+  return {
+    add(key, make, n, path) {
+      if (!groups.has(key)) { groups.set(key, { ...make(), count: 0, nodes: [] }); seen.set(key, new Set()); }
+      const group = groups.get(key), ids = seen.get(key);
+      if (ids.has(n.id)) return;
+      ids.add(n.id);
+      group.count++;
+      if (group.nodes.length < SAMPLES) group.nodes.push({ id: n.id, path });
+    },
+    list: () => [...groups.values()],
+  };
+};
+// What a stack of solid paints shows over a colour, or the top paint's own colour with nothing beneath.
+const composite = (paints, beneath) => {
+  if (!beneath) return { ...paints[paints.length - 1].color, a: 1 };
+  let c = beneath;
+  for (const p of paints) c = over({ ...p.color, a: alpha(p) }, c);
+  return c;
+};
+// Translucency or a blend mode on the layer, its background or its own paints makes the measurement an estimate.
+const flagsOf = (bg, layer, paints) => {
+  const flags = new Set(bg.flags || []);
+  if (layer.translucent || paints.length > 1 || paints.some(p => alpha(p) < 1)) flags.add('opacity');
+  if (layer.blended || paints.some(paintBlended)) flags.add('blend-mode');
+  return [...flags].sort();
+};
+const backgroundKey = (fact) => (!fact ? '-' : fact.source.kind === 'raw' ? fact.hex : sourceId(fact.source));
+const solid = (paints) => paints.length > 0 && paints.every(p => p.type === 'SOLID');
+
+const textPairs = grouped();
 let textLayers = 0;
 for (const t of texts) {
   const n = t.n;
@@ -211,52 +279,62 @@ for (const t of texts) {
   const mixed = [n.fills, n.fillStyleId, n.fontSize, n.fontWeight].some(v => v === figma.mixed);
   const runs = mixed ? n.getStyledTextSegments(['fills', 'fillStyleId', 'fontSize', 'fontWeight']) : [{ fills: n.fills, fillStyleId: n.fillStyleId, fontSize: n.fontSize, fontWeight: n.fontWeight }];
   const bg = await backgroundOf(t, box);
+  const background = bg.fact || null;
   for (const run of runs) {
     const fills = shown(run.fills);
     if (!fills.length) continue;
-    const flags = new Set(bg.flags || []);
-    if (t.translucent) flags.add('opacity');
-    if (t.blended) flags.add('blend-mode');
     let reason = bg.reason || null, fg = null, source = null;
     const nonSolid = fills.find(p => p.type !== 'SOLID');
     if (nonSolid) reason = `text fill is ${kindOf(nonSolid)}`;
     else {
-      const topPaint = fills[fills.length - 1];
-      source = await sourceOf(topPaint, run.fillStyleId);
+      source = await sourceOf(fills[fills.length - 1], run.fillStyleId);
       if (source.kind === 'raw') source.node = n.id;
-      if (fills.length > 1 || fills.some(p => alpha(p) < 1)) flags.add('opacity');
-      if (fills.some(paintBlended)) flags.add('blend-mode');
-      if (bg.color) {
-        fg = bg.color;
-        for (const p of fills) fg = over({ ...p.color, a: alpha(p) }, fg);
-      } else fg = { ...topPaint.color, a: 1 };
+      fg = composite(fills, bg.color);
     }
+    const flags = flagsOf(bg, t, nonSolid ? [] : fills);
     const text = { hex: fg ? hex(fg) : null, source };
-    const background = bg.color ? { hex: bg.hex, source: bg.source, node: bg.node } : null;
-    const flagList = [...flags].sort();
-    const key = [sourceId(source), text.hex, background ? (background.source.kind === 'raw' ? background.hex : sourceId(background.source)) : '-', run.fontSize, run.fontWeight, flagList.join(','), reason].join('|');
-    if (!pairs.has(key)) {
-      pairs.set(key, { text, background, fontSize: run.fontSize, fontWeight: run.fontWeight, ratio: fg && bg.color ? ratio(fg, bg.color) : null, flags: flagList, reason, count: 0, nodes: [] });
-      seen.set(key, new Set());
-    }
-    const group = pairs.get(key), ids = seen.get(key);
-    if (!ids.has(n.id)) {
-      ids.add(n.id);
-      group.count++;
-      if (group.nodes.length < SAMPLES) group.nodes.push({ id: n.id, path: t.path });
-    }
+    const key = [sourceId(source), text.hex, backgroundKey(background), run.fontSize, run.fontWeight, flags.join(','), reason].join('|');
+    textPairs.add(key, () => ({ text, background, fontSize: run.fontSize, fontWeight: run.fontWeight, ratio: fg && bg.color ? ratio(fg, bg.color) : null, flags, reason }), n, t.path);
   }
 }
 
+// Non-text layers: each solid fill and stroke against the colour behind the layer. A stroke is also measured inside the layer, over its own fill.
+const nonTextPairs = grouped();
+let nonTextLayers = 0, gradients = 0;
+for (const c of candidates) {
+  const n = c.n;
+  if (isEmpty(c.box)) continue;
+  const fills = shown(n.fills), strokes = strokesOf(n);
+  gradients += [...fills, ...strokes].filter(p => p.type.startsWith('GRADIENT')).length;
+  const parts = [{ part: 'fill', paints: fills, styleId: n.fillStyleId }, { part: 'stroke', paints: strokes, styleId: n.strokeStyleId }].filter(p => solid(p.paints));
+  if (!parts.length) continue;
+  nonTextLayers++;
+  const bg = await backgroundOf(c, c.box, 'layer');
+  const against = bg.fact || null;
+  const ownFill = solid(fills) ? composite(fills, bg.color) : null;
+  for (const { part, paints, styleId } of parts) {
+    const source = await sourceOf(paints[paints.length - 1], styleId);
+    if (source.kind === 'raw') source.node = n.id;
+    const shows = composite(paints, bg.color);
+    const flags = flagsOf(bg, c, paints);
+    const pair = { part, colour: { hex: hex(shows), source }, against, ratio: bg.color ? ratio(shows, bg.color) : null, flags, reason: bg.reason || null };
+    if (part === 'stroke' && ownFill) pair.inside = { hex: hex(ownFill), ratio: ratio(composite(paints, ownFill), ownFill) };
+    const key = [part, sourceId(source), pair.colour.hex, backgroundKey(against), pair.inside ? pair.inside.hex : '-', flags.join(','), pair.reason].join('|');
+    nonTextPairs.add(key, () => pair, n, c.path);
+  }
+}
+if (gradients) out.unread.push({ what: 'gradient paints', reason: `${gradients} gradient paints on non-text layers weren't measured` });
+
 // Keep the output under the smaller runtime limit (about 20 kB through use_figma).
-out.colourPairs = { textLayers, groups: [...pairs.values()] };
+out.colourPairs = { textLayers, groups: textPairs.list(), nonTextLayers, nonText: nonTextPairs.list() };
 const size = () => JSON.stringify(out).length;
-if (size() > LIMIT) for (const group of out.colourPairs.groups) for (const x of group.nodes) x.path = x.path.split(' / ').slice(-3).join(' / ');
-if (size() > LIMIT) for (const group of out.colourPairs.groups) group.nodes = group.nodes.slice(0, 3);
+const allGroups = () => [...out.colourPairs.groups, ...out.colourPairs.nonText];
+if (size() > LIMIT) for (const group of allGroups()) for (const x of group.nodes) x.path = x.path.split(' / ').slice(-3).join(' / ');
+if (size() > LIMIT) for (const group of allGroups()) group.nodes = group.nodes.slice(0, 3);
 if (size() > LIMIT) {
   out.colourPairs = null;
   out.groups = [];
-  out.unread.push({ what: 'colourPairs', reason: `output limit: ${textLayers} text layers are too many for one call; scan each id in scanInstead`, scanInstead: childIds(node) });
+  out.unread = [{ what: 'colourPairs', reason: `output limit: ${textLayers} text layers and ${nonTextLayers} other layers are too many for one call; scan each id in scanInstead`, scanInstead: childIds(node) }];
 }
 return out;
 ```
@@ -500,6 +578,162 @@ if (size() > LIMIT) {
   out.bindings = null;
   out.groups = [];
   out.unread.push({ what: 'bindings', reason: `output limit: ${raw.length} layers with raw values are too many for one call; scan each id in scanInstead`, scanInstead: childIds(node) });
+}
+return out;
+```
+
+## The text script
+
+```js
+const NODE_ID = 'NODE_ID';
+
+const FACTS_VERSION = '0.2';
+const LIMIT = 18000;
+const out = { factsVersion: FACTS_VERSION, fileKey: figma.fileKey || null, scope: null, groups: ['text'], unread: [], text: null };
+const childIds = (n) => ('children' in n ? n.children.map(c => c.id) : []);
+
+const node = await figma.getNodeByIdAsync(NODE_ID);
+if (!node) { out.unread.push({ what: NODE_ID, reason: 'no node with this id' }); return out; }
+let page = node;
+while (page.parent && page.type !== 'PAGE') page = page.parent;
+if (page.type === 'PAGE') await page.loadAsync();
+if (node.type === 'PAGE' || node.type === 'DOCUMENT') {
+  out.groups = [];
+  out.unread.push({ what: NODE_ID, reason: 'a page, not a layer: scan each id in scanInstead', scanInstead: childIds(node) });
+  return out;
+}
+let topFrame = node;
+while (topFrame.parent && topFrame.parent.type !== 'PAGE') topFrame = topFrame.parent;
+out.scope = { id: node.id, name: node.name, type: node.type, page: page.name, topLevelFrame: topFrame.id === node.id ? null : { id: topFrame.id, name: topFrame.name } };
+
+const round = (v) => Math.round(v * 100) / 100;
+const origin = topFrame.absoluteBoundingBox || { x: 0, y: 0 };
+const hex = (c) => '#' + [c.r, c.g, c.b].map(v => Math.round(v * 255).toString(16).padStart(2, '0')).join('').toUpperCase();
+const shown = (paints) => (Array.isArray(paints) ? paints.filter(p => p.visible !== false && (p.opacity ?? 1) > 0) : []);
+const styles = new Map();
+const styleOf = async (id) => {
+  if (typeof id !== 'string' || !id) return null;
+  if (!styles.has(id)) {
+    const s = await figma.getStyleByIdAsync(id);
+    styles.set(id, s ? { key: s.key, name: s.name, remote: s.remote } : { id, name: null });
+  }
+  return styles.get(id);
+};
+
+// Text layers in the scope, in layer order. Hidden layers and layers at zero opacity are skipped.
+const layers = [];
+const walk = async (n, parentPath) => {
+  if (n.visible === false || ('opacity' in n && n.opacity === 0)) return;
+  const path = parentPath ? `${parentPath} / ${n.name}` : n.name;
+  if (n.type === 'TEXT') {
+    if (!n.characters.trim()) return;
+    const b = n.absoluteBoundingBox || { x: origin.x, y: origin.y, width: 0, height: 0 };
+    const segments = n.getStyledTextSegments(['fontSize', 'fontWeight', 'fontName', 'textStyleId', 'fills', 'textDecoration', 'hyperlink']);
+    const runs = [];
+    for (const s of segments) {
+      const top = shown(s.fills).pop();
+      const run = segments.length > 1 ? { text: s.characters } : {};
+      Object.assign(run, { fontSize: round(s.fontSize), fontWeight: s.fontWeight, font: `${s.fontName.family} ${s.fontName.style}`, textStyle: await styleOf(s.textStyleId), colour: top && top.type === 'SOLID' ? hex(top.color) : null });
+      if (s.textDecoration && s.textDecoration !== 'NONE') run.decoration = s.textDecoration;
+      if (s.hyperlink) run.link = s.hyperlink.type === 'URL' ? s.hyperlink.value : `node:${s.hyperlink.value}`;
+      runs.push(run);
+    }
+    layers.push({ id: n.id, path, x: round(b.x - origin.x), y: round(b.y - origin.y), width: round(b.width), height: round(b.height), content: n.characters, runs });
+    return;
+  }
+  if ('children' in n) for (const c of n.children) await walk(c, path);
+};
+let parentPath = '';
+for (let x = node.parent; x && x.type !== 'PAGE'; x = x.parent) parentPath = parentPath ? `${x.name} / ${parentPath}` : x.name;
+await walk(node, parentPath);
+
+// Keep the output under the smaller runtime limit (about 20 kB through use_figma).
+out.text = { textLayers: layers.length, layers };
+const size = () => JSON.stringify(out).length;
+const CUT = 200;
+const cut = (s) => (s.length > CUT ? `${s.slice(0, CUT)}…` : s);
+if (size() > LIMIT) for (const l of layers) l.path = l.path.split(' / ').slice(-3).join(' / ');
+if (size() > LIMIT && layers.some(l => l.content.length > CUT)) {
+  for (const l of layers) {
+    if (l.content.length <= CUT) continue;
+    l.content = cut(l.content);
+    l.truncated = true;
+    for (const r of l.runs) if (r.text) r.text = cut(r.text);
+  }
+  out.unread.push({ what: 'text content', reason: `output limit: text longer than ${CUT} characters was cut` });
+}
+if (size() > LIMIT) {
+  out.text = null;
+  out.groups = [];
+  out.unread = [{ what: 'text', reason: `output limit: ${layers.length} text layers are too many for one call; scan each id in scanInstead`, scanInstead: childIds(node) }];
+}
+return out;
+```
+
+## The structure script
+
+```js
+const NODE_ID = 'NODE_ID';
+
+const FACTS_VERSION = '0.2';
+const LIMIT = 18000;
+const out = { factsVersion: FACTS_VERSION, fileKey: figma.fileKey || null, scope: null, groups: ['structure'], unread: [], structure: null };
+const childIds = (n) => ('children' in n ? n.children.map(c => c.id) : []);
+
+const node = await figma.getNodeByIdAsync(NODE_ID);
+if (!node) { out.unread.push({ what: NODE_ID, reason: 'no node with this id' }); return out; }
+let page = node;
+while (page.parent && page.type !== 'PAGE') page = page.parent;
+if (page.type === 'PAGE') await page.loadAsync();
+if (node.type === 'PAGE' || node.type === 'DOCUMENT') {
+  out.groups = [];
+  out.unread.push({ what: NODE_ID, reason: 'a page, not a layer: scan each id in scanInstead', scanInstead: childIds(node) });
+  return out;
+}
+let topFrame = node;
+while (topFrame.parent && topFrame.parent.type !== 'PAGE') topFrame = topFrame.parent;
+out.scope = { id: node.id, name: node.name, type: node.type, page: page.name, topLevelFrame: topFrame.id === node.id ? null : { id: topFrame.id, name: topFrame.name } };
+
+const round = (v) => Math.round(v * 100) / 100;
+const origin = topFrame.absoluteBoundingBox || { x: 0, y: 0 };
+
+const showsImage = (n) => 'fills' in n && Array.isArray(n.fills) && n.fills.some(p => p.visible !== false && (p.opacity ?? 1) > 0 && (p.type === 'IMAGE' || p.type === 'VIDEO'));
+
+// Layers in the scope other than text and the top-level frame, in layer order. Hidden layers and layers at zero opacity are skipped.
+// Inside an instance, only nested instances and layers with prototype triggers or images are listed.
+const layers = [];
+const walk = async (n, inInstance, parentPath) => {
+  if (n.visible === false || ('opacity' in n && n.opacity === 0)) return;
+  const path = parentPath ? `${parentPath} / ${n.name}` : n.name;
+  if (n.type === 'TEXT') return;
+  const triggers = [...new Set((n.reactions || []).map(r => r.trigger && r.trigger.type).filter(Boolean))];
+  const image = showsImage(n);
+  if (n !== topFrame && (!inInstance || n.type === 'INSTANCE' || triggers.length || image)) {
+    const b = n.absoluteBoundingBox || { x: origin.x, y: origin.y, width: 0, height: 0 };
+    const row = { id: n.id, path, type: n.type, x: round(b.x - origin.x), y: round(b.y - origin.y), width: round(b.width), height: round(b.height) };
+    if (triggers.length) row.reactions = triggers;
+    if (image) row.image = true;
+    layers.push(row);
+  }
+  if ('children' in n && n.type !== 'BOOLEAN_OPERATION') for (const c of n.children) await walk(c, inInstance || n.type === 'INSTANCE', path);
+};
+let parentPath = '', aboveInstance = false;
+for (let x = node.parent; x && x.type !== 'PAGE'; x = x.parent) {
+  parentPath = parentPath ? `${x.name} / ${parentPath}` : x.name;
+  if (x.type === 'INSTANCE') aboveInstance = true;
+}
+await walk(node, aboveInstance, parentPath);
+out.unread.push({ what: 'sections', reason: 'not read by this version of the scanner' });
+
+// Keep the output under the smaller runtime limit (about 20 kB through use_figma).
+out.structure = { frame: { id: topFrame.id, name: topFrame.name, width: round(topFrame.width), height: round(topFrame.height) }, layers };
+const size = () => JSON.stringify(out).length;
+if (size() > LIMIT) for (const l of layers) l.path = l.path.split(' / ').slice(-3).join(' / ');
+if (size() > LIMIT) for (const l of layers) delete l.path;
+if (size() > LIMIT) {
+  out.structure = null;
+  out.groups = [];
+  out.unread = [{ what: 'structure', reason: `output limit: ${layers.length} layers are too many for one call; scan each id in scanInstead`, scanInstead: childIds(node) }];
 }
 return out;
 ```
