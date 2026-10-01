@@ -21,8 +21,16 @@ The skill that writes a review's Findings and Coverage in the shared report form
 _Avoid_: Documentation skill, formatter, output skill
 
 **Design Scanner**:
-The skill that reads a design and returns its Design Facts, without judging them. It also finds the Review Profile for the Review Skills, handing back the profile's text for each skill to use as it needs.
+The skill that reads a design and returns its Design Facts, without judging them. It only reads.
 _Avoid_: Inspector, crawler, collector
+
+**Profile Finder**:
+The skill that finds the team's Review Profile and hands back its text, or says there's none or that it can't be read. The Orchestrator and each Review Skill use it, and each decides what to use from the profile.
+_Avoid_: Profile loader, config reader
+
+**Figma Writer**:
+The skill that writes a review's output into the reviewed Figma file, as a report frame or as annotations on layers, exactly as the Report Writer hands it over. The Report Writer decides what to write and where.
+_Avoid_: Annotator, exporter
 
 **Design Facts**:
 What was read or measured from a design, without judgement: its components, bindings, detached instances, overrides, text, and measurements such as contrast ratios. Review Skills judge from Design Facts.
