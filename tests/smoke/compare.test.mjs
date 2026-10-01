@@ -365,6 +365,33 @@ test('each expected case passes against itself and fails when any compared field
       (r) => { r.findings.push({ id: 'design-system/outside-stack/variable:4eebcb0ed3b44b911ef9fd7c65a57edaeef66fe5', axis: 'design-system', severity: 'moderate', certainty: 'confirmed' }); },
       (r) => { r.findings[0].certainty = 'likely'; },
     ],
+    'DS-04': [
+      (r) => { r.findings[0].id = 'design-system/detached-instance/component:33732a6d19dcd570f49c6dae49e669c160b91c27'; },
+      (r) => { r.findings[0].certainty = 'likely'; },
+      (r) => { r.findings.push({ id: 'design-system/override/node:I119:72;4:3', axis: 'design-system', severity: 'moderate', certainty: 'confirmed' }); },
+      (r) => { entry(r, 'detached-instance').status = 'not-readable'; },
+    ],
+    'DS-05': [
+      (r) => { r.findings[0].id = 'design-system/raw-value/node:119:75'; },
+      (r) => { r.findings[0].certainty = 'likely'; },
+      (r) => { r.findings[0].severity = 'minor'; },
+      (r) => { entry(r, 'override').status = 'not-applicable'; },
+    ],
+    'DS-06': [
+      (r) => { r.findings.push({ id: 'design-system/override/node:I119:92;4:11;4:6', axis: 'design-system', severity: 'moderate', certainty: 'likely' }); },
+      (r) => { entry(r, 'override').status = 'not-applicable'; },
+      (r) => { entry(r, 'resize').status = 'not-readable'; },
+    ],
+    'DS-11': [
+      (r) => { r.findings.push({ id: 'design-system/resize/node:119:104', axis: 'design-system', severity: 'moderate', certainty: 'confirmed' }); },
+      (r) => { entry(r, 'resize').status = 'not-applicable'; },
+    ],
+    'DS-13': [
+      (r) => { r.findings.push({ id: 'design-system/raw-value/node:119:109', axis: 'design-system', severity: 'moderate', certainty: 'confirmed' }); },
+      (r) => { r.findings[0].id = 'design-system/raw-value/node:119:109'; },
+      (r) => { r.findings[0].certainty = 'needs-review'; },
+      (r) => { entry(r, 'raw-value').status = 'not-applicable'; },
+    ],
   };
   for (const [id, edits] of Object.entries(changes)) {
     assert.equal(compareReports(load(id), load(id)).pass, true, id);
