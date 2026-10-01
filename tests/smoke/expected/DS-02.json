@@ -10,6 +10,8 @@
     }
   ],
   "coverage": [
-    { "axis": "design-system", "ref": "raw-value", "status": "judged" }
+    { "axis": "design-system", "ref": "raw-value", "status": "judged" },
+    { "axis": "design-system", "ref": "outside-stack", "status": "judged" },
+    { "axis": "design-system", "ref": "unattributed", "status": "not-applicable" }
   ]
 }
