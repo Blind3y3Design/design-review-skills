@@ -24,6 +24,7 @@ The calling skill hands over:
 - `notes[]`, optional: sentences on how the run's settings were settled, such as a Severity Override that wasn't applied. They go in the Markdown header only.
 - `reportSettings`: the Report settings section of the Review Profile the run used, as `{ "<key>": "<value>" }`, or null.
 - `saveRequest`: what the user asked for this run's report, `"don't save"` or `"save to <location>"`, or null.
+- `annotateRequest`: what the user asked for this run's annotations, `"annotate"` or `"don't annotate"`, or null.
 
 ## Steps
 
@@ -32,9 +33,9 @@ The calling skill hands over:
 3. **Link Findings across axes.** Findings on different axes that share a Root Cause stay separate, and each lists the ids of the others in its `relatedFindings`.
 4. **Write the report JSON** as described below. In `json only` mode, stop here, and hand back only the `notes`, if any, as a list headed "Notes:", then the report JSON in one fenced `json` block.
 5. **Write the Markdown,** in the layout below, ending with the JSON in one fenced `json` block.
-6. **Deliver** the report, as Delivery below describes: save it, then show the whole report in the chat.
+6. **Deliver** the report, as Delivery below describes: mark its Findings on their layers when annotations are on, save it, then show the whole report in the chat.
 
-A `json only` report is done when its JSON holds every Finding and Coverage entry handed over, and it's been handed back. A full report is done when the chat shows the Markdown and its JSON block, every Finding and Coverage entry handed over is in both, and the report is saved where Delivery says or the Saved line says why it isn't.
+A `json only` report is done when its JSON holds every Finding and Coverage entry handed over, and it's been handed back. A full report is done when the chat shows the Markdown and its JSON block, every Finding and Coverage entry handed over is in both, the report is saved where Delivery says or the Saved line says why it isn't, and, with annotations on, the Annotated line says what was marked or why nothing was.
 
 ## Axes
 
@@ -126,6 +127,7 @@ In this order. Leave out a section that has nothing in it, except Coverage.
    - Reference Documents: each name, version and location
    - Skills: "design review skills `<setVersion>`, Design Facts `<factsVersion>` (`<factGroups>`), `<runtime>`"
    - The Saved line, under Delivery
+   - The Annotated line, under Annotations, when annotations are on
 3. **Fixes by Root Cause:** one numbered item per Root Cause across all axes: its fix and the short ids of the Findings it clears. When those Findings are on several axes, give each axis's fix. Order them by how many Findings each clears, most first, then by their highest Severity.
 4. **Findings, one `##` section per axis,** headed with the axis's name in the report. List its Findings from the most severe down, `confirmed` before `likely` before `needs-review`. Each is a `###` heading with its short id and title, then:
    - Severity and Certainty
@@ -176,6 +178,39 @@ The header's Saved line says where the report went. Write it for the destination
 - **Not saved, with "don't save":** "Not saved: you asked not to save this run."
 - **Not saved, when no destination could be used:** "Not saved: <each reason>. The report is in this chat only."
 
+### Annotations
+
+Annotations mark each Finding on its layers in the reviewed file, as Figma annotations in the review's own annotation categories, one per axis, such as `Design review: Accessibility`. They're off unless this run's `annotateRequest` is "annotate", or `reportSettings` has `Annotate layers: on` and the request isn't "don't annotate". With annotations off, leave every annotation in the file as it is.
+
+Each run replaces the review's annotations for what it covered: it clears them from the axes it reviewed, everywhere in its scope, then writes its own. A fixed Finding's annotation goes, and the rest stay current. The designer's own annotations, in any other category, are never changed.
+
+Mark the layers before saving, so the saved copy carries the Annotated line. You MUST use the skill `design-review-scanner` to write them, as its Writing annotations describes. Hand it the file key, the runtime, and:
+
+- the scope: the node ids in `run.scope.nodes`
+- the axes covered: each axis with a Coverage entry other than a whole-axis `skipped`
+- a mark for each Finding with a `node` location: its axis, its short id, the node ids of those locations, and its text, written as below. A library component, style or variable can't hold an annotation in the reviewed file, so a Finding blamed on one is marked on its `node` locations only. A Finding with none isn't marked.
+
+Each mark's text, in three lines, leaving out ` Fix: <fix>` when there's no fix:
+
+```
+**<short id>** <title>
+<Severity>, <Certainty>. Fix: <fix>
+From the design review on <date>.
+```
+
+Writing annotations needs edit access to the file, and a Full seat. A script can't delete an annotation category, so a review category stays in the file once a run adds it, until someone deletes it in Figma.
+
+### The Annotated line
+
+The header's Annotated line says what the scanner handed back:
+
+- **Marked:** "Annotated: <marked> Findings, with <written> annotations in "<the label of each axis's category that has a mark>"." Then, when `cleared` is more than 0, "<cleared> annotations from earlier reviews of this scope were cleared first." With no Findings to mark: "Annotated: no Findings to mark." and the cleared sentence.
+- **For each category `created`:** "This run added the "<label>" annotation category. A script can't delete it, so it stays in the file until someone deletes it in Figma."
+- **For each entry in `moved`:** "<finding> is marked on <the layer it went to>, since <its layer> can't hold annotations." When `movedTotal` is given, end with "and <the rest> more."
+- **For each Finding not marked,** because it has no `node` location or every one of its nodes is in `unmarked`: "<short id> isn't marked: <reason>.", where the reason is "it has no layer in this file" or the scanner's. When `unmarkedTotal` is given, end with "and <the rest> more."
+- **Partly annotated,** when a later part of a split run failed: "Partly annotated:", then the Marked sentences for the parts written, then "The rest weren't marked: <the error>."
+- **Not annotated:** "Not annotated: <the error>." When the error has `categoriesAdded`, add the category sentence for each.
+
 ## Report settings
 
 A Review Profile's Report settings section, which the calling skill hands over as `reportSettings`, says where the team's reports go. One `Key: value` per line:
@@ -183,4 +218,4 @@ A Review Profile's Report settings section, which the calling skill hands over a
 | Setting | Default |
 |---|---|
 | `Report location`: a local folder, a GitHub repo or folder link, or `none` | `none`: the report page in the reviewed file |
-| `Annotate layers`: `on` or `off`, for marking Findings on their layers, which a later version of the skills adds | `off` |
+| `Annotate layers`: `on` or `off`. `on` marks each Finding on its layers, as Annotations describes | `off` |
