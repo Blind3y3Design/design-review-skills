@@ -1,0 +1,29 @@
+{
+  "case": "A11Y-10",
+  "findings": [
+    {
+      "id": "accessibility/1.4.3/variable:d085be2f02f8bbf32edf6094b0f0eb83b5be3503",
+      "axis": "accessibility",
+      "severity": "moderate",
+      "certainty": "confirmed",
+      "relatedFindings": []
+    }
+  ],
+  "coverage": [
+    {
+      "axis": "accessibility",
+      "ref": "1.3.1",
+      "status": "judged"
+    },
+    {
+      "axis": "accessibility",
+      "ref": "1.4.3",
+      "status": "judged"
+    },
+    {
+      "axis": "accessibility",
+      "ref": "2.4.6",
+      "status": "judged"
+    }
+  ]
+}

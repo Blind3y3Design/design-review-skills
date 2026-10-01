@@ -295,6 +295,29 @@ test('each expected case passes against itself and fails when any compared field
       (r) => { entry(r, '2.4.7').status = 'needs-section'; },
       (r) => { entry(r, '1.4.11').status = 'not-applicable'; },
     ],
+    'A11Y-05': [
+      (r) => { r.findings[0].id = 'accessibility/1.4.3/node:I152:62;1004:35'; },
+      (r) => { r.findings[0].id = 'accessibility/1.4.3/component:7956e64673ab27f19085e587a364433b671acc41-2'; },
+      (r) => { r.findings[0].severity = 'minor'; },
+      (r) => { r.findings[0].certainty = 'likely'; },
+      (r) => { r.findings = []; },
+      (r) => { entry(r, '1.4.3').status = 'not-readable'; },
+    ],
+    'A11Y-10': [
+      (r) => { r.findings[0].id = 'accessibility/1.4.3/node:152:66'; },
+      (r) => { r.findings[0].certainty = 'needs-review'; },
+      (r) => { entry(r, '1.4.3').status = 'not-applicable'; },
+    ],
+    'A11Y-11': [
+      (r) => { r.findings[0].id = 'accessibility/1.4.3/component:7956e64673ab27f19085e587a364433b671acc41'; },
+      (r) => { r.findings[0].severity = 'serious'; },
+      (r) => { r.findings = []; },
+    ],
+    'A11Y-12': [
+      (r) => { r.findings[0].id = 'accessibility/1.4.3/component:7956e64673ab27f19085e587a364433b671acc41'; },
+      (r) => { r.findings[0].certainty = 'likely'; },
+      (r) => { entry(r, '1.4.3').status = 'not-readable'; },
+    ],
     'DS-01': [
       (r) => { r.findings[0].id = 'design-system/raw-value/node:45:17'; },
       (r) => { r.findings[0].axis = 'accessibility'; },
