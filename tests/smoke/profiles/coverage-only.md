@@ -1,4 +1,4 @@
-# Review Profile: Design review smoke test
+# Review Profile: Smoke test, coverage only
 
 Profile version: 0.1
 
@@ -6,7 +6,7 @@ Profile version: 0.1
 
 What this profile is called and who maintains it.
 
-- Name: Design review smoke test
+- Name: Smoke test, coverage only
 - Owner: Design review skills maintainers
 - Last updated: 2026-09-30
 
@@ -36,6 +36,7 @@ The accessibility standard designs are judged against.
 - Version: 2.2
 - Level: AA
 - Criteria reference: the skill's default
+- Missing annotations: coverage only
 
 ## Product context
 

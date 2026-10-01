@@ -63,7 +63,7 @@ The run is settled when the chosen axes, the scope and the runtime are known, ev
 
 ## 4. Scan once
 
-Use the skill `design-review-scanner` once for the whole run. Give it the scope's node ids, the runtime, and every fact group the chosen Review Skills' `Fact groups` lines name. Every Review Skill judges from these Design Facts, so the design is read once. The scan is done when the scanner has handed back the Design Facts for every node in the scope.
+Use the skill `design-review-scanner` once for the whole run. Give it the scope's node ids, the runtime, every fact group the chosen Review Skills' `Fact groups` lines name, and whatever else those lines say to give it. Every Review Skill judges from these Design Facts, so the design is read once. The scan is done when the scanner has handed back the Design Facts for every node in the scope.
 
 ## 5. Run the Review Skills
 

@@ -1,4 +1,4 @@
-# Review Profile: Design review smoke test
+# Review Profile: Smoke test, native
 
 Profile version: 0.1
 
@@ -6,7 +6,7 @@ Profile version: 0.1
 
 What this profile is called and who maintains it.
 
-- Name: Design review smoke test
+- Name: Smoke test, native
 - Owner: Design review skills maintainers
 - Last updated: 2026-09-30
 
@@ -41,5 +41,5 @@ The accessibility standard designs are judged against.
 
 Where the product runs, used by checks that depend on screen size.
 
-- Target platforms: Web
+- Target platforms: iOS
 - Supported viewport widths: 360px, 1440px

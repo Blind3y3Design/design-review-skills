@@ -37,6 +37,13 @@ The accessibility standard designs are judged against.
 - Level: AA
 - Criteria reference: the skill's default
 
+## Product context
+
+Where the product runs, used by checks that depend on screen size.
+
+- Target platforms: Web
+- Supported viewport widths: 360px, 1440px
+
 ## Severity Overrides
 
 The starting Severity this team sets for a type of rule, in place of the review's default. No override lowers a Locked Rule breach below serious, and one that sets critical names the core task it's tied to.

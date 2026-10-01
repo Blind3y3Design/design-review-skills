@@ -37,6 +37,13 @@ The accessibility standard designs are judged against.
 - Level: AA
 - Criteria reference: the skill's default
 
+## Product context
+
+Where the product runs, used by checks that depend on screen size.
+
+- Target platforms: Web
+- Supported viewport widths: 360px, 1440px
+
 ## Report settings
 
 Where reports are saved, and whether Findings are marked on layers.

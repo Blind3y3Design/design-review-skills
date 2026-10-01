@@ -1,15 +1,12 @@
 // Tests the Design Scanner's report frame script, run as the skill gives it, against a small fake of the Figma Plugin API.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { AsyncFunction, scriptUnder } from './scanner-script.mjs';
 
-const skill = readFileSync(new URL('../../skills/design-review-scanner/SKILL.md', import.meta.url), 'utf8');
-const section = skill.split(/^## /m).find((s) => s.startsWith('Writing a report frame'));
-const script = section && /^```js\n([\s\S]*?)^```/m.exec(section)[1];
+const script = scriptUnder('Writing a report frame');
 
 // Sets the script's first three lines as the skill says, then runs it with top-level await and return.
-const AsyncFunction = (async () => {}).constructor;
-const run = (figma, { name = '2026-09-30 · A11Y-01', markdown = ['# Design review: Accessibility'], report = { schemaVersion: '0.2', findings: [], coverage: [] } } = {}) => {
+const run =(figma, { name = '2026-09-30 · A11Y-01', markdown = ['# Design review: Accessibility'], report = { schemaVersion: '0.2', findings: [], coverage: [] } } = {}) => {
   const code = script
     .replace(/^const NAME = .*$/m, `const NAME = ${JSON.stringify(name)};`)
     .replace(/^const MARKDOWN = .*$/m, `const MARKDOWN = ${JSON.stringify(markdown)};`)
