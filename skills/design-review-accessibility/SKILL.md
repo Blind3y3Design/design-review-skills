@@ -35,8 +35,8 @@ The inputs are settled when the scope, runtime and settings are known, or the ru
 
 Its location is the first of: given at run time or in answer to a question, the profile section's `Criteria reference` unless that's the skill's default, then the skill's default, `https://raw.githubusercontent.com/Blind3y3Design/design-review-skills/main/reference-documents/wcag-2.2-criteria.md`. Read the whole document, as Reading a location describes.
 
-- If a location the user or the profile gave can't be read, stop. Tell the user the location and the error, and write no report.
-- If the default link can't be read, the axis is skipped. Hand the Report Writer no Findings and one Coverage entry, `{ "axis": "accessibility", "status": "skipped", "reason": "the criteria reference couldn't be read: <location>: <error>" }`, and go to step 5.
+- If a location the user or the profile gave can't be read, and nothing is running this review for another skill, stop. Tell the user the location and the error, and write no report.
+- Any other unreadable criteria reference, the default link or a given location when another skill runs this review, skips the axis. Hand the Report Writer no Findings and one Coverage entry, `{ "axis": "accessibility", "status": "skipped", "reasonCode": "reference-unreadable", "reason": "the criteria reference couldn't be read: <location>: <error>" }`, and go to step 5.
 
 From the document's header, note its name, version and location for the report, and its `Covers` line. Its "How an entry reads" section says which criteria apply to the target.
 
@@ -44,7 +44,7 @@ From the document's header, note its name, version and location for the report, 
 
 ## 3. Scan
 
-Use the skill `design-review-scanner`. Give it the scope's node ids, the runtime, the settings' `Annotation kits`, and the fact groups to judge from: those on the `Facts` lines of the criteria you'll judge in step 4, and those holding what each additional requirement is about. Judge from the Design Facts it hands back.
+Use the skill `design-review-scanner`. Give it the scope's node ids, the runtime, the settings' `Annotation kits`, and the fact groups to judge from: those on the `Facts` lines of the criteria you'll judge in step 4, those holding what each additional requirement is about, and `components`, which says whose a failure is (Whose failure it is). Judge from the Design Facts it hands back.
 
 When another skill handed over Design Facts, the design is already scanned: judge from those, as Run by another skill describes.
 
@@ -69,7 +69,7 @@ Work out any measurement the facts don't give, such as the spacing between two t
 
 Each failure becomes part of a Finding:
 
-- **Root Cause:** the source the criterion's How to judge names, written as `variable:<key>` or `style:<key>` when the facts show that value bound to one, otherwise `node:<id>` of the failing layer. Give one Finding per Root Cause per criterion, with every layer it covers in `locations` and each failing measurement in the evidence. A missing annotation's Finding is under Annotations and states.
+- **Root Cause:** the source the criterion's How to judge names, written as `variable:<key>` or `style:<key>` when the facts show that value bound to one, otherwise `node:<id>` of the failing layer. A failure that is the design system's has the library component instead, as Whose failure it is gives. Give one Finding per Root Cause per criterion, with every layer it covers in `locations` and each failing measurement in the evidence. A missing annotation's Finding is under Annotations and states.
 - **Severity:** the criterion's Default Severity, or the one a profile's Severity Override sets (see Severity Overrides), or an additional requirement's own. An additional requirement given as critical with no core task in its statement starts at serious instead, and the evidence says why.
 - **Above target:** every above-target Finding is advisory, with no `standard`. Give one per Root Cause across all the above-target checks, naming each criterion it fails, with its W3C link, in the evidence.
 - **Certainty:**
@@ -78,10 +78,10 @@ Each failure becomes part of a Finding:
   - `needs-review` when a measurement couldn't be made, such as text over an image. The evidence gives why, from the scanner's `reason` or the criterion's How to judge. This is always a Finding, since it may fail.
 - **Title:** one line naming the layer and what fails.
 - **Evidence** and **fix,** as the criterion's How to judge says.
-- **Locations:** `{ "kind": "node", "fileKey", "nodeId", "layerPath" }` for each layer in the facts. When a facts group's `count` is more than its sample `nodes`, the evidence says how many more layers share it.
+- **Locations:** `{ "kind": "node", "fileKey", "nodeId", "layerPath" }` for each layer in the facts, after the library component's `{ "kind": "component", "key", "name", "library" }` when the failure is the design system's. When a facts group's `count` is more than its sample `nodes`, the evidence says how many more layers share it.
 - **Standard:** `{ "source": "WCAG <version>", "ref": "<number>", "url": "<its W3C line>" }`, with the url the reference gives for the target's version. For an additional requirement, `{ "source": "Additional requirement", "ref": "<id>" }`.
 
-Judging is done when every criterion that applies to the target (or an uncovered target itself), every above-target check that's on, and every additional requirement has one Coverage entry, and every failure, measurement that couldn't be made, and missing annotation (unless `coverage only`) is in a Finding. The reference's header says how many criteria apply at each target it covers: check your Coverage against it.
+Judging is done when every criterion that applies to the target (or an uncovered target itself), every above-target check that's on, and every additional requirement has one Coverage entry, and every failure, measurement that couldn't be made, and missing annotation (unless `coverage only`) is in a Finding, with every measured failure given its owner by Whose failure it is. The reference's header says how many criteria apply at each target it covers: check your Coverage against it.
 
 ## 5. Report
 
@@ -94,12 +94,35 @@ Use the skill `design-review-report-writer`, handing over:
 - `profile`: `{ name, location, lastUpdated }` for the profile whose section you used, otherwise null.
 - `references`: the criteria reference's name, version and location.
 - `findings`, each with its `rootCause`, and `coverage`.
-- `notes`: the notes kept while settling what to check against, if any.
+- `notes`: the notes kept while settling what to check against, if any, and any the skill running this review handed over.
 - `reportSettings`: the profile's Report settings you noted, as `{ "<key>": "<value>" }`, or null.
 - `saveRequest`: "don't save" or "save to <location>" when the user said so, otherwise null.
 - `annotateRequest`: "annotate" or "don't annotate" when the user said so, otherwise null.
 
 The review is done when the Report Writer has delivered the report. In `json only` mode, it's done when you've handed the Report Writer's reply, its notes and JSON block, back to the skill that ran this review.
+
+## Whose failure it is
+
+A failure measured from layers, such as a contrast ratio or a size, is the design system's when it exists in the library as published, and the designer's otherwise. A missing annotation, and a judgement of wording or meaning, are the designer's. A library is any component with `remote: true`, whatever the profile's Design System Layers say. Settle each failing layer's owner from the facts' `components`, taking the first line that fits:
+
+1. **The designer's, outside a library instance.** An id shows the instances around a layer: inside the instance `152:62`, a layer's id looks like `I152:62;1004:35`, and inside the instance `12:3` nested in it, `I152:62;12:3;45:6`. A layer's instance is the first id in its chain, the outermost, or the layer itself when it is an instance listed in `components`. A layer in no instance, in a frame detached from one, or in an instance whose component has `remote: false`, is the designer's.
+2. **The designer's, on a surface it placed.** The layer its colour is measured against (`background.node` or `against.node`, the group's first layer's, which stands for every layer in the group) sits outside the instance: a library component placed on a surface that makes it fail.
+3. **The designer's, by an override.** The facts' `overrides` list, by `node.id`, a change on a failing property of the failing layer or the layer behind it, or a swapped nested instance (`component`) holding the failing layer. A change with `carried: true` came from the library's own component, so it falls to line 5.
+   - **The failing properties** are what the measurement reads. For a contrast ratio: the `fill` or `stroke` of the failing layer and of the layer behind it, `visible` of the layer behind it, `opacity` of each layer from the failing layer up to and including the instance, and a text layer's font, size and weight (`text`, apart from its words, `content`). For a size: `size`, `layout` and `spacing`. For any other measurement: every property.
+   - The evidence names the instance's component and the properties overridden.
+4. **The designer's, with the override state unsettled.** A change on those layers in `variables` or `other`, or with an `uncertain` reason, or `components` or the instance's main component among the facts' `unread`. The Finding's Root Cause is `node:<id>` of the failing layer, whatever its colour is bound to, instead of step 4's `variable` or `style`. Its evidence says "possibly inherited from <component>" with the reason, such as "its `locked` and `exportSettings` changed, which the facts can't class".
+5. **The system's.** Any other layer: its instance has no change on a failing property. Changes to other properties, such as a label set through a component property, or the resize that follows it, leave it here.
+
+Only the sampled `nodes` of a group are checked. One Finding per owner: a group whose sampled layers have different owners gives each owner's layers a Finding of their own.
+
+**The system's failure:**
+
+- **Root Cause:** `component:<key>` of the outermost instance's main component, the set's key for a variant, with a Finding per component per criterion.
+- **Evidence:** the criterion's evidence, then that the failure is in the published component, how many instances take it unchanged, and the properties with no override.
+- **Fix:** names the library as the owner, from the component's `library` in the facts, such as "Owned by <library>: change `<component>` so its text meets 4.5:1." With `library` null, it names the component and says its library couldn't be named. Then the criterion's fix.
+- **Severity** and **Certainty** are the same as for any Finding of the criterion, as step 4 gives them.
+
+**The designer's failure** is written as step 4 says, apart from line 4's Root Cause.
 
 ## Run by another skill
 
@@ -114,6 +137,7 @@ Then it settles the run, asks the user everything, and hands over:
 - the Review Profile it found, as `design-review-profile`'s `found` result
 - the Design Facts, when it has scanned
 - anything the user gave at run time for this review, such as a criteria reference location or a WCAG target
+- notes for the report, if any, such as a version warning
 
 The user has been asked everything already, so ask nothing. Where you'd ask what to check against, use what the question is pre-filled with, set `from` to `default`, and keep the note you'd keep for the report. When a fact group you need is neither read in the handed-over facts nor in their `unread`, scan for that group yourself, as step 3 describes.
 

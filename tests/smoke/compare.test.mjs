@@ -166,6 +166,24 @@ test('an axis-level skipped entry is matched by its axis', () => {
   assert.deepEqual(compareReports(skipped(), { findings: [], coverage: [] }).differences, ['Missing Coverage research (whole axis)']);
 });
 
+test('a whole-axis skipped entry is compared by its reasonCode, and its sentence is left out', () => {
+  const skipped = (reasonCode, reason) => ({ findings: [], coverage: [{ axis: 'research', status: 'skipped', reasonCode, reason }] });
+  const expected = skipped('skill-not-installed', 'the skill design-review-research isn\'t installed');
+  assert.equal(compareReports(expected, skipped('skill-not-installed', 'Other words')).pass, true);
+  assert.deepEqual(compareReports(expected, skipped('no-topic', 'no topic given')).differences, [
+    'Coverage research (whole axis): reasonCode is "no-topic", expected "skill-not-installed"',
+  ]);
+  assert.deepEqual(compareReports(expected, skipped(undefined, 'the skill design-review-research isn\'t installed')).differences, [
+    'Coverage research (whole axis): reasonCode is missing, expected "skill-not-installed"',
+  ]);
+});
+
+test('an expected skipped entry with no reasonCode compares its status only', () => {
+  const expected = { findings: [], coverage: [{ axis: 'research', status: 'skipped' }] };
+  const actual = { findings: [], coverage: [{ axis: 'research', status: 'skipped', reasonCode: 'no-topic', reason: 'no topic given' }] };
+  assert.equal(compareReports(expected, actual).pass, true);
+});
+
 // A merged report from /design-review: the A11Y-01 case's accessibility results, plus the design system adherence axis.
 const merged = () => {
   const r = load('A11Y-01');
@@ -295,6 +313,29 @@ test('each expected case passes against itself and fails when any compared field
       (r) => { entry(r, '2.4.7').status = 'needs-section'; },
       (r) => { entry(r, '1.4.11').status = 'not-applicable'; },
     ],
+    'A11Y-05': [
+      (r) => { r.findings[0].id = 'accessibility/1.4.3/node:I152:62;1004:35'; },
+      (r) => { r.findings[0].id = 'accessibility/1.4.3/component:7956e64673ab27f19085e587a364433b671acc41-2'; },
+      (r) => { r.findings[0].severity = 'minor'; },
+      (r) => { r.findings[0].certainty = 'likely'; },
+      (r) => { r.findings = []; },
+      (r) => { entry(r, '1.4.3').status = 'not-readable'; },
+    ],
+    'A11Y-10': [
+      (r) => { r.findings[0].id = 'accessibility/1.4.3/node:152:66'; },
+      (r) => { r.findings[0].certainty = 'needs-review'; },
+      (r) => { entry(r, '1.4.3').status = 'not-applicable'; },
+    ],
+    'A11Y-11': [
+      (r) => { r.findings[0].id = 'accessibility/1.4.3/component:7956e64673ab27f19085e587a364433b671acc41'; },
+      (r) => { r.findings[0].severity = 'serious'; },
+      (r) => { r.findings = []; },
+    ],
+    'A11Y-12': [
+      (r) => { r.findings[0].id = 'accessibility/1.4.3/component:7956e64673ab27f19085e587a364433b671acc41'; },
+      (r) => { r.findings[0].certainty = 'likely'; },
+      (r) => { entry(r, '1.4.3').status = 'not-readable'; },
+    ],
     'DS-01': [
       (r) => { r.findings[0].id = 'design-system/raw-value/node:45:17'; },
       (r) => { r.findings[0].axis = 'accessibility'; },
@@ -377,6 +418,27 @@ test('each expected case passes against itself and fails when any compared field
       (r) => { r.findings[0].certainty = 'likely'; },
       (r) => { r.findings[0].severity = 'minor'; },
       (r) => { entry(r, 'override').status = 'not-applicable'; },
+    ],
+    'DS-01-no-baseline': [
+      (r) => { r.coverage[0].reasonCode = 'skill-failed'; },
+      (r) => { delete r.coverage[0].reasonCode; },
+      (r) => { r.coverage[0].status = 'judged'; },
+    ],
+    'RUN-03': [
+      (r) => { r.coverage.find((c) => c.axis === 'research').reasonCode = 'no-topic'; },
+      (r) => { r.coverage = r.coverage.filter((c) => c.axis !== 'research'); },
+      (r) => { r.findings.pop(); },
+      (r) => { r.findings[0].relatedFindings = []; },
+    ],
+    'RUN-06': [
+      (r) => { r.coverage.find((c) => c.axis === 'design-system').reasonCode = 'reference-unreadable'; },
+      (r) => { r.coverage = r.coverage.filter((c) => c.axis !== 'design-system'); },
+      (r) => { r.findings = []; },
+    ],
+    'RUN-07': [
+      (r) => { r.coverage.find((c) => c.axis === 'design-system').reasonCode = 'skill-failed'; },
+      (r) => { r.coverage = r.coverage.filter((c) => c.axis !== 'design-system'); },
+      (r) => { r.findings[0].severity = 'serious'; },
     ],
     'DS-06': [
       (r) => { r.findings.push({ id: 'design-system/override/node:I119:92;4:11;4:6', axis: 'design-system', severity: 'moderate', certainty: 'likely' }); },
