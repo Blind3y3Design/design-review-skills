@@ -9,7 +9,7 @@ metadata:
 
 Version 0.1.0-dev of the design review skills.
 
-Turns a review's Findings and Coverage into its report: Markdown for people, then one JSON block for tools. This skill owns the report format, the Severity and Certainty scales and the Finding ids, and it delivers the report. It judges nothing. Every Finding, Severity, Certainty and Coverage status is written as the calling skill gave it.
+Turns a review's Findings and Coverage into its report: Markdown for people, then one JSON block for tools. This skill owns the report format, the Severity and Certainty scales and the Finding ids, and it delivers the report. It judges nothing. Every Finding, Severity, Certainty and Coverage status is written as the calling skill gave it, and only its prose is reworded, as Writing rules describes.
 
 ## Inputs
 
@@ -30,12 +30,13 @@ The calling skill hands over:
 
 1. **Check the hand-over.** Every Finding has each required field, and every axis, Severity, Certainty and Coverage status is one from the lists below. If anything is missing or out of range, write no report. Tell the calling skill which Finding or entry and which field, so it can hand over again.
 2. **Give each Finding its id** from its `rootCause`, as Finding ids below describes, and each `node` location its `url`. The `rootCause` itself stays out of the report.
-3. **Link Findings across axes.** Findings on different axes that share a Root Cause stay separate, and each lists the ids of the others in its `relatedFindings`.
-4. **Write the report JSON** as described below. In `json only` mode, stop here, and hand back only the `notes`, if any, as a list headed "Notes:", then the report JSON in one fenced `json` block.
-5. **Write the Markdown,** in the layout below, ending with the JSON in one fenced `json` block.
-6. **Deliver** the report, as Delivery below describes: mark its Findings on their layers when annotations are on, save it, then show the whole report in the chat.
+3. **Write the prose** as Writing rules below describes, so the JSON and the Markdown carry the same words.
+4. **Link Findings across axes.** Findings on different axes that share a Root Cause stay separate, and each lists the ids of the others in its `relatedFindings`.
+5. **Write the report JSON** as described below. In `json only` mode, stop here, and hand back only the `notes`, if any, as a list headed "Notes:", then the report JSON in one fenced `json` block.
+6. **Write the Markdown,** in the layout below, ending with the JSON in one fenced `json` block.
+7. **Deliver** the report, as Delivery below describes: mark its Findings on their layers when annotations are on, save it, then show the whole report in the chat.
 
-A `json only` report is done when its JSON holds every Finding and Coverage entry handed over, and it's been handed back. A full report is done when the chat shows the Markdown and its JSON block, every Finding and Coverage entry handed over is in both, the report is saved where Delivery says or the Saved line says why it isn't, and, with annotations on, the Annotated line says what was marked or why nothing was.
+A `json only` report is done when its prose follows the Writing rules, its JSON holds every Finding and Coverage entry handed over, and it's been handed back. A full report is done when its prose follows the Writing rules, the chat shows the Markdown and its JSON block, every Finding and Coverage entry handed over is in both, the report is saved where Delivery says or the Saved line says why it isn't, and, with annotations on, the Annotated line says what was marked or why nothing was.
 
 ## Axes
 
@@ -139,6 +140,18 @@ In this order. Leave out a section that has nothing in it, except Coverage.
 5. **Coverage:** a `## Coverage` section with a `###` heading for each axis, then its entries, where entries with the same status and the same note share one line: `<status>: <ref>, <ref>, …`, then the note. A skipped axis gets one line with its reason.
 6. **The design-stage line,** after the Coverage section, in every report whose axes include accessibility, whatever its Findings or Coverage: "This is a design-stage review, not a WCAG conformance evaluation. Criteria marked needs-code or needs-annotation in Coverage were not assessed." When `run.runtime` is `figma-agent`, follow it with: "To cross-check contrast and target sizes, you can also run Figma's accessibility checker. This review doesn't rely on it."
 7. **The report JSON,** in one fenced `json` block, pretty-printed with 2-space indentation.
+
+## Writing rules
+
+The report's readers are designers, who read it beside the design and act on it. These rules word the **prose**: every title, evidence, fix, Coverage `note` and `reason`, and `notes` entry, and the header and fixes list when you write them. They never touch a Review Profile. Reword the prose you were handed, keeping its meaning, and keep every id, number, name, token, link and level as given. Add no reason or fact the hand-over doesn't give. Prose in a Finding merged from a `json only` report stays as it came. Text this skill spells out, such as the Saved line, is written as spelled.
+
+- **Plain.** Short sentences in the active voice, in the design's own names for layers, tokens and components. A value is written as it was read, such as `#8A8A8A`, `3.45:1` or `16 px`.
+- **Title:** the layer and what's wrong, in one line, such as "Body text fails contrast at 3.45:1". The id, criterion, Severity and layer path sit beside it.
+- **Evidence:** what was read or measured, then the result, then what it's measured against, such as "#8A8A8A on #FFFFFF is 3.45:1. 16 px text at weight 400 needs 4.5:1." It keeps the reason for any Severity change and any estimate or unreadable part, in a plain clause, and the other layers or libraries it names. The title and location sit beside it.
+- **Fix:** instructions in the imperative, each naming a change, such as "Darken the text to at least 4.5:1." Where the Finding names a token or the library that owns the fix, the fix names it too.
+- **Coverage note:** the reason first, in plain words, such as "No screen in scope: X-01 is 360×152 px." The status and ref sit beside it.
+- **Header:** a label and its value. Each note is one plain sentence.
+- **Fixes by Root Cause:** each item opens with the name of its first location, then the fix, then the short ids it clears. Findings on several axes give each axis's fix on its own line.
 
 ## Delivery
 
