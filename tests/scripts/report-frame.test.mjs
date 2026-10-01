@@ -1,9 +1,9 @@
-// Tests the Design Scanner's report frame script, run as the skill gives it, against a small fake of the Figma Plugin API.
+// Tests the Figma Writer's report frame script, run as the skill gives it, against a small fake of the Figma Plugin API.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { AsyncFunction, scriptUnder } from './scanner-script.mjs';
+import { AsyncFunction, scriptUnder } from './skill-script.mjs';
 
-const script = scriptUnder('Writing a report frame');
+const script = scriptUnder('Writing a report frame', 'design-review-figma-writer');
 
 // Sets the script's first three lines as the skill says, then runs it with top-level await and return.
 const run =(figma, { name = '2026-09-30 · A11Y-01', markdown = ['# Design review: Accessibility'], report = { schemaVersion: '0.2', findings: [], coverage: [] } } = {}) => {
@@ -91,7 +91,7 @@ function fakeFigma({ pages = ['Cases'], failOn } = {}) {
 const page = (figma, name) => figma.root.children.find((p) => p.name === name);
 const textsOf = (frame) => frame.children.filter((c) => c.type === 'TEXT');
 
-test('the script is in the scanner skill, with the three lines a caller sets', () => {
+test('the script is in the Figma Writer skill, with the three lines a caller sets', () => {
   assert.ok(script, 'no js block under "## Writing a report frame"');
   for (const constant of ['NAME', 'MARKDOWN', 'REPORT']) assert.match(script, new RegExp(`^const ${constant} = `, 'm'));
 });

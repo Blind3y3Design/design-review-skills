@@ -10,8 +10,8 @@ A published skill is the repo's `SKILL.md` exactly as it stands in a release: no
 - **One version for the whole set,** following semantic versioning, recorded in each skill's `metadata`. Each release is a git tag. `schemaVersion` and `factsVersion` change only with their formats. Each report records the set's version, and the Orchestrator warns in its report when a skill it invokes is at a different version.
 - **A release:**
   1. The smoke test passes in Figma Design's agent and in an external agent.
-  2. The version and the pinned Reference Document links are set in all six skills, committed and tagged.
-  3. The six skills are published by hand in Figma, from one file in the owning team, to the organisation, in dependency order: the Report Writer and Design Scanner, then the Review Skills, then the Orchestrator.
+  2. The version and the pinned Reference Document links are set in all eight skills, committed and tagged.
+  3. The eight skills are published by hand in Figma, from one file in the owning team, to the organisation, in dependency order: the Figma Writer, Profile Finder and Design Scanner, then the Report Writer, then the Review Skills, then the Orchestrator.
   4. `/design-review` confirms every skill's version.
 
   Setting the tag in the links is an edit to the source at release time, not a build step.

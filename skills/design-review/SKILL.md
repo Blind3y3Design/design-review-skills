@@ -9,20 +9,20 @@ metadata:
 
 Version 0.1.0-dev of the design review skills.
 
-The Orchestrator: it runs the Review Skills a team's Review Profile covers, on one scope and from one scan, and merges their Findings into one report. It judges nothing itself. Each Review Skill judges its own axis, the Design Scanner reads the design, and the Report Writer writes and delivers the report.
+The Orchestrator: it runs the Review Skills a team's Review Profile covers, on one scope and from one scan, and merges their Findings into one report. It judges nothing itself. Each Review Skill judges its own axis, the Profile Finder finds the Review Profile, the Design Scanner reads the design, and the Report Writer writes and delivers the report.
 
 ## Required skills
 
-This review MUST use two other skills: `design-review-scanner` finds the Review Profile and reads the design, and `design-review-report-writer` writes the report. Before anything else, check that both are available to you. If either isn't, reply with only the line that fits, and stop:
+This review MUST use three other skills: `design-review-profile` finds the Review Profile, `design-review-scanner` reads the design, and `design-review-report-writer` writes the report. Before anything else, check that all three are available to you. If any isn't, reply with only the line that fits, and stop:
 
 - One missing: "This review can't run: the skill `<name>` isn't installed. Install it, then run the review again."
-- Both missing: "This review can't run: the skills `design-review-scanner` and `design-review-report-writer` aren't installed. Install them, then run the review again."
+- More than one missing, naming each, such as: "This review can't run: the skills `design-review-scanner` and `design-review-report-writer` aren't installed. Install them, then run the review again."
 
 ## 1. Find the Review Profile
 
 The **runtime** is `figma-agent` inside Figma Design's agent, and `external-agent` anywhere else. In an external agent, the reviewed file's key comes from its link.
 
-Use the skill `design-review-scanner` to find the Review Profile, once for the whole run, as its Finding the Review Profile describes. Give it the reviewed file's key, the runtime, and the profile the user gave at run time, if any. It hands back one of three results:
+Use the skill `design-review-profile` to find the Review Profile, once for the whole run. Give it the reviewed file's key, the runtime, and the profile the user gave at run time, if any. It hands back one of three results:
 
 - **found:** keep the whole result. Its `text` says which axes the profile covers, as Axes below describes, and every Review Skill in the run gets it.
 - **unreadable:** the team has a profile this run can't see, so stop. Reply with the location, the reason, and that the review didn't run. Write no report.

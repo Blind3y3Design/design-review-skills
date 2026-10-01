@@ -13,12 +13,12 @@ A design-stage review of Figma frames along one Review Axis, `accessibility`. Th
 
 ## Required skills
 
-This review MUST use two other skills: `design-review-scanner` reads the design, and `design-review-report-writer` writes the report. Before anything else, check that both are available to you. If either isn't, reply with only the line that fits, and stop:
+This review MUST use three other skills: `design-review-profile` finds the Review Profile, `design-review-scanner` reads the design, and `design-review-report-writer` writes the report. Before anything else, check that all three are available to you. If any isn't, reply with only the line that fits, and stop:
 
 - One missing: "This review can't run: the skill `<name>` isn't installed. Install it, then run the review again."
-- Both missing: "This review can't run: the skills `design-review-scanner` and `design-review-report-writer` aren't installed. Install them, then run the review again."
+- More than one missing, naming each, such as: "This review can't run: the skills `design-review-scanner` and `design-review-report-writer` aren't installed. Install them, then run the review again."
 
-These two skills are the review's only way to read the design and to write a report.
+These three skills are the review's only way to find the profile, read the design and write a report.
 
 ## 1. Settle the inputs
 
@@ -111,7 +111,7 @@ Another skill, such as `design-review`, can run this review as one part of a lar
 Then it settles the run, asks the user everything, and hands over:
 
 - the scope, the runtime, and the `mode` for step 5
-- the Review Profile it found, as the scanner's `found` result
+- the Review Profile it found, as `design-review-profile`'s `found` result
 - the Design Facts, when it has scanned
 - anything the user gave at run time for this review, such as a criteria reference location or a WCAG target
 
@@ -149,7 +149,7 @@ A team's Review Profile names the standards its reviews are judged against. This
 
 ### Finding the profile
 
-When another skill hands over the profile it found, use that result. Otherwise use the skill `design-review-scanner` to find the Review Profile, as its Finding the Review Profile describes. Give it the reviewed file's key, the runtime, and the profile given at run time, if any. It hands back one of three results:
+When another skill hands over the profile it found, use that result. Otherwise use the skill `design-review-profile` to find the Review Profile. Give it the reviewed file's key, the runtime, and the profile given at run time, if any. It hands back one of three results:
 
 - **found:** the profile's `text`, where the lookup found it (`from`), and the `profile` to name in the report.
 - **none:** where it looked (`searched`).

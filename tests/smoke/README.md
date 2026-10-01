@@ -50,7 +50,7 @@ With `--axis <axis>`, such as `--axis accessibility`, it compares only that axis
 node tests/smoke/compare.mjs A11Y-01 reply.md --axis accessibility
 ```
 
-Its own tests: `node --test tests/smoke/compare.test.mjs`. The Design Scanner's scripts have tests too, run against a fake of the Plugin API: `node --test tests/scripts/*.test.mjs`.
+Its own tests: `node --test tests/smoke/compare.test.mjs`. The fixed scripts in the Design Scanner and the Figma Writer have tests too, run against a fake of the Plugin API: `node --test tests/scripts/*.test.mjs`.
 
 ## Cases
 
@@ -61,7 +61,7 @@ Each built case has a frame on the Cases page and, if its result is a report, an
 | A11Y-01 | Body text at 3.4:1: `#8A8A8A` 16 px text on a `#FFFFFF` frame (3.45:1), under a title that passes, whose heading is annotated | `5:3` | [`A11Y-01.json`](expected/A11Y-01.json): one 1.4.3 Finding on the body text (`5:5`), `moderate`, `confirmed`. Coverage has all 55 WCAG 2.2 A/AA criteria: 1.3.1, 1.4.3 and 2.4.6 `judged`, the 8 code-only criteria `needs-code`, and the rest `not-applicable`, since the frame holds nothing else that triggers them and is too small to be a screen |
 | A11Y-01-override | A11Y-01 with [`profiles/override-serious.md`](profiles/override-serious.md) given at run time, whose Severity Override is "WCAG AA failures: serious" | `5:3` | [`A11Y-01-override.json`](expected/A11Y-01-override.json): the same Finding at `serious`. Coverage as for A11Y-01. Checked by hand: its evidence names the override |
 | CLEAN-01 | A frame that follows every rule: text pairs that pass 1.4.3 on a frame's fill, a nested frame's fill and a rectangle beneath the text, an instruction naming a button by its label, an underlined link in running text, a checked 24×24 checkbox with its label, and a 312×48 Place order button. At 360 × 384 it's a screen, so its frame's annotations give its heading, page title, language, orientation, reading and focus order, behaviour on focus and input, and order review | `5:6` | [`CLEAN-01.json`](expected/CLEAN-01.json): no Findings. Every static criterion that needs no marked section is `judged`, and so are the annotation criteria it triggers (1.3.1, 1.3.4, 2.4.2, 2.4.3, 3.1.1, 3.2.1, 3.2.2, 3.3.4). 1.4.10, 2.4.7 and 3.2.4 are `needs-section`. The rest as for A11Y-01 |
-| RUN-04 | A run with `design-review-report-writer` or `design-review-scanner` missing | any case frame | Checked by hand: the run stops, names the missing skill and writes no report |
+| RUN-04 | A run with `design-review-report-writer`, `design-review-scanner` or `design-review-profile` missing | any case frame | Checked by hand: the run stops, names the missing skill and writes no report |
 | A11Y-01-figma | A11Y-01 run in Figma Design's agent | `5:3` | Passes `A11Y-01.json`. Checked by hand: the line suggesting Figma's accessibility checker follows the design-stage line. In an external agent, it doesn't appear |
 | A11Y-02 | Text over an image: a white caption (`64:6`) over a photo, under a title that passes. The heading and the photo's text alternative are annotated | `64:2` | [`A11Y-02.json`](expected/A11Y-02.json): one 1.4.3 Finding on the caption, `moderate`, `needs-review`, with the scanner's reason. 1.4.3 is `judged` from the title, and 1.1.1, 1.3.1, 1.4.5 and 2.4.6 are `judged` |
 | A11Y-03 | Target smaller than 24×24 px: two 16×16 icon buttons, `Previous` (`64:9`) and `Next` (`64:12`), 4 px apart, so the spacing exception doesn't apply. Their text alternatives and focus order are annotated | `64:7` | [`A11Y-03.json`](expected/A11Y-03.json): a 2.5.8 Finding on each button, `moderate`, `confirmed`. 1.1.1, 1.4.5, 1.4.11, 2.4.3 and 2.5.8 `judged`, 2.4.7 and 3.2.4 `needs-section`, 3.2.1 `needs-state` |
@@ -100,7 +100,7 @@ Each built case has a frame on the Cases page and, if its result is a report, an
 | RUN-01 | Orchestrator run: `/design-review` on X-01 with the test profile and no reviews named, so it asks | `62:6` | Asks once, before the scan, with Design system adherence and Accessibility ticked and Research alignment "not set up". Then passes `X-01` (`node tests/smoke/compare.mjs X-01 reply.md`), which only both Review Skills together can give. Checked by hand: each chosen Review Skill loaded, and the scanner ran once for both |
 | RUN-02 | Reading the public Reference Documents | | Read from GitHub through `curl` |
 | RUN-03 | Orchestrator run with one Review Skill not installed | | Axis-level `skipped` naming the skill; other axes run |
-| RUN-05 | `/design-review` after a release | | The same version for all six skills |
+| RUN-05 | `/design-review` after a release | | The same version for all eight skills |
 
 ## Orchestrator checks
 
@@ -147,7 +147,7 @@ Checked by hand in an external agent, because the JSON seam doesn't say where a 
 | Don't save | A11Y-01-override, with "Don't save the report." | Passes `A11Y-01-override`. No frame is added, and the Saved line says "Not saved: you asked not to save this run." |
 | A local folder | A11Y-01 with [`profiles/local-folder.md`](profiles/local-folder.md) given at run time | The report is saved as `reports/smoke-test/design-review-<date>-a11y-01.md` (a folder git ignores), and that file passes `compare.mjs A11Y-01`. No frame is added |
 | Without edit access | A11Y-01, run by someone with view access to the test file | No frame is added. The chat's Saved line says the report is in the chat only, with Figma's error |
-| An oversized report | The frame script in the scanner run by hand with a `REPORT` over 100 kB, such as one Finding whose `evidence` is `'x'.repeat(110000)` | The frame's last line says the JSON stayed in the chat, and the frame has no JSON |
+| An oversized report | The Figma Writer's frame script run by hand with a `REPORT` over 100 kB, such as one Finding whose `evidence` is `'x'.repeat(110000)` | The frame's last line says the JSON stayed in the chat, and the frame has no JSON |
 
 To read a report frame back, run this through `use_figma` on the test file. `frames` lists the page's frames from the top of the layers panel down, and `json` is the report JSON of the frame named in `FRAME_ID`, or of the newest. Save `json` to a file to compare it.
 

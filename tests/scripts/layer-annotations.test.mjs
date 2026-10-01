@@ -1,9 +1,9 @@
-// Tests the Design Scanner's layer annotations script, run as the skill gives it, against a small fake of the Figma Plugin API.
+// Tests the Figma Writer's layer annotations script, run as the skill gives it, against a small fake of the Figma Plugin API.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { AsyncFunction, scriptUnder } from './scanner-script.mjs';
+import { AsyncFunction, scriptUnder } from './skill-script.mjs';
 
-const script = scriptUnder('Writing annotations');
+const script = scriptUnder('Writing annotations', 'design-review-figma-writer');
 
 // Sets the script's first three lines as the skill says, then runs it with top-level await and return.
 const run = (figma, { scope = ['5:1'], axes = ['accessibility'], marks = [] } = {}) => {
@@ -88,7 +88,7 @@ const readBack = (a) => {
 // A top-level frame on the page, holding the given layers.
 const frameWith = (children, props = {}) => ({ children: [{ type: 'FRAME', id: '5:1', name: 'A11Y-99', children, ...props }] });
 
-test('the script is in the scanner skill, with the three lines a caller sets', () => {
+test('the script is in the Figma Writer skill, with the three lines a caller sets', () => {
   assert.ok(script, 'no js block under "## Writing annotations"');
   for (const constant of ['SCOPE', 'AXES', 'MARKS']) assert.match(script, new RegExp(`^const ${constant} = `, 'm'));
 });

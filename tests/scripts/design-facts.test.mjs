@@ -1,7 +1,7 @@
 // Tests the Design Scanner's fact group scripts, run as the skill gives them, against a small fake of the Figma Plugin API.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { AsyncFunction, scriptUnder } from './scanner-script.mjs';
+import { AsyncFunction, scriptUnder } from './skill-script.mjs';
 
 // Sets NODE_ID on the script's first line, and the annotation kits on KITS's line when it has one, as the skill says, then runs it.
 const scan = (heading, figma, id, kits = []) => {

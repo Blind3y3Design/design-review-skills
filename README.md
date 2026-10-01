@@ -26,7 +26,7 @@ A skill that every other skill uses to write its report, so output is the same s
 
 ### Design Scanner (planned)
 
-A skill that reads the design once and returns Design Facts for the Review Skills to judge: components, bindings, detached instances, overrides, text, and measurements such as contrast. It holds all the Plugin API code, so every review reads the file the same way. Design review isn't delivered as a Figma plugin; see [ADR 0006](docs/adr/0006-design-facts-from-a-scanning-skill-not-a-plugin.md).
+A skill that reads the design once and returns Design Facts for the Review Skills to judge: components, bindings, detached instances, overrides, text, and measurements such as contrast. Its fixed scripts read the file the same way in every review. It only reads: the Profile Finder reads the Review Profile, and the Figma Writer writes reports and annotations into the file. Design review isn't delivered as a Figma plugin; see [ADR 0006](docs/adr/0006-design-facts-from-a-scanning-skill-not-a-plugin.md).
 
 ### Review Profile (planned)
 
@@ -41,7 +41,7 @@ Every skill is a single portable `SKILL.md` that works inside Figma Design's age
 
 ## Installing (planned)
 
-Six skills make up the set, published and versioned together:
+Eight skills make up the set, published and versioned together:
 
 | Skill | What it does |
 |---|---|
@@ -51,8 +51,10 @@ Six skills make up the set, published and versioned together:
 | `design-review-research` | Research alignment |
 | `design-review-report-writer` | Writes every report (used by the other skills) |
 | `design-review-scanner` | Reads the design and returns Design Facts (used by the other skills) |
+| `design-review-profile` | Finds the team's Review Profile (used by the other skills) |
+| `design-review-figma-writer` | Writes report frames and layer annotations into the Figma file (used by the Report Writer) |
 
-- **Figma Design:** an organisation's skill owners publish all six to the organisation, in the order in `docs/publishing.md`.
+- **Figma Design:** an organisation's skill owners publish all eight to the organisation, in the order in `docs/publishing.md`.
 - **Claude Code, Codex or Cursor:** `npx skills add Blind3y3Design/design-review-skills --all`, then `npx skills update` for new releases. Copying the `skills/` folder works too. The repo's location will change once it moves into Cat's systems.
 
 Nothing is built or edited before publishing: a published skill is the release file as it stands ([ADR 0007](docs/adr/0007-publish-skills-exactly-as-released.md)).
@@ -62,7 +64,7 @@ Nothing is built or edited before publishing: a published skill is the release f
 `skills/`, `reference-documents/` and `tests/` are being built; `docs/setup/` and `docs/publishing.md` are planned.
 
 ```
-skills/<name>/SKILL.md     The six design review skills, one folder each, holding only SKILL.md
+skills/<name>/SKILL.md     The eight design review skills, one folder each, holding only SKILL.md
 reference-documents/       WCAG 2.2 criteria reference and the Design system baseline
 tests/smoke/               Smoke test: case list, expected Findings JSON, comparison script, link to the Figma test file
 tests/scripts/             Tests for the scripts in the skills, run against a fake of the Figma Plugin API

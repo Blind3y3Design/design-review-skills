@@ -154,7 +154,7 @@ When a destination can't be used, try the next one, keeping the reason. When the
 
 - **A local folder,** in an external agent: a path, relative to your working directory unless it's absolute. Create the folder if it's missing. Save the whole report, Markdown and JSON block, as `design-review-<date>-<scope>.md`, where `<scope>` is the first scope node's name in lower case, with each run of characters other than letters and digits written as `-`. If a file of that name exists, add `-2`, `-3` and so on before `.md`.
 - **A GitHub folder,** in an external agent: a link to a repo, such as `https://github.com/<owner>/<repo>`, or to a folder in one, such as `https://github.com/<owner>/<repo>/tree/<branch>/<folder>`. Commit the same file to that folder on that branch, or to the repo's root on its default branch, with the GitHub tool you have, such as the `gh` CLI.
-- **The report page:** the page named "Design review" in the reviewed file, holding one frame per run, newest first. It needs edit access to the file. You MUST use the skill `design-review-scanner` to write the frame. Hand it the file key, the runtime, and:
+- **The report page:** the page named "Design review" in the reviewed file, holding one frame per run, newest first. It needs edit access to the file. You MUST use the skill `design-review-figma-writer` to write the frame, as its Writing a report frame describes. Hand it the file key, the runtime, and:
   - the frame's name: `<date> · <scope>`, with each scope node's name, separated by `, `
   - the Markdown report without its JSON block, one string per line
   - the report JSON
@@ -167,13 +167,14 @@ A destination can't be used when:
 
 - it's a local folder or a GitHub folder inside Figma Design's agent: "Figma Design's agent can't save to a folder or to GitHub yet"
 - it's none of the locations above: "<location> isn't a local folder, a GitHub link or the report page"
-- saving there fails, such as a folder that can't be written, no GitHub tool, or no edit access to the file: the error, as the tool or the scanner gives it
+- it's the report page and the skill `design-review-figma-writer` isn't installed: "the skill `design-review-figma-writer` isn't installed"
+- saving there fails, such as a folder that can't be written, no GitHub tool, or no edit access to the file: the error, as the tool or `design-review-figma-writer` gives it
 
 ### The Saved line
 
 The header's Saved line says where the report went. Write it for the destination you're saving to, so the saved copy carries it, and correct it in the chat if that save fails.
 
-- **Saved:** "Saved: <the file's path or link>." For the report page, "Saved: frame "<name>" on the "Design review" page, <the frame's link>.", where the link is built as for a `node` location. The copy in the frame leaves out the link. When the JSON isn't in the frame, the chat's line adds "The report JSON is too large for a frame, so it's only in this chat.", or with the scanner's `jsonError`, "The report JSON couldn't be stored in the frame (<jsonError>), so it's only in this chat."
+- **Saved:** "Saved: <the file's path or link>." For the report page, "Saved: frame "<name>" on the "Design review" page, <the frame's link>.", where the link is built as for a `node` location. The copy in the frame leaves out the link. When the JSON isn't in the frame, the chat's line adds "The report JSON is too large for a frame, so it's only in this chat.", or with the Figma Writer's `jsonError`, "The report JSON couldn't be stored in the frame (<jsonError>), so it's only in this chat."
 - **After a destination that couldn't be used,** add "<destination> wasn't used: <reason>." for each one.
 - **Not saved, with "don't save":** "Not saved: you asked not to save this run."
 - **Not saved, when no destination could be used:** "Not saved: <each reason>. The report is in this chat only."
@@ -184,7 +185,7 @@ Annotations mark each Finding on its layers in the reviewed file, as Figma annot
 
 Each run replaces the review's annotations for what it covered: it clears them from the axes it reviewed, everywhere in its scope, then writes its own. A fixed Finding's annotation goes, and the rest stay current. The designer's own annotations, in any other category, are never changed.
 
-Mark the layers before saving, so the saved copy carries the Annotated line. You MUST use the skill `design-review-scanner` to write them, as its Writing annotations describes. Hand it the file key, the runtime, and:
+Mark the layers before saving, so the saved copy carries the Annotated line. You MUST use the skill `design-review-figma-writer` to write them, as its Writing annotations describes. When it isn't installed, the error for the Annotated line is "the skill `design-review-figma-writer` isn't installed". Hand it the file key, the runtime, and:
 
 - the scope: the node ids in `run.scope.nodes`
 - the axes covered: each axis with a Coverage entry other than a whole-axis `skipped`
@@ -202,12 +203,12 @@ Writing annotations needs edit access to the file, and a Full seat. A script can
 
 ### The Annotated line
 
-The header's Annotated line says what the scanner handed back:
+The header's Annotated line says what the Figma Writer handed back:
 
 - **Marked:** "Annotated: <marked> Findings, with <written> annotations in "<the label of each axis's category that has a mark>"." Then, when `cleared` is more than 0, "<cleared> annotations from earlier reviews of this scope were cleared first." With no Findings to mark: "Annotated: no Findings to mark." and the cleared sentence.
 - **For each category `created`:** "This run added the "<label>" annotation category. A script can't delete it, so it stays in the file until someone deletes it in Figma."
 - **For each entry in `moved`:** "<finding> is marked on <the layer it went to>, since <its layer> can't hold annotations." When `movedTotal` is given, end with "and <the rest> more."
-- **For each Finding not marked,** because it has no `node` location or every one of its nodes is in `unmarked`: "<short id> isn't marked: <reason>.", where the reason is "it has no layer in this file" or the scanner's. When `unmarkedTotal` is given, end with "and <the rest> more."
+- **For each Finding not marked,** because it has no `node` location or every one of its nodes is in `unmarked`: "<short id> isn't marked: <reason>.", where the reason is "it has no layer in this file" or the Figma Writer's. When `unmarkedTotal` is given, end with "and <the rest> more."
 - **Partly annotated,** when a later part of a split run failed: "Partly annotated:", then the Marked sentences for the parts written, then "The rest weren't marked: <the error>."
 - **Not annotated:** "Not annotated: <the error>." When the error has `categoriesAdded`, add the category sentence for each.
 
