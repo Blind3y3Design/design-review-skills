@@ -223,6 +223,28 @@ test('each expected case passes against itself and fails when any compared field
       (r) => { r.findings[0].certainty = 'confirmed'; },
       (r) => { entry(r, '2.5.8').status = 'judged'; },
     ],
+    'DS-01': [
+      (r) => { r.findings[0].id = 'design-system/raw-value/node:45:17'; },
+      (r) => { r.findings[0].axis = 'accessibility'; },
+      (r) => { r.findings[0].severity = 'minor'; },
+      (r) => { r.findings[0].certainty = 'likely'; },
+      (r) => { r.findings[0].relatedFindings = ['accessibility/1.4.3/node:45:18']; },
+      (r) => { r.findings = []; },
+      (r) => { entry(r, 'raw-value').status = 'not-readable'; },
+      (r) => { r.coverage = []; },
+    ],
+    'DS-02': [
+      (r) => { r.findings[0].id = 'design-system/raw-value/node:45:20'; },
+      (r) => { r.findings[0].certainty = 'needs-review'; },
+      (r) => { r.findings.push({ id: 'design-system/raw-value/node:45:19', axis: 'design-system', severity: 'moderate', certainty: 'confirmed' }); },
+      (r) => { entry(r, 'raw-value').status = 'not-applicable'; },
+    ],
+    'DS-01-no-baseline': [
+      (r) => { r.coverage[0].status = 'judged'; },
+      (r) => { r.coverage[0].ref = 'raw-value'; },
+      (r) => { r.coverage = []; },
+      (r) => { r.findings.push({ id: 'design-system/raw-value/node:45:18', axis: 'design-system', severity: 'moderate', certainty: 'confirmed' }); },
+    ],
   };
   for (const [id, edits] of Object.entries(changes)) {
     assert.equal(compareReports(load(id), load(id)).pass, true, id);
