@@ -834,28 +834,37 @@ let topFrame = node;
 while (topFrame.parent && topFrame.parent.type !== 'PAGE') topFrame = topFrame.parent;
 out.scope = { id: node.id, name: node.name, type: node.type, page: page.name, topLevelFrame: topFrame.id === node.id ? null : { id: topFrame.id, name: topFrame.name } };
 
-// Each visible instance's main component, grouped by component. An instance inside another instance is nested: it comes with the outer one's component.
-const components = new Map(), missing = [];
-let instances = 0;
-const walk = async (n, outerInstance, parentPath) => {
-  if (n.visible === false || ('opacity' in n && n.opacity === 0)) return;
-  const path = parentPath ? `${parentPath} / ${n.name}` : n.name;
-  if (n.type === 'INSTANCE') {
-    instances++;
-    const main = await n.getMainComponentAsync();
-    if (!main) missing.push(n.id);
-    else {
-      if (!components.has(main.key)) {
-        const set = main.parent && main.parent.type === 'COMPONENT_SET' ? { key: main.parent.key, name: main.parent.name } : null;
-        components.set(main.key, { key: main.key, name: main.name, set, remote: main.remote, library: null, instances: 0, nested: 0, nodes: [] });
-      }
-      const entry = components.get(main.key);
-      if (outerInstance) entry.nested++; else entry.instances++;
-      if (entry.nodes.length < SAMPLES) entry.nodes.push(outerInstance ? { id: n.id, path, inside: outerInstance.id } : { id: n.id, path });
-    }
-    if (!outerInstance) outerInstance = n;
+// Main components. Each instance's is fetched once, all in parallel, and each main component is read once, however many instances use it:
+// these lookups dominate scan time.
+const mainOf = new Map(), read = new Map();
+const fetchMain = async (n) => {
+  if (!mainOf.has(n.id)) mainOf.set(n.id, n.getMainComponentAsync().catch(() => null));
+  return mainOf.get(n.id);
+};
+const readMain = (main) => {
+  if (!read.has(main.id)) {
+    const set = main.parent && main.parent.type === 'COMPONENT_SET' ? { key: main.parent.key, name: main.parent.name } : null;
+    read.set(main.id, { key: main.key, name: main.name, set, remote: main.remote });
   }
-  if ('children' in n) for (const c of n.children) await walk(c, outerInstance, path);
+  return read.get(main.id);
+};
+
+// An instance's layers are matched to its main component's by their positions, so the layers it hides have to be there too.
+// Figma leaves them out while figma.skipInvisibleInstanceChildren is on, as it is through use_figma. It's set back before the script returns.
+const skipping = figma.skipInvisibleInstanceChildren;
+figma.skipInvisibleInstanceChildren = false;
+
+// Each visible instance, in layer order, and each frame detached from an instance. An instance inside another instance is nested: it comes with the outer one's component.
+// `detachedIn` is the detached frame an instance sits in, if any.
+const hidden = (n) => n.visible === false || ('opacity' in n && n.opacity === 0);
+const found = [], detachedFrames = [];
+const walk = (n, outerInstance, detachedIn, parentPath) => {
+  if (hidden(n)) return;
+  const path = parentPath ? `${parentPath} / ${n.name}` : n.name;
+  if (n.type === 'INSTANCE') found.push({ n, path, outerInstance, detachedIn });
+  else if (!outerInstance && n.type === 'FRAME' && n.detachedInfo) { detachedFrames.push({ n, path }); detachedIn = n; }
+  const outer = outerInstance || (n.type === 'INSTANCE' ? n : null);
+  if ('children' in n) for (const c of n.children) walk(c, outer, detachedIn, path);
 };
 // A scanned node inside an instance starts with the outermost instance above it.
 let outerAbove = null, parentPath = '';
@@ -863,21 +872,268 @@ for (let x = node.parent; x && x.type !== 'PAGE'; x = x.parent) {
   if (x.type === 'INSTANCE') outerAbove = x;
   parentPath = parentPath ? `${x.name} / ${parentPath}` : x.name;
 }
-await walk(node, outerAbove, parentPath);
+let detachedAbove = null;
+if (!outerAbove) for (let x = node.parent; x && x.type !== 'PAGE' && !detachedAbove; x = x.parent) if (x.type === 'FRAME' && x.detachedInfo) detachedAbove = x;
+walk(node, outerAbove, detachedAbove, parentPath);
+await Promise.all(found.map(f => fetchMain(f.n)));
+
+// Grouped by main component, in the order first found.
+const components = new Map(), mainsByKey = new Map(), missing = [];
+for (const { n, path, outerInstance } of found) {
+  const main = await fetchMain(n);
+  if (!main) { missing.push(n.id); continue; }
+  const { key, name, set, remote } = readMain(main);
+  if (!components.has(key)) { components.set(key, { key, name, set, remote, library: null, instances: 0, nested: 0, nodes: [] }); mainsByKey.set(key, main); }
+  const entry = components.get(key);
+  if (outerInstance) entry.nested++; else entry.instances++;
+  if (entry.nodes.length < SAMPLES) entry.nodes.push(outerInstance ? { id: n.id, path, inside: outerInstance.id } : { id: n.id, path });
+}
+const instances = found.length;
 if (missing.length) out.unread.push({ what: 'main components', reason: `${missing.length} instances' main components couldn't be read, such as ${missing[0]}` });
 
+// The component each detached frame came from, as its detachedInfo names it: a library's by key, a local one by id.
+// A library's component that no instance here uses is imported by key, which reads it without placing it. Each is read once.
+const sources = new Map(), unreadSources = [];
+const sourceOf = async (info) => {
+  const id = info.type === 'local' ? `local:${info.componentId}` : `library:${info.componentKey}`;
+  if (!sources.has(id)) {
+    let main = null, reason = null;
+    try {
+      if (info.type === 'local') main = await figma.getNodeByIdAsync(info.componentId);
+      else main = mainsByKey.get(info.componentKey) || await figma.importComponentByKeyAsync(info.componentKey);
+      if (!main) reason = 'the component no longer exists';
+    } catch (e) { reason = String((e && e.message) || e); }
+    sources.set(id, main ? readMain(main) : { reason });
+  }
+  return sources.get(id);
+};
+const detached = [];
+for (const { n, path } of detachedFrames) {
+  const info = n.detachedInfo, source = await sourceOf(info);
+  if (source.reason) unreadSources.push(`${n.id}'s: ${source.reason}`);
+  const known = source.reason ? { key: info.componentKey || null, name: null, set: null, remote: null } : source;
+  detached.push({ node: { id: n.id, path }, source: { type: info.type, ...(info.type === 'local' ? { id: info.componentId } : {}), key: known.key, name: known.name, set: known.set, remote: known.remote } });
+}
+if (unreadSources.length) out.unread.push({ what: 'detached sources', reason: `the components ${unreadSources.length} detached frames came from couldn't be read, such as ${unreadSources[0]}` });
+
+// Overrides: what each outermost instance changes from its main component, as its `overrides` list it, by layer and property.
+// A renamed layer isn't a change to the design, so `name` isn't listed.
+const PROPERTIES = {
+  fill: ['fills', 'fillStyleId', 'backgrounds', 'backgroundStyleId'],
+  stroke: ['strokes', 'strokeStyleId', 'strokeWeight', 'strokeTopWeight', 'strokeRightWeight', 'strokeBottomWeight', 'strokeLeftWeight', 'strokeAlign', 'strokeCap', 'strokeJoin', 'strokeMiterLimit', 'dashPattern'],
+  effect: ['effects', 'effectStyleId'],
+  radius: ['cornerRadius', 'topLeftRadius', 'topRightRadius', 'bottomRightRadius', 'bottomLeftRadius', 'cornerSmoothing'],
+  spacing: ['paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft', 'itemSpacing', 'counterAxisSpacing'],
+  text: ['fontName', 'fontSize', 'fontWeight', 'lineHeight', 'letterSpacing', 'paragraphSpacing', 'paragraphIndent', 'listSpacing', 'textCase', 'textDecoration', 'textDecorationSkipInk', 'textStyleId', 'openTypeFeatures', 'textAlignHorizontal', 'textAlignVertical', 'leadingTrim', 'hangingPunctuation', 'hangingList'],
+  opacity: ['opacity', 'blendMode'],
+  layout: ['layoutMode', 'layoutWrap', 'primaryAxisAlignItems', 'counterAxisAlignItems', 'counterAxisAlignContent', 'itemReverseZIndex', 'strokesIncludedInLayout', 'clipsContent', 'layoutGrids', 'gridStyleId'],
+  size: ['width', 'height', 'minWidth', 'maxWidth', 'minHeight', 'maxHeight', 'primaryAxisSizingMode', 'counterAxisSizingMode', 'layoutGrow', 'layoutAlign', 'layoutSizingHorizontal', 'layoutSizingVertical', 'constrainProportions', 'textAutoResize'],
+  content: ['characters', 'hyperlink'],
+  visible: ['visible'],
+};
+const CORNERS = ['topLeftRadius', 'topRightRadius', 'bottomRightRadius', 'bottomLeftRadius'];
+const PADDING = ['paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft'];
+const propertyOf = (field) => Object.keys(PROPERTIES).find(p => PROPERTIES[p].includes(field)) || 'other';
+const round = (v) => Math.round(v * 100) / 100;
+const hex = (c, a = 1) => '#' + [c.r, c.g, c.b].map(v => Math.round(v * 255).toString(16).padStart(2, '0')).join('').toUpperCase() + (a < 1 ? Math.round(a * 255).toString(16).padStart(2, '0').toUpperCase() : '');
+const shown = (paints) => (Array.isArray(paints) ? paints.filter(p => p.visible !== false && (p.opacity ?? 1) > 0) : []);
+const variables = new Map();
+const variableOf = async (alias) => {
+  if (!alias || !alias.id) return null;
+  if (!variables.has(alias.id)) {
+    const v = await figma.variables.getVariableByIdAsync(alias.id);
+    variables.set(alias.id, v ? { key: v.key, name: v.name } : { id: alias.id, name: null });
+  }
+  return variables.get(alias.id);
+};
+const withVariable = async (value, alias) => { const v = await variableOf(alias); return v ? { ...value, variable: v } : value; };
+const styles = new Map();
+const styleOf = async (id) => {
+  if (!styles.has(id)) { const st = await figma.getStyleByIdAsync(id); styles.set(id, st ? { key: st.key, name: st.name } : { id, name: null }); }
+  return styles.get(id);
+};
+
+// A layer's counterpart in its outermost instance's main component, found at the same child positions: the layer as the component has it.
+// A nested instance that shows another component than the main component's own instance there (its slot) was swapped. Below it,
+// the counterpart is in the component it shows, and `swap` records the nested instance and the slot.
+const slotMains = new Map(), twins = new Map();
+const mainOfSlot = (slot) => {
+  if (!slotMains.has(slot.id)) slotMains.set(slot.id, slot.getMainComponentAsync().catch(() => null));
+  return slotMains.get(slot.id);
+};
+const twinOf = async (n, instance) => {
+  if (n.id === instance.id) return { node: await fetchMain(instance), swap: null };
+  if (!twins.has(n.id)) twins.set(n.id, (async () => {
+    const above = await twinOf(n.parent, instance);
+    const at = n.parent.children.findIndex(c => c.id === n.id);
+    let twin = above.node && 'children' in above.node ? above.node.children[at] || null : null, swap = above.swap;
+    if (n.type === 'INSTANCE') {
+      const shows = await fetchMain(n), slot = twin && twin.type === 'INSTANCE' ? twin : null, was = slot ? await mainOfSlot(slot) : null;
+      if (!shows || !was) { swap = { at: n, slot, unknown: true }; twin = shows || twin; }
+      else if (shows.id !== was.id) { swap = { at: n, slot, shows, was }; twin = shows; }
+    }
+    return { node: twin, swap };
+  })());
+  return twins.get(n.id);
+};
+
+// What a layer has now for a changed property, in the bindings facts' notation, with the variable or style it's bound to.
+const valuesOf = async (n, property, keys, twin) => {
+  if (property === 'fill' || property === 'stroke') {
+    const paints = property === 'fill' ? n.fills : n.strokes, styleId = property === 'fill' ? n.fillStyleId : n.strokeStyleId;
+    if (paints === figma.mixed) return [{ value: 'mixed' }];
+    const style = typeof styleId === 'string' && styleId ? await styleOf(styleId) : null;
+    return Promise.all(shown(paints).map(p => {
+      const value = { value: p.type === 'SOLID' ? hex(p.color, p.opacity ?? 1) : p.type.toLowerCase() };
+      return style ? { ...value, style } : withVariable(value, p.boundVariables && p.boundVariables.color);
+    }));
+  }
+  if (property === 'radius' || property === 'spacing' || property === 'opacity') {
+    const read = property === 'radius' && keys.includes('cornerRadius') ? CORNERS : PROPERTIES[property].filter(f => f !== 'cornerRadius' && keys.includes(f));
+    const bound = n.boundVariables || {};
+    const values = await Promise.all(read.filter(f => typeof n[f] === 'number').map(f => withVariable({ field: f, value: round(n[f]) }, bound[f])));
+    // Four equal corners or paddings are one value, as in the bindings facts.
+    for (const [four, field] of [[CORNERS, 'cornerRadius'], [PADDING, 'padding']]) {
+      const these = values.filter(v => four.includes(v.field));
+      if (these.length === 4 && these.every(v => same([v.value, v.variable], [these[0].value, these[0].variable]))) values.splice(values.indexOf(these[0]), 4, { ...these[0], field });
+    }
+    return values;
+  }
+  if (property === 'text') {
+    const style = typeof n.textStyleId === 'string' && n.textStyleId ? await styleOf(n.textStyleId) : null;
+    const { fontName, fontSize, lineHeight, letterSpacing } = n;
+    const lh = !lineHeight || lineHeight.unit === 'AUTO' ? 'auto' : lineHeight.unit === 'PERCENT' ? `${round(lineHeight.value)}%` : round(lineHeight.value);
+    const ls = letterSpacing && letterSpacing.value ? ` ${round(letterSpacing.value)}${letterSpacing.unit === 'PERCENT' ? '%' : 'px'}` : '';
+    const mixed = !fontName || [fontName, fontSize, lineHeight, letterSpacing].includes(figma.mixed);
+    const value = mixed ? 'mixed' : `${fontName.family} ${fontName.style} ${round(fontSize)}/${lh}${ls}`;
+    return [style ? { value, style } : { value }];
+  }
+  if (property === 'effect') {
+    if (typeof n.effectStyleId === 'string' && n.effectStyleId) return [{ style: await styleOf(n.effectStyleId) }];
+    return (n.effects || []).filter(e => e.visible !== false).map(e => ({ value: e.type === 'DROP_SHADOW' || e.type === 'INNER_SHADOW'
+      ? `${e.type} ${hex(e.color, e.color.a)} ${round(e.offset.x)} ${round(e.offset.y)} ${round(e.radius)} ${round(e.spread || 0)}`
+      : 'radius' in e ? `${e.type} ${round(e.radius)}` : e.type }));
+  }
+  if (property === 'layout') return keys.map(f => ({ field: f, value: n[f] === figma.mixed ? 'mixed' : n[f] }));
+  if (property === 'size') {
+    return [{ width: round(n.width), height: round(n.height), component: twin ? { width: round(twin.width), height: round(twin.height) } : null, sizing: { horizontal: n.layoutSizingHorizontal || null, vertical: n.layoutSizingVertical || null } }];
+  }
+  return undefined;
+};
+const textField = (f) => PROPERTIES.text.includes(f);
+const propertyName = (ref) => String(ref).replace(/#[^#]*$/, '');
+const same = (a, b) => JSON.stringify(a, (k, v) => (v === figma.mixed ? 'mixed' : v)) === JSON.stringify(b, (k, v) => (v === figma.mixed ? 'mixed' : v));
+// When a nested instance is swapped, Figma carries the main component's own changes on its slot over to the component swapped in.
+// A change is carried over when the slot's overrides change the same fields to the same values.
+const carriedOver = async (n, keys, swap) => {
+  const boundOn = (x, k) => (x.boundVariables || {})[k];
+  for (const o of (swap.slot && swap.slot.overrides) || []) {
+    const shared = keys.filter(k => o.overriddenFields.includes(k) || o.overriddenFields.includes('boundVariables'));
+    if (!shared.length) continue;
+    const there = await figma.getNodeByIdAsync(o.id);
+    if (there && shared.every(k => same(n[k], there[k]) && same(boundOn(n, k), boundOn(there, k)))) return true;
+  }
+  return false;
+};
+// The fields whose bound variables differ from the counterpart's, or null when there's no counterpart to compare with.
+const reboundFields = (n, twin) => {
+  if (!twin) return null;
+  const mine = n.boundVariables || {}, theirs = twin.boundVariables || {};
+  return [...new Set([...Object.keys(mine), ...Object.keys(theirs)])].filter(f => !same(mine[f], theirs[f]));
+};
+const changesOf = async (n, fields, instance) => {
+  const { node: twin, swap } = await twinOf(n, instance);
+  // Each changed field goes with its property, and `keys` holds the layer's fields to read the property's values from.
+  const byProperty = new Map();
+  const add = (property, field, key) => {
+    if (!byProperty.has(property)) byProperty.set(property, { fields: [], keys: [] });
+    const entry = byProperty.get(property);
+    if (!entry.fields.includes(field)) entry.fields.push(field);
+    if (key && !entry.keys.includes(key)) entry.keys.push(key);
+  };
+  for (const f of fields) {
+    if (f === 'boundVariables') {
+      // Figma names no property for a change of bound variables, so it's found by comparing them with the main component's.
+      const rebound = reboundFields(n, twin);
+      if (rebound && rebound.length) for (const k of rebound) add(propertyOf(k), f, k);
+      else add('variables', f);
+    }
+    // styledTextSegments changes with the text's content or its style: it goes with whichever else changed.
+    else if (f === 'styledTextSegments') add(fields.some(textField) || !fields.includes('characters') ? 'text' : 'content', f);
+    else add(propertyOf(f), f, f);
+  }
+  const refs = n.componentPropertyReferences || {};
+  const changes = [];
+  for (const [property, { fields: fs, keys }] of byProperty) {
+    const change = { property, fields: fs };
+    const ref = property === 'content' ? refs.characters : property === 'visible' ? refs.visible : null;
+    if (ref) change.through = propertyName(ref);
+    else if (property === 'variables') change.uncertain = twin ? 'its bound variables changed, but none differs from its main component\'s' : 'its bound variables changed, and its main component couldn\'t be read to say which';
+    else if (swap && swap.unknown) change.uncertain = `it's inside the nested instance ${swap.at.name}, whose component couldn't be compared with the main component's`;
+    else if (swap && await carriedOver(n, keys, swap)) change.through = 'swap';
+    const values = await valuesOf(n, property, keys, twin);
+    if (values) change.values = values;
+    changes.push(change);
+  }
+  return changes;
+};
+const fullName = (main) => { const { name, set } = readMain(main); return set ? `${set.name}, ${name}` : name; };
+const overrides = [];
+// A change is listed when its layer is in the scope and shown. A hidden layer is listed only when hiding it is the change.
+const listed = (n, fields, instance) => {
+  if (hidden(n) && !fields.includes('visible')) return false;
+  let inScope = !outerAbove;
+  for (let x = n; x; x = x.parent) {
+    if (x.id === node.id) inScope = true;
+    if (x.id === instance.id) break;
+    if (x.id !== n.id && hidden(x)) return false;
+  }
+  return inScope;
+};
+const outermost = [...(outerAbove ? [{ n: outerAbove, detachedIn: null }] : []), ...found.filter(f => !f.outerInstance)];
+const nestedIn = new Map(outermost.map(o => [o.n.id, []]));
+for (const f of found) if (f.outerInstance) nestedIn.get(f.outerInstance.id).push(f.n);
+for (const { n: instance, detachedIn } of outermost) {
+  const main = await fetchMain(instance);
+  const entries = new Map();
+  const entryFor = (n) => {
+    if (!entries.has(n.id)) {
+      const names = [];
+      for (let x = n; x && x.type !== 'PAGE'; x = x.parent) names.unshift(x.name);
+      entries.set(n.id, { node: { id: n.id, path: names.join(' / ') }, instance: { id: instance.id, name: instance.name, component: main ? readMain(main).key : null }, ...(detachedIn ? { detached: detachedIn.id } : {}), changes: [] });
+    }
+    return entries.get(n.id);
+  };
+  // Swaps aren't in `overrides`: a nested instance is swapped when it shows another component than its slot.
+  for (const n of nestedIn.get(instance.id)) {
+    const { swap } = await twinOf(n, instance);
+    if (!swap || swap.at.id !== n.id || swap.unknown) continue;
+    const ref = (n.componentPropertyReferences || {}).mainComponent;
+    entryFor(n).changes.push({ property: 'component', fields: [], ...(ref ? { through: propertyName(ref) } : {}), values: [{ key: readMain(swap.shows).key, name: fullName(swap.shows), was: { key: readMain(swap.was).key, name: fullName(swap.was) } }] });
+  }
+  for (const o of instance.overrides || []) {
+    const fields = o.overriddenFields.filter(f => f !== 'name');
+    if (!fields.length) continue;
+    const n = o.id === instance.id ? instance : await figma.getNodeByIdAsync(o.id);
+    if (!n || !listed(n, fields, instance)) continue;
+    entryFor(n).changes.push(...await changesOf(n, fields, instance));
+  }
+  overrides.push(...entries.values());
+}
+
 // Keep the output under the smaller runtime limit (about 20 kB through use_figma).
-out.components = { instances, components: [...components.values()] };
+out.components = { instances, components: [...components.values()], detached, overrides };
 const size = () => JSON.stringify(out).length;
-const located = () => out.components.components.flatMap(c => c.nodes);
+const located = () => [...out.components.components.flatMap(c => c.nodes), ...detached.map(d => d.node), ...overrides.map(o => o.node)];
 if (size() > LIMIT) for (const x of located()) x.path = x.path.split(' / ').slice(-3).join(' / ');
 if (size() > LIMIT) for (const c of out.components.components) c.nodes = c.nodes.slice(0, 3);
 if (size() > LIMIT) for (const x of located()) delete x.path;
 if (size() > LIMIT) {
   out.components = null;
   out.groups = [];
-  out.unread = [{ what: 'components', reason: `output limit: ${components.size} components are too many for one call; scan each id in scanInstead`, scanInstead: childIds(node) }];
+  out.unread = [{ what: 'components', reason: `output limit: ${components.size} components, ${detached.length} detached frames and ${overrides.length} overridden layers are too many for one call; scan each id in scanInstead`, scanInstead: childIds(node) }];
 }
+figma.skipInvisibleInstanceChildren = skipping;
 return out;
 ```
 

@@ -20,16 +20,24 @@ const solid = (color, props = {}) => ({ type: 'SOLID', color, visible: true, opa
 const rgb = (hex) => ({ r: parseInt(hex.slice(1, 3), 16) / 255, g: parseInt(hex.slice(3, 5), 16) / 255, b: parseInt(hex.slice(5, 7), 16) / 255 });
 
 // `collections` are the file's variable collections by id, and `libraries` what figma.teamLibrary lists, or an Error it throws.
-function fakeFigma(pageSpec, { variables = {}, styles = {}, components = {}, collections = {}, libraries = [], categories = [], noAnnotations = false } = {}) {
+// `mains` are main components, built like the page's nodes but kept off the page, as a file keeps a library's components.
+// An instance's `main` names a main component's id, or a key of `components`. Each read of a built node's `key` is counted.
+function fakeFigma(pageSpec, { variables = {}, styles = {}, components = {}, mains = [], collections = {}, libraries = [], categories = [], noAnnotations = false } = {}) {
   let next = 1;
-  const lookups = { count: 0 };
-  const byId = new Map();
+  const lookups = { count: 0, keyReads: {}, imports: 0 };
+  const byId = new Map(), byKey = new Map();
+  for (const [name, c] of Object.entries(components)) if (!('id' in c)) c.id = `main:${name}`;
   const build = (spec, parent) => {
-    const { children = [], x = 0, y = 0, width = 100, height = 100, segments, main, ...props } = spec;
+    const { children = [], x = 0, y = 0, width = 100, height = 100, segments, main, key, ...props } = spec;
     const node = {
       id: spec.id || `1:${next++}`, name: '', visible: true, opacity: 1, blendMode: 'PASS_THROUGH', fills: [], strokes: [], strokeWeight: 0,
-      x, y, width, height, absoluteBoundingBox: { x, y, width, height }, parent, reactions: [], annotations: [], ...props,
+      x, y, width, height, absoluteBoundingBox: { x, y, width, height }, parent, reactions: [], annotations: [],
+      ...(spec.type === 'INSTANCE' ? { overrides: [] } : {}), ...props,
     };
+    if (key !== undefined) {
+      Object.defineProperty(node, 'key', { enumerable: true, get() { lookups.keyReads[node.id] = (lookups.keyReads[node.id] || 0) + 1; return key; } });
+      byKey.set(key, node);
+    }
     byId.set(node.id, node);
     if (node.type === 'TEXT') {
       const runs = segments || [{ characters: node.characters }];
@@ -50,22 +58,37 @@ function fakeFigma(pageSpec, { variables = {}, styles = {}, components = {}, col
         });
       };
     }
-    if (node.type === 'INSTANCE') node.getMainComponentAsync = async () => { lookups.count++; return components[main] || null; };
-    if (spec.type !== 'TEXT') node.children = children.map((c) => build(c, node));
+    if (node.type === 'INSTANCE') node.getMainComponentAsync = async () => { lookups.count++; return byId.get(main) || components[main] || null; };
+    if (spec.type !== 'TEXT') {
+      const all = children.map((c) => build(c, node));
+      // As in Figma, with figma.skipInvisibleInstanceChildren on, an instance's hidden layers aren't there.
+      Object.defineProperty(node, 'children', { enumerable: true, get: () => (fake.skipInvisibleInstanceChildren && inInstance(node) ? all.filter((c) => c.visible !== false) : all) });
+    }
     return node;
   };
+  const inInstance = (n) => { for (let x = n; x; x = x.parent) if (x.type === 'INSTANCE') return true; return false; };
+  const reachable = (n) => !fake.skipInvisibleInstanceChildren || !n.parent || !inInstance(n.parent) || n.visible !== false && reachable(n.parent);
   const root = { type: 'DOCUMENT', id: '0:0', name: 'Document', parent: null };
+  const library = { type: 'PAGE', id: '0:99', name: 'Library components', parent: null };
+  library.children = mains.map((spec) => build(spec, library));
   const page = build({ type: 'PAGE', id: '0:1', name: 'Cases', ...pageSpec }, root);
   page.loadAsync = async () => {};
   root.children = [page];
-  return {
+  const fake = {
+    skipInvisibleInstanceChildren: true,
     root,
     fileKey: 'FAKEFILEKEY',
     mixed: MIXED,
     lookups,
     annotations: noAnnotations ? undefined : { async getAnnotationCategoriesAsync() { return categories; } },
-    async getNodeByIdAsync(id) { return byId.get(id) || null; },
+    async getNodeByIdAsync(id) { const n = byId.get(id); return n && reachable(n) ? n : null; },
     async getStyleByIdAsync(id) { return styles[id] || null; },
+    async importComponentByKeyAsync(key) {
+      lookups.imports++;
+      const found = byKey.get(key);
+      if (!found || found.type !== 'COMPONENT') throw new Error(`no published component with the key ${key}`);
+      return found;
+    },
     variables: {
       async getVariableByIdAsync(id) { return variables[id] || null; },
       async getVariableCollectionByIdAsync(id) { return collections[id] || null; },
@@ -77,6 +100,7 @@ function fakeFigma(pageSpec, { variables = {}, styles = {}, components = {}, col
       },
     },
   };
+  return fake;
 }
 
 // A top-level frame at (100, 200) on the page, holding the given layers.
@@ -379,6 +403,8 @@ test('components: each instance gives its main component, grouped by component, 
       { key: 'k-promo', name: 'Test Unlisted/Promo Tile', set: null, remote: true, library: null, instances: 1, nested: 0, nodes: [{ id: '5:5', path: 'A11Y-99 / Aside / Promo' }] },
       { key: 'k-card', name: 'Card', set: null, remote: false, library: null, instances: 1, nested: 0, nodes: [{ id: '5:7', path: 'A11Y-99 / Card' }] },
     ],
+    detached: [],
+    overrides: [],
   });
 });
 
@@ -422,8 +448,235 @@ test('components: a page is handed back as its frames to scan instead, and over 
   const tooMany = await scan('The components script', many(400), '5:1');
   assert.equal(tooMany.components, null);
   assert.deepEqual(tooMany.groups, []);
-  assert.match(tooMany.unread[0].reason, /^output limit: 400 components are too many for one call/);
+  assert.match(tooMany.unread[0].reason, /^output limit: 400 components, 0 detached frames and 0 overridden layers are too many for one call/);
   assert.equal(tooMany.unread[0].scanInstead.length, 400);
+});
+
+// Library components as a file holds them: a Button set whose icon is a nested Check, the Check and Arrow icons, and a Tag.
+// The Button's main component overrides its icon's stroke, as the test library's does.
+const bound = (hex, variable) => solid(rgb(hex), { boundVariables: { color: { type: 'VARIABLE_ALIAS', id: variable } } });
+const alias = (id) => ({ type: 'VARIABLE_ALIAS', id });
+const corners = (radius, variable) => ({
+  topLeftRadius: radius, topRightRadius: radius, bottomRightRadius: radius, bottomLeftRadius: radius,
+  boundVariables: { fills: [alias('V:primary')], topLeftRadius: alias(variable), topRightRadius: alias(variable), bottomRightRadius: alias(variable), bottomLeftRadius: alias(variable) },
+});
+// The Button's root as its main component has it, which an instance has too until it's changed.
+const BUTTON_ROOT = { width: 102, height: 36, fills: [bound('#0B5FFF', 'V:primary')], ...corners(4, 'V:sm') };
+const libraryMains = () => [
+  { type: 'COMPONENT_SET', id: 'c:button', name: 'Test Foundation/Button', key: 'k-button', remote: true, children: [
+    { type: 'COMPONENT', id: 'c:primary', name: 'Type=Primary', key: 'k-primary', remote: true, ...BUTTON_ROOT, children: [
+      { type: 'INSTANCE', id: 'c:primary-icon', name: 'icon', main: 'c:check', width: 16, height: 16, overrides: [{ id: 'I:c:primary-icon;v', overriddenFields: ['strokes'] }], children: [
+        { type: 'VECTOR', id: 'I:c:primary-icon;v', name: 'Vector', strokes: [bound('#FFFFFF', 'V:on-action')], strokeWeight: 2 },
+      ] },
+      { type: 'TEXT', id: 'c:primary-label', name: 'label', characters: 'Button', width: 46, height: 20 },
+    ] },
+  ] },
+  { type: 'COMPONENT', id: 'c:check', name: 'Test Foundation/Icon/Check', key: 'k-check', remote: true, width: 16, height: 16, children: [
+    { type: 'VECTOR', id: 'c:check-v', name: 'Vector', strokes: [bound('#1A1A1A', 'V:icon')], strokeWeight: 2 },
+  ] },
+  { type: 'COMPONENT', id: 'c:arrow', name: 'Test Foundation/Icon/Arrow', key: 'k-arrow', remote: true, width: 16, height: 16, children: [
+    { type: 'VECTOR', id: 'c:arrow-v', name: 'Vector', strokes: [bound('#1A1A1A', 'V:icon')], strokeWeight: 2 },
+  ] },
+  { type: 'COMPONENT', id: 'c:tag', name: 'Test Foundation/Tag', key: 'k-tag', remote: true, children: [
+    { type: 'TEXT', id: 'c:tag-label', name: 'label', characters: 'Tag' },
+  ] },
+];
+// A Button instance as the test file has it. `icon` is the main component its icon shows; the other options go on its root, its icon, the icon's vector and its label.
+const button = (id, { icon = 'c:check', iconProps = {}, vector = {}, label = {}, ...props } = {}) => ({
+  type: 'INSTANCE', id, name: 'Test Foundation/Button', main: 'c:primary', ...BUTTON_ROOT, ...props, children: [
+    { type: 'INSTANCE', id: `I${id};icon`, name: 'icon', main: icon, width: 16, height: 16, componentPropertyReferences: { visible: 'Show icon#4:4', mainComponent: 'Icon#4:7' }, ...iconProps, children: [
+      { type: 'VECTOR', id: `I${id};icon;v`, name: 'Vector', strokes: [bound('#FFFFFF', 'V:on-action')], strokeWeight: 2, ...vector },
+    ] },
+    { type: 'TEXT', id: `I${id};label`, name: 'label', characters: 'Button', componentPropertyReferences: { characters: 'Label#4:1' }, ...label },
+  ],
+});
+const dsFrame = (children) => ({ children: [{ type: 'FRAME', id: '5:1', name: 'DS-99', x: 100, y: 200, width: 600, height: 240, fills: [solid(white)], children }] });
+
+test('components: each main component is read once, however many instances use it', async () => {
+  const figma = fakeFigma(dsFrame([button('6:1'), button('6:2'), button('6:3')]), { mains: libraryMains() });
+  const { components } = await scan('The components script', figma, '5:1');
+  assert.deepEqual(components.components.map((c) => [c.key, c.set && c.set.key, c.instances, c.nested]), [['k-primary', 'k-button', 3, 0], ['k-check', null, 0, 3]]);
+  assert.deepEqual(figma.lookups.keyReads, { 'c:primary': 1, 'c:button': 1, 'c:check': 1 });
+});
+
+test('components: each detached instance gives the component it was detached from, read from detachedInfo, for a library\'s component or a local one', async () => {
+  const mains = [...libraryMains(), { type: 'COMPONENT', id: 'c:card', name: 'Card', key: 'k-card-local', remote: false }];
+  const figma = fakeFigma(dsFrame([
+    button('6:1'),
+    { type: 'FRAME', id: '6:2', name: 'Test Foundation/Button', detachedInfo: { type: 'library', componentKey: 'k-primary' } },
+    { type: 'FRAME', id: '6:3', name: 'Card', detachedInfo: { type: 'local', componentId: 'c:card' } },
+    { type: 'FRAME', id: '6:4', name: 'Tile', detachedInfo: { type: 'library', componentKey: 'k-tag' } },
+    { type: 'FRAME', id: '6:5', name: 'Gone', detachedInfo: { type: 'library', componentKey: 'k-gone' } },
+    { type: 'FRAME', id: '6:6', name: 'Hidden', visible: false, detachedInfo: { type: 'library', componentKey: 'k-tag' } },
+    { type: 'FRAME', id: '6:7', name: 'Plain frame', detachedInfo: null },
+  ]), { mains });
+  const { components, unread } = await scan('The components script', figma, '5:1');
+  const at = (id, name) => ({ id, path: `DS-99 / ${name}` });
+  assert.deepEqual(components.detached, [
+    { node: at('6:2', 'Test Foundation/Button'), source: { type: 'library', key: 'k-primary', name: 'Type=Primary', set: { key: 'k-button', name: 'Test Foundation/Button' }, remote: true } },
+    { node: at('6:3', 'Card'), source: { type: 'local', id: 'c:card', key: 'k-card-local', name: 'Card', set: null, remote: false } },
+    { node: at('6:4', 'Tile'), source: { type: 'library', key: 'k-tag', name: 'Test Foundation/Tag', set: null, remote: true } },
+    { node: at('6:5', 'Gone'), source: { type: 'library', key: 'k-gone', name: null, set: null, remote: null } },
+  ]);
+  assert.deepEqual(unread, [{ what: 'detached sources', reason: 'the components 1 detached frames came from couldn\'t be read, such as 6:5\'s: no published component with the key k-gone' }]);
+  assert.equal(figma.lookups.imports, 2, 'a component already read from an instance was imported again');
+});
+
+// Called in a test, after the bindings tests' helpers below are defined.
+const tokens = () => ({
+  'V:text': colourVariable('V:text', 'k-text', 'color/text/default', 'C:ftheme', '#1A1A1A'),
+  'V:md': { id: 'V:md', key: 'k-md', name: 'radius/md', resolvedType: 'FLOAT', variableCollectionId: 'C:fsize', remote: true },
+  'V:sm': { id: 'V:sm', key: 'k-sm', name: 'radius/sm', resolvedType: 'FLOAT', variableCollectionId: 'C:fsize', remote: true },
+  'V:on-action': colourVariable('V:on-action', 'k-on-action', 'color/icon/on-action', 'C:ftheme', '#FFFFFF'),
+});
+const BUTTON = { id: '6:1', name: 'Test Foundation/Button', component: 'k-primary' };
+const onButton = (id = '6:1') => ({ id, path: 'DS-99 / Test Foundation/Button' });
+
+test('components: an instance\'s direct change to a style property gives what the layer has now, such as the token swapped in or a raw value', async () => {
+  const figma = fakeFigma(dsFrame([
+    button('6:1', { fills: [bound('#1A1A1A', 'V:text')], overrides: [{ id: '6:1', overriddenFields: ['fills', 'name'] }] }),
+    button('6:2', { fills: [solid(rgb('#1F4E8C'))], overrides: [{ id: '6:2', overriddenFields: ['fills'] }] }),
+    button('6:3', { overrides: [{ id: '6:3', overriddenFields: ['name'] }] }),
+  ]), { mains: libraryMains(), variables: tokens() });
+  const { components } = await scan('The components script', figma, '5:1');
+  assert.deepEqual(components.overrides, [
+    { node: onButton(), instance: BUTTON, changes: [{ property: 'fill', fields: ['fills'], values: [{ value: '#1A1A1A', variable: { key: 'k-text', name: 'color/text/default' } }] }] },
+    { node: onButton('6:2'), instance: { ...BUTTON, id: '6:2' }, changes: [{ property: 'fill', fields: ['fills'], values: [{ value: '#1F4E8C' }] }] },
+  ]);
+});
+
+test('components: a change made through a component property names the property, and a hugging instance that a property change resized gives its size', async () => {
+  const hidden = { visible: false };
+  const figma = fakeFigma(dsFrame([
+    // A longer label, set through the Label property, as Figma records it: only the hugging instance's new size.
+    button('6:1', { width: 118, layoutSizingHorizontal: 'HUG', layoutSizingVertical: 'HUG', overrides: [{ id: '6:1', overriddenFields: ['height', 'name', 'width'] }] }),
+    button('6:2', { label: { characters: 'Continue' }, overrides: [{ id: 'I6:2;label', overriddenFields: ['characters', 'styledTextSegments'] }] }),
+    button('6:3', { iconProps: hidden, label: hidden, overrides: [{ id: 'I6:3;icon', overriddenFields: ['visible'] }, { id: 'I6:3;label', overriddenFields: ['visible'] }] }),
+  ]), { mains: libraryMains() });
+  const { components } = await scan('The components script', figma, '5:1');
+  const on = (id, layer) => ({ id, path: `DS-99 / Test Foundation/Button / ${layer}` });
+  assert.deepEqual(components.overrides.map(({ node, changes }) => [node, changes]), [
+    [onButton('6:1'), [{ property: 'size', fields: ['height', 'width'], values: [{ width: 118, height: 36, component: { width: 102, height: 36 }, sizing: { horizontal: 'HUG', vertical: 'HUG' } }] }]],
+    [on('I6:2;label', 'label'), [{ property: 'content', fields: ['characters', 'styledTextSegments'], through: 'Label' }]],
+    [on('I6:3;icon', 'icon'), [{ property: 'visible', fields: ['visible'], through: 'Show icon' }]],
+    [on('I6:3;label', 'label'), [{ property: 'visible', fields: ['visible'] }]],
+  ]);
+});
+
+test('components: a swapped nested instance gives the component it shows, and a style Figma carried over from the main component in the swap says so', async () => {
+  const red = { strokes: [solid(rgb('#FF0000'))] };
+  const figma = fakeFigma(dsFrame([
+    // The Icon property set to Arrow, as Figma records it: the Button's own stroke on its icon, carried over to Arrow's vector.
+    button('6:1', { icon: 'c:arrow', overrides: [{ id: 'I6:1;icon', overriddenFields: ['name'] }, { id: 'I6:1;icon;v', overriddenFields: ['strokes'] }] }),
+    button('6:2', { vector: red, overrides: [{ id: 'I6:2;icon;v', overriddenFields: ['strokes'] }] }),
+    button('6:3', { icon: 'c:arrow', vector: red, overrides: [{ id: 'I6:3;icon;v', overriddenFields: ['strokes'] }] }),
+  ]), { mains: libraryMains(), variables: tokens() });
+  const { components } = await scan('The components script', figma, '5:1');
+  const on = (id, layer) => ({ id, path: `DS-99 / Test Foundation/Button / ${layer}` });
+  const swapped = { property: 'component', fields: [], through: 'Icon', values: [{ key: 'k-arrow', name: 'Test Foundation/Icon/Arrow', was: { key: 'k-check', name: 'Test Foundation/Icon/Check' } }] };
+  assert.deepEqual(components.overrides.map(({ node, changes }) => [node, changes]), [
+    [on('I6:1;icon', 'icon'), [swapped]],
+    [on('I6:1;icon;v', 'icon / Vector'), [{ property: 'stroke', fields: ['strokes'], through: 'swap', values: [{ value: '#FFFFFF', variable: { key: 'k-on-action', name: 'color/icon/on-action' } }] }]],
+    [on('I6:2;icon;v', 'icon / Vector'), [{ property: 'stroke', fields: ['strokes'], values: [{ value: '#FF0000' }] }]],
+    [on('I6:3;icon', 'icon'), [swapped]],
+    [on('I6:3;icon;v', 'icon / Vector'), [{ property: 'stroke', fields: ['strokes'], values: [{ value: '#FF0000' }] }]],
+  ]);
+});
+
+test('components: an instance inside a detached frame names the frame, since its changes may have come with the component it was detached from', async () => {
+  const figma = fakeFigma(dsFrame([
+    { type: 'FRAME', id: '6:1', name: 'Test Foundation/Button', detachedInfo: { type: 'library', componentKey: 'k-primary' }, children: [
+      { type: 'INSTANCE', id: '6:2', name: 'icon', main: 'c:check', overrides: [{ id: 'I6:2;v', overriddenFields: ['strokes'] }], children: [
+        { type: 'VECTOR', id: 'I6:2;v', name: 'Vector', strokes: [bound('#FFFFFF', 'V:on-action')], strokeWeight: 2 },
+      ] },
+    ] },
+  ]), { mains: libraryMains(), variables: tokens() });
+  const { components } = await scan('The components script', figma, '5:1');
+  assert.deepEqual(components.overrides, [{
+    node: { id: 'I6:2;v', path: 'DS-99 / Test Foundation/Button / icon / Vector' }, instance: { id: '6:2', name: 'icon', component: 'k-check' }, detached: '6:1',
+    changes: [{ property: 'stroke', fields: ['strokes'], values: [{ value: '#FFFFFF', variable: { key: 'k-on-action', name: 'color/icon/on-action' } }] }],
+  }]);
+});
+
+test('components: a layer is matched to its counterpart in the main component when the instance hides a layer before it', async () => {
+  const figma = fakeFigma(dsFrame([
+    button('6:1', { iconProps: { visible: false }, label: { width: 60, height: 20 }, overrides: [{ id: 'I6:1;label', overriddenFields: ['width'] }] }),
+  ]), { mains: libraryMains() });
+  const { components } = await scan('The components script', figma, '5:1');
+  assert.deepEqual(components.overrides[0].changes[0].values[0].component, { width: 46, height: 20 });
+  assert.equal(figma.skipInvisibleInstanceChildren, true, 'the script left figma.skipInvisibleInstanceChildren off');
+});
+
+test('components: a change on a layer that isn\'t shown, or outside a scanned layer inside an instance, isn\'t listed, but hiding a layer is', async () => {
+  const figma = fakeFigma(dsFrame([
+    button('6:1', { iconProps: { visible: false }, vector: { strokes: [solid(rgb('#FF0000'))] }, overrides: [{ id: 'I6:1;icon', overriddenFields: ['visible'] }, { id: 'I6:1;icon;v', overriddenFields: ['strokes'] }] }),
+    button('6:2', { fills: [solid(rgb('#1F4E8C'))], vector: { strokes: [solid(rgb('#FF0000'))] }, overrides: [{ id: '6:2', overriddenFields: ['fills'] }, { id: 'I6:2;icon;v', overriddenFields: ['strokes'] }] }),
+  ]), { mains: libraryMains() });
+  const whole = await scan('The components script', figma, '5:1');
+  assert.deepEqual(whole.components.overrides.map(({ node, changes }) => [node.id, changes.map((c) => c.property)]), [['I6:1;icon', ['visible']], ['6:2', ['fill']], ['I6:2;icon;v', ['stroke']]]);
+  const inside = await scan('The components script', figma, 'I6:2;icon');
+  assert.deepEqual(inside.components.overrides.map(({ node, instance }) => [node.id, instance.id]), [['I6:2;icon;v', '6:2']]);
+});
+
+test('components: over the output limit, the paths of overridden and detached layers are shortened, then left out, before the frame\'s children are handed back to scan instead', async () => {
+  // `count` Buttons with a raw fill, each 4 groups deep, beside a detached frame.
+  const many = (count) => fakeFigma(dsFrame([
+    { type: 'FRAME', id: '6:0', name: 'Test Foundation/Button', detachedInfo: { type: 'library', componentKey: 'k-primary' } },
+    ...Array.from({ length: count }, (_, i) => {
+      let layer = button(`7:${i}`, { fills: [solid(rgb('#1F4E8C'))], overrides: [{ id: `7:${i}`, overriddenFields: ['fills'] }] });
+      for (let d = 0; d < 4; d++) layer = { type: 'GROUP', id: `8:${i}:${d}`, name: `A long wrapper name ${d}`, children: [layer] };
+      return layer;
+    }),
+  ]), { mains: libraryMains() });
+  const paths = (result) => [...result.components.overrides, ...result.components.detached].map((o) => o.node.path);
+  const few = await scan('The components script', many(5), '5:1');
+  assert.equal(Math.max(...paths(few).map((p) => p.split(' / ').length)), 6, 'paths were shortened with no need');
+  const more = await scan('The components script', many(60), '5:1');
+  assert.equal(more.components.overrides.length, 60);
+  assert.equal(Math.max(...paths(more).map((p) => p.split(' / ').length)), 3);
+  const most = await scan('The components script', many(90), '5:1');
+  assert.equal(most.components.overrides.length, 90);
+  assert.ok(paths(most).every((p) => p === undefined));
+  for (const result of [more, most]) assert.ok(JSON.stringify(result).length <= 18000, `${JSON.stringify(result).length} characters`);
+  const tooMany = await scan('The components script', many(200), '5:1');
+  assert.deepEqual([tooMany.components, tooMany.groups], [null, []]);
+  assert.match(tooMany.unread[0].reason, /^output limit: 2 components, 1 detached frames and 200 overridden layers are too many for one call/);
+  assert.equal(tooMany.unread[0].scanInstead.length, 201);
+});
+
+test('components: a direct change to text, effects, opacity or layout gives what the layer has now, and any other field is listed as it is', async () => {
+  const STYLES = { 'S:caption': { key: 'k-caption', name: 'Test Foundation/Caption', type: 'TEXT', remote: true } };
+  const TEXT = ['fontName', 'fontSize', 'letterSpacing', 'lineHeight', 'openTypeFeatures', 'styledTextSegments', 'textDecorationSkipInk', 'textStyleId'];
+  const shadow = { type: 'DROP_SHADOW', visible: true, color: { r: 0, g: 0, b: 0, a: 0.25 }, offset: { x: 0, y: 2 }, radius: 4, spread: 0 };
+  const figma = fakeFigma(dsFrame([
+    button('6:1', { label: { textStyleId: 'S:caption', fontSize: 12, lineHeight: { unit: 'PIXELS', value: 16 } }, overrides: [{ id: 'I6:1;label', overriddenFields: ['textStyleId'] }] }),
+    button('6:2', { label: { fontSize: 18 }, overrides: [{ id: 'I6:2;label', overriddenFields: TEXT }] }),
+    button('6:3', { effects: [shadow], overrides: [{ id: '6:3', overriddenFields: ['effects'] }] }),
+    button('6:4', { opacity: 0.5, primaryAxisAlignItems: 'MAX', exportSettings: [{ format: 'PNG' }], overrides: [{ id: '6:4', overriddenFields: ['exportSettings', 'opacity', 'primaryAxisAlignItems'] }] }),
+  ]), { mains: libraryMains(), styles: STYLES });
+  const { components } = await scan('The components script', figma, '5:1');
+  assert.deepEqual(components.overrides.map(({ node, changes }) => [node.id, changes]), [
+    ['I6:1;label', [{ property: 'text', fields: ['textStyleId'], values: [{ value: 'Inter Regular 12/16', style: { key: 'k-caption', name: 'Test Foundation/Caption' } }] }]],
+    ['I6:2;label', [{ property: 'text', fields: TEXT, values: [{ value: 'Inter Regular 18/auto' }] }]],
+    ['6:3', [{ property: 'effect', fields: ['effects'], values: [{ value: 'DROP_SHADOW #00000040 0 2 4 0' }] }]],
+    ['6:4', [
+      { property: 'other', fields: ['exportSettings'] },
+      { property: 'opacity', fields: ['opacity'], values: [{ field: 'opacity', value: 0.5 }] },
+      { property: 'layout', fields: ['primaryAxisAlignItems'], values: [{ field: 'primaryAxisAlignItems', value: 'MAX' }] },
+    ]],
+  ]);
+});
+
+test('components: a change to the variables bound on a layer is found by comparing them with the main component\'s, and can\'t be placed when that can\'t be read', async () => {
+  const figma = fakeFigma(dsFrame([
+    button('6:1', { ...corners(8, 'V:md'), overrides: [{ id: '6:1', overriddenFields: ['boundVariables', 'name'] }] }),
+    { type: 'INSTANCE', id: '6:2', name: 'Ghost', main: 'missing', overrides: [{ id: '6:2', overriddenFields: ['boundVariables'] }] },
+  ]), { mains: libraryMains(), variables: tokens() });
+  const { components } = await scan('The components script', figma, '5:1');
+  assert.deepEqual(components.overrides.map(({ node, changes }) => [node.id, changes]), [
+    ['6:1', [{ property: 'radius', fields: ['boundVariables'], values: [{ field: 'cornerRadius', value: 8, variable: { key: 'k-md', name: 'radius/md' } }] }]],
+    ['6:2', [{ property: 'variables', fields: ['boundVariables'], uncertain: 'its bound variables changed, and its main component couldn\'t be read to say which' }]],
+  ]);
 });
 
 // Two libraries whose collections share a name (#21): Foundation's and Product's Theme.
