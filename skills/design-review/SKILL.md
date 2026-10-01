@@ -74,7 +74,7 @@ Run each chosen Review Skill in `json only` mode, handing over what its Run by a
 - the run-time settings meant for that review, in the user's words
 - for research alignment, the topic
 
-Where your runtime can run subagents, run each Review Skill in its own subagent, all at the same time. Tell each: "You MUST use the skill `<Review Skill>` in json only mode, with the inputs below. Reply with only what it hands back." Otherwise run them yourself, one after another. The output is the same either way.
+Where your runtime can run subagents, run each Review Skill in its own subagent, all at the same time, and wait for every one to hand back. Tell each: "You MUST use the skill `<Review Skill>` in json only mode, with the inputs below. Reply with only what it hands back." Otherwise run them yourself, one after another. The output is the same either way.
 
 Each hands back its notes, if any, and a report JSON. This step is done when every chosen axis that isn't skipped has handed back its report JSON.
 
