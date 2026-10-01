@@ -54,7 +54,7 @@ Judge every check in the baseline, and give each exactly one Coverage entry, `{ 
 2. `not-applicable` when its trigger isn't in the scope. Add a `note` saying so.
 3. `judged` otherwise, following its How to judge. When `unread` lists part of a group it needs, such as gradient paints, add a `note` saying what wasn't read.
 
-Judge components from the components facts alone. A frame is a detached instance when, and only when, the facts' `detached` list has it: the scanner reads that from the frame's `detachedInfo`, which records the component it came from. An instance's changes are the ones the facts' `overrides` list, each with how it was made. A layer's name, look or structure never shows either.
+Judge detached instances and overrides from the components facts alone: the scanner reads them from each frame's `detachedInfo` and each instance's `overrides`, never from a layer's name or look.
 
 Each Finding its How to judge calls for is written this way:
 

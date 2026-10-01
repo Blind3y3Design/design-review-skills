@@ -576,7 +576,7 @@ test('components: a swapped nested instance gives the component it shows, and a 
   const swapped = { property: 'component', fields: [], through: 'Icon', values: [{ key: 'k-arrow', name: 'Test Foundation/Icon/Arrow', was: { key: 'k-check', name: 'Test Foundation/Icon/Check' } }] };
   assert.deepEqual(components.overrides.map(({ node, changes }) => [node, changes]), [
     [on('I6:1;icon', 'icon'), [swapped]],
-    [on('I6:1;icon;v', 'icon / Vector'), [{ property: 'stroke', fields: ['strokes'], through: 'swap', values: [{ value: '#FFFFFF', variable: { key: 'k-on-action', name: 'color/icon/on-action' } }] }]],
+    [on('I6:1;icon;v', 'icon / Vector'), [{ property: 'stroke', fields: ['strokes'], carried: true, values: [{ value: '#FFFFFF', variable: { key: 'k-on-action', name: 'color/icon/on-action' } }] }]],
     [on('I6:2;icon;v', 'icon / Vector'), [{ property: 'stroke', fields: ['strokes'], values: [{ value: '#FF0000' }] }]],
     [on('I6:3;icon', 'icon'), [swapped]],
     [on('I6:3;icon;v', 'icon / Vector'), [{ property: 'stroke', fields: ['strokes'], values: [{ value: '#FF0000' }] }]],
@@ -607,7 +607,7 @@ test('components: a layer is matched to its counterpart in the main component wh
   assert.equal(figma.skipInvisibleInstanceChildren, true, 'the script left figma.skipInvisibleInstanceChildren off');
 });
 
-test('components: a change on a layer that isn\'t shown, or outside a scanned layer inside an instance, isn\'t listed, but hiding a layer is', async () => {
+test('components: a change on a layer that isn\'t shown, or beside a scanned layer inside an instance, isn\'t listed, but hiding a layer is', async () => {
   const figma = fakeFigma(dsFrame([
     button('6:1', { iconProps: { visible: false }, vector: { strokes: [solid(rgb('#FF0000'))] }, overrides: [{ id: 'I6:1;icon', overriddenFields: ['visible'] }, { id: 'I6:1;icon;v', overriddenFields: ['strokes'] }] }),
     button('6:2', { fills: [solid(rgb('#1F4E8C'))], vector: { strokes: [solid(rgb('#FF0000'))] }, overrides: [{ id: '6:2', overriddenFields: ['fills'] }, { id: 'I6:2;icon;v', overriddenFields: ['strokes'] }] }),
@@ -615,7 +615,64 @@ test('components: a change on a layer that isn\'t shown, or outside a scanned la
   const whole = await scan('The components script', figma, '5:1');
   assert.deepEqual(whole.components.overrides.map(({ node, changes }) => [node.id, changes.map((c) => c.property)]), [['I6:1;icon', ['visible']], ['6:2', ['fill']], ['I6:2;icon;v', ['stroke']]]);
   const inside = await scan('The components script', figma, 'I6:2;icon');
-  assert.deepEqual(inside.components.overrides.map(({ node, instance }) => [node.id, instance.id]), [['I6:2;icon;v', '6:2']]);
+  assert.deepEqual(inside.components.overrides.map(({ node, instance }) => [node.id, instance.id]), [['6:2', '6:2'], ['I6:2;icon;v', '6:2']]);
+});
+
+test('components: only the layer Figma carried a change to in a swap, matched by its name, counts as carried over', async () => {
+  // An icon with two vectors. In the swap, the Button's change to its icon's "Vector" carries to this one's "Vector"; "Head" was set by hand.
+  const mains = [...libraryMains(), { type: 'COMPONENT', id: 'c:double', name: 'Test Foundation/Icon/Double', key: 'k-double', remote: true, width: 16, height: 16, children: [
+    { type: 'VECTOR', id: 'c:double-v', name: 'Vector', strokes: [bound('#1A1A1A', 'V:icon')], strokeWeight: 2 },
+    { type: 'VECTOR', id: 'c:double-h', name: 'Head', strokes: [bound('#1A1A1A', 'V:icon')], strokeWeight: 2 },
+  ] }];
+  const onAction = [bound('#FFFFFF', 'V:on-action')];
+  const figma = fakeFigma(dsFrame([{
+    type: 'INSTANCE', id: '6:1', name: 'Test Foundation/Button', main: 'c:primary', ...BUTTON_ROOT,
+    overrides: [{ id: 'I6:1;icon;v', overriddenFields: ['strokes'] }, { id: 'I6:1;icon;h', overriddenFields: ['strokes'] }],
+    children: [
+      { type: 'INSTANCE', id: 'I6:1;icon', name: 'icon', main: 'c:double', componentPropertyReferences: { mainComponent: 'Icon#4:7' }, children: [
+        { type: 'VECTOR', id: 'I6:1;icon;v', name: 'Vector', strokes: onAction, strokeWeight: 2 },
+        { type: 'VECTOR', id: 'I6:1;icon;h', name: 'Head', strokes: onAction, strokeWeight: 2 },
+      ] },
+      { type: 'TEXT', id: 'I6:1;label', name: 'label', characters: 'Button' },
+    ],
+  }]), { mains, variables: tokens() });
+  const { components } = await scan('The components script', figma, '5:1');
+  assert.deepEqual(components.overrides.filter((o) => o.node.id !== 'I6:1;icon').map(({ node, changes }) => [node.id, changes[0].carried || false]), [['I6:1;icon;v', true], ['I6:1;icon;h', false]]);
+});
+
+test('components: a rebound text font or text fill is a text or fill change, a blend mode is given, and bound variables that match the main component\'s are another change', async () => {
+  const font = { boundVariables: { fontFamily: [alias('V:font')] } };
+  const figma = fakeFigma(dsFrame([
+    button('6:1', { label: font, overrides: [{ id: 'I6:1;label', overriddenFields: ['boundVariables'] }] }),
+    button('6:2', { blendMode: 'MULTIPLY', overrides: [{ id: '6:2', overriddenFields: ['blendMode'] }, { id: 'I6:2;label', overriddenFields: ['boundVariables'] }] }),
+  ]), { mains: libraryMains(), variables: tokens() });
+  const { components } = await scan('The components script', figma, '5:1');
+  assert.deepEqual(components.overrides.map(({ node, changes }) => [node.id, changes.map((c) => [c.property, c.values])]), [
+    ['I6:1;label', [['text', [{ value: 'Inter Regular 16/auto' }]]]],
+    ['6:2', [['opacity', [{ field: 'blendMode', value: 'MULTIPLY' }]]]],
+    ['I6:2;label', [['other', undefined]]],
+  ]);
+});
+
+test('components: a scanned layer inside a detached frame or an instance lists the frame and the changes on the layers holding it', async () => {
+  const figma = fakeFigma(dsFrame([
+    { type: 'FRAME', id: '6:1', name: 'Card', detachedInfo: { type: 'library', componentKey: 'k-tag' }, children: [
+      { type: 'FRAME', id: '6:2', name: 'Body', children: [{ type: 'RECTANGLE', id: '6:3', name: 'Swatch' }] },
+    ] },
+    button('6:4', { fills: [solid(rgb('#1F4E8C'))], overrides: [{ id: '6:4', overriddenFields: ['fills'] }] }),
+  ]), { mains: libraryMains() });
+  const body = await scan('The components script', figma, '6:2');
+  assert.deepEqual(body.components.detached.map((d) => d.node), [{ id: '6:1', path: 'DS-99 / Card' }]);
+  const icon = await scan('The components script', figma, 'I6:4;icon');
+  assert.deepEqual(icon.components.overrides.map(({ node, changes }) => [node.id, changes.map((c) => c.property)]), [['6:4', ['fill']]]);
+});
+
+test('components: when the script fails part way, figma.skipInvisibleInstanceChildren is set back', async () => {
+  const figma = fakeFigma(dsFrame([button('6:1')]), { mains: libraryMains() });
+  const instance = await figma.getNodeByIdAsync('6:1');
+  Object.defineProperty(instance, 'overrides', { get() { throw new Error('overrides unavailable'); } });
+  await assert.rejects(scan('The components script', figma, '5:1'), /overrides unavailable/);
+  assert.equal(figma.skipInvisibleInstanceChildren, true);
 });
 
 test('components: over the output limit, the paths of overridden and detached layers are shortened, then left out, before the frame\'s children are handed back to scan instead', async () => {
@@ -675,7 +732,7 @@ test('components: a change to the variables bound on a layer is found by compari
   const { components } = await scan('The components script', figma, '5:1');
   assert.deepEqual(components.overrides.map(({ node, changes }) => [node.id, changes]), [
     ['6:1', [{ property: 'radius', fields: ['boundVariables'], values: [{ field: 'cornerRadius', value: 8, variable: { key: 'k-md', name: 'radius/md' } }] }]],
-    ['6:2', [{ property: 'variables', fields: ['boundVariables'], uncertain: 'its bound variables changed, and its main component couldn\'t be read to say which' }]],
+    ['6:2', [{ property: 'variables', fields: ['boundVariables'], uncertain: 'its bound variables changed, and its main component couldn\'t be read to say on which property' }]],
   ]);
 });
 

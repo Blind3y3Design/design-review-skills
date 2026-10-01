@@ -87,14 +87,14 @@ An asset attributed **outside the stack** is a Finding: one from a library that 
 
 **How to judge.** A change in the components facts' `overrides` is part of a Finding when it's a direct change to a style property:
 
-- its `property` is `fill`, `stroke`, `effect`, `radius`, `spacing`, `text`, `opacity` or `layout`, or `variables`, which changes bound variables on a property the facts can't name;
-- it has no `through`: a change made through a component property (a variant, text, boolean or instance swap property), or one Figma carried over in a swap, is how the component is meant to be used;
+- its `property` is one of the properties the `raw-value` check reads, `fill`, `stroke`, `effect`, `radius`, `spacing` or `text`, or it's `variables`, which changes bound variables on a property the facts can't name;
+- it has no `through` and isn't `carried`: a change made through a component property (a variant, text, boolean or instance swap property), or one Figma carried over in a swap, is how the component is meant to be used;
 - its entry has no `detached`: changes inside a detached frame belong to that frame's `detached-instance` Finding.
 
-Changes to `size`, `content`, `visible`, `component` or `other` are never part of this check. Text content and swaps are ordinary use of a component, and a size is the `resize` check's.
+Any other change isn't part of this check. Text content and swaps are ordinary use of a component, and a size is the `resize` check's.
 
 - **Root Cause:** the changed layer, `node:<id>`. Give one Finding per layer, covering each of its changes that's part of a Finding. A raw value the bindings facts' `raw` list gives on that layer, for the same property, is part of this Finding, and not a `raw-value` Finding.
-- **Certainty:** `confirmed`. When every change in the Finding has `uncertain`, or is to `variables`, it's `likely`, and the evidence gives the reason.
+- **Certainty:** `confirmed`. When every change in the Finding has `uncertain`, or is to `variables`, and the Finding holds no raw value, it's `likely`, and the evidence gives the reason from `uncertain`.
 - **Evidence:** for each change, "`<property>` overridden in the instance `<instance>` of `<component>`", where `<component>` is the main component the entry's `instance.component` key names in the facts' `components`. Then what the layer has now, from the change's `values`: "now `<token>` (<library>)" for a variable or style, found by its key in the bindings facts' `variables` or `styles` and attributed as the skill's Attributing an asset describes, or "now `<value>`, bound to no variable or style" for a raw value. Name the swapped-in token whenever there is one.
 - **Fix:** "Reset the `<property>` override on `<instance>`, so it takes `<component>`'s value." When the design needs the change, add "or ask the owner of `<component>` for a variant or property that gives it." It names no token to bind: resetting the override restores the component's own.
 
