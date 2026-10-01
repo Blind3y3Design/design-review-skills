@@ -22,7 +22,7 @@ These two skills are the review's only way to read the design and to write a rep
 
 ## 1. Settle the inputs
 
-Settle everything before judging starts, asking for what's missing in as few messages as you can.
+Settle everything before judging starts, asking for what's missing in as few messages as you can. When another skill runs this review, settle the inputs from its hand-over, as Run by another skill describes.
 
 - **Scope:** the node ids of the frames to review, from the user's selection, the frames they name, or the `node-id` in a Figma link. For a page, use its top-level frames. In an external agent, the file key comes from the file's link.
 - **Runtime:** `figma-agent` inside Figma Design's agent, `external-agent` anywhere else.
@@ -43,6 +43,8 @@ From the document's header, note its name, version and location for the report.
 ## 3. Scan
 
 Use the skill `design-review-scanner`. Give it the scope's node ids, the runtime, and the fact groups on the `Facts` lines of the baseline's checks. Judge from the Design Facts it hands back.
+
+When another skill handed over Design Facts, the design is already scanned: judge from those, as Run by another skill describes.
 
 If the Design System Layers are still to be asked, ask now, as What to check against describes, and have the answer before you judge.
 
@@ -72,6 +74,7 @@ Judging is done when every check in the baseline has one Coverage entry, and eve
 
 Use the skill `design-review-report-writer`, handing over:
 
+- `mode`: `json only` when the skill running this review asked for it, otherwise `full report`.
 - `run`: today's `date`, the `scope` (`fileKey`, and `nodes` as `{ id, name }`, the name null when nothing was scanned), the `runtime`, `setVersion` from this skill's Version line, `factsVersion` and `factGroups` from the Design Facts (null with no scan), and `settings`. `settings` is null when a profile's Design System Layers section gave the layers, whatever the baseline's location. Otherwise it's `{ "designSystem": { "from": "run time" or "asked", "layers": ["1. <layer>: <library>, <library>", …] } }`.
 - `profile`: the `profile` the scanner handed back, when you used its section, otherwise null.
 - `references`: the baseline's name, version and location, when it was read.
@@ -80,7 +83,23 @@ Use the skill `design-review-report-writer`, handing over:
 - `reportSettings`: the profile's Report settings you noted, as `{ "<key>": "<value>" }`, or null.
 - `saveRequest`: "don't save" or "save to <location>" when the user said so, otherwise null.
 
-The review is done when the Report Writer has delivered the report.
+The review is done when the Report Writer has delivered the report. In `json only` mode, it's done when you've handed the Report Writer's reply, its notes and JSON block, back to the skill that ran this review.
+
+## Run by another skill
+
+Another skill, such as `design-review`, can run this review as one part of a larger one. It loads this skill first, for two lines:
+
+- **Fact groups:** `bindings`, `components`: the groups the baseline's checks are judged from. The caller scans for them once, for every review in the run.
+- **For the caller to ask:** nothing. Without Design System Layers, there's nothing to check against.
+
+Then it settles the run, asks the user everything, and hands over:
+
+- the scope, the runtime, and the `mode` for step 5
+- the Review Profile it found, as the scanner's `found` result
+- the Design Facts, when it has scanned
+- anything the user gave at run time for this review, such as a baseline location or the Design System Layers
+
+The user has been asked everything already, so ask nothing. With no Design System Layers given at run time or in the profile, skip the axis: hand the Report Writer no Findings and one Coverage entry, `{ "axis": "design-system", "status": "skipped", "reason": "no Design System Layers: the Review Profile has no Design System Layers section" }`. When a fact group you need is neither read in the handed-over facts nor in their `unread`, scan for that group yourself, as step 3 describes.
 
 ## Attributing an asset
 
@@ -115,7 +134,7 @@ A team's Review Profile names the standards its reviews are judged against. This
 
 ### Finding the profile
 
-Use the skill `design-review-scanner` to find the Review Profile, as its Finding the Review Profile describes. Give it the reviewed file's key, the runtime, and the profile given at run time, if any. It hands back one of three results:
+When another skill hands over the profile it found, use that result. Otherwise use the skill `design-review-scanner` to find the Review Profile, as its Finding the Review Profile describes. Give it the reviewed file's key, the runtime, and the profile given at run time, if any. It hands back one of three results:
 
 - **found:** the profile's `text`, where the lookup found it (`from`), and the `profile` to name in the report.
 - **none:** where it looked (`searched`).
@@ -153,7 +172,7 @@ The design systems this work is checked against, most general first. A more spec
 
 Settle the layers by what the lookup found:
 
-- **A profile given at run time (`from` is `run time`), with a Design System Layers section:** use the section without asking. Giving the profile is the user's agreement.
+- **A profile given at run time (`from` is `run time`), or handed over by another skill, with a Design System Layers section:** use the section without asking. Giving the profile is the user's agreement.
 - **A profile found on the page or through a pointer in a project file, with the section:** ask before using it, with any other question still open. For example: "I found the Review Profile "<name>" on the "Review Profile" page in this file. Use its Design System Layers for this review? They're 1. Foundation (Foundation Tokens) and 2. Web Platform (Web Platform Kit), with the default baseline. I'll use only them and where it saves reports, and I won't change it." Name where it saves reports from its Report settings, if it has them. On yes, use the section. On no, go on as below.
 - **No profile, no section, or the user said no:** the layers are asked after the scan in step 3, pre-filled from the file. Say why you're asking, from the lookup's `searched` when there's no profile, then ask which libraries make up the design system, most general first. Pre-fill each library named in the facts' `variables`, one layer each, placing a library before any whose variables alias its own, then each other library named in the facts' `components` and `styles`. With no library named there, offer no layers. For example: "I couldn't find a Review Profile: none was given, this file has no "Review Profile" page, and AGENTS.md has no pointer to one. Which libraries make up your design system, most general first? This design uses variables from Foundation Tokens and Web Platform Kit, so I'll use them as two layers in that order unless you name others. The layers decide what's outside your design system and which tokens I can suggest in fixes. Your answer is for this run only, and isn't saved to a profile." With the layers already given at run time, there's nothing to ask. For a profile without the section, keep a note for the report: "The Review Profile "<name>" has no Design System Layers section, so this run used the layers below."
 
