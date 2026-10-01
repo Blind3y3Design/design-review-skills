@@ -2,10 +2,12 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-const USAGE = 'Usage: node tests/smoke/compare.mjs <case id or expected JSON file> <report file, or - to read it from stdin>';
+const USAGE = 'Usage: node tests/smoke/compare.mjs <case id or expected JSON file> <report file, or - to read it from stdin> [--axis <axis>]';
 
-function main([caseArg, reportArg]) {
+function main([caseArg, reportArg, ...options]) {
   if (!caseArg || !reportArg) return fail(USAGE);
+  if (options.length && (options.length !== 2 || options[0] !== '--axis')) return fail(USAGE);
+  const axis = options[1];
   const expectedPath = existsSync(caseArg) ? caseArg : fileURLToPath(new URL(`./expected/${caseArg}.json`, import.meta.url));
   if (!existsSync(expectedPath)) return fail(`No expected JSON for case ${caseArg} (looked for ${expectedPath})`);
   let expected, actual;
@@ -15,8 +17,11 @@ function main([caseArg, reportArg]) {
   } catch (error) {
     return fail(error.message);
   }
-  const name = expected.case || caseArg;
-  const { pass, differences } = compareReports(expected, actual);
+  if (axis && ![...expected.findings, ...expected.coverage].some((entry) => entry.axis === axis)) {
+    return fail(`The expected JSON for ${caseArg} has nothing on the axis ${axis}`);
+  }
+  const name = (expected.case || caseArg) + (axis ? ` (${axis} only)` : '');
+  const { pass, differences } = compareReports(expected, actual, { axis });
   process.stdout.write(pass ? `PASS ${name}\n` : `FAIL ${name}\n${differences.map((d) => `- ${d}\n`).join('')}`);
   process.exitCode = pass ? 0 : 1;
 }
@@ -34,15 +39,23 @@ export function readReport(text) {
   return JSON.parse(blocks[blocks.length - 1][1]);
 }
 
-export function compareReports(expected, actual) {
+// With an axis, only that axis's Findings and Coverage entries are compared, as when a merged report is checked against a one-axis case.
+// Its Findings' relatedFindings are left out, since they only link to other axes.
+export function compareReports(expected, actual, { axis } = {}) {
   const absent = ['findings', 'coverage'].filter((list) => !Array.isArray(actual[list]));
   if (absent.length) return { pass: false, differences: absent.map((list) => `The report has no "${list}" array`) };
+  const [want, got] = axis ? [oneAxis(expected, axis), oneAxis(actual, axis)] : [expected, actual];
   const differences = [
-    ...matchByKey('Finding', expected.findings, actual.findings, findings),
-    ...matchByKey('Coverage', expected.coverage, actual.coverage, coverage),
+    ...matchByKey('Finding', want.findings, got.findings, findings),
+    ...matchByKey('Coverage', want.coverage, got.coverage, coverage),
   ];
   return { pass: differences.length === 0, differences };
 }
+
+const oneAxis = (report, axis) => ({
+  findings: report.findings.filter((f) => f.axis === axis).map(({ relatedFindings, ...finding }) => finding),
+  coverage: report.coverage.filter((entry) => entry.axis === axis),
+});
 
 const relatedOf = (finding) => [...(finding.relatedFindings || [])].sort();
 
