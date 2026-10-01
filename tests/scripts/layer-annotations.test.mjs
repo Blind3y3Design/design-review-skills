@@ -111,8 +111,8 @@ test('each mark is written on its layers in its axis\'s review category, which i
   const result = await run(figma, {
     axes: ['accessibility', 'design-system'],
     marks: [
-      { axis: 'accessibility', nodes: ['5:2', '5:3'], text: contrast },
-      { axis: 'design-system', nodes: ['5:4'], text: raw },
+      { axis: 'accessibility', finding: 'a11y/1.4.3/5:2', nodes: ['5:2', '5:3'], text: contrast },
+      { axis: 'design-system', finding: 'ds/raw-value/5:4', nodes: ['5:4'], text: raw },
     ],
   });
   const [a11y, ds] = figma.categories.slice(1);
@@ -127,7 +127,7 @@ test('each mark is written on its layers in its axis\'s review category, which i
       { axis: 'accessibility', label: 'Design review: Accessibility', id: a11y.id, created: true },
       { axis: 'design-system', label: 'Design review: Design system adherence', id: ds.id, created: true },
     ],
-    cleared: 0, written: 3, layers: 3, moved: [], unmarked: [],
+    cleared: 0, written: 3, marked: 2, moved: [], unmarked: [],
   });
 });
 
@@ -141,7 +141,7 @@ test('a designer\'s own annotations on a marked layer are kept as they were, and
     categories: [{ id: '37:3', label: 'Content', isPreset: true }, { id: '91:0', label: 'design review: accessibility ', color: 'violet' }],
   });
   const before = (await figma.getNodeByIdAsync('5:2')).annotations;
-  const result = await run(figma, { marks: [{ axis: 'accessibility', nodes: ['5:2'], text: '**a11y/1.4.3/5:2** Body text contrast is 3.45:1' }] });
+  const result = await run(figma, { marks: [{ axis: 'accessibility', finding: 'a11y/1.4.3/5:2', nodes: ['5:2'], text: '**a11y/1.4.3/5:2** Body text contrast is 3.45:1' }] });
   const after = (await figma.getNodeByIdAsync('5:2')).annotations;
   assert.deepEqual(after.slice(0, 3), before);
   assert.deepEqual(after.slice(3).map((a) => [a.labelMarkdown, a.categoryId]), [['**a11y/1.4.3/5:2** Body text contrast is 3.45:1', '91:0']]);
@@ -168,21 +168,21 @@ test('each run first clears the review\'s annotations for the axes it covered, e
     ] },
     { type: 'FRAME', id: '6:1', name: 'Another frame', annotations: [old('another frame, last run')] },
   ] }, { categories: reviewed });
-  const result = await run(figma, { marks: [{ axis: 'accessibility', nodes: ['5:3'], text: 'photo, this run' }] });
+  const result = await run(figma, { marks: [{ axis: 'accessibility', finding: 'photo', nodes: ['5:3'], text: 'photo, this run' }] });
   assert.deepEqual(await texts(figma, '5:1'), []);
   assert.deepEqual(await texts(figma, '5:2'), ['Checked in the team review', 'Truncate after two lines']);
   assert.deepEqual(await texts(figma, '5:3'), ['photo, design system', 'photo, this run']);
   assert.deepEqual(await texts(figma, 'I5:4;1:1'), []);
   assert.deepEqual(await texts(figma, '5:5'), []);
   assert.deepEqual(await texts(figma, '6:1'), ['another frame, last run']);
-  assert.deepEqual([result.cleared, result.written, result.layers], [5, 1, 1]);
+  assert.deepEqual([result.cleared, result.written, result.marked], [5, 1, 1]);
 });
 
 test('a run with no Findings on an axis clears that axis\'s annotations in its scope', async () => {
   const figma = fakeFigma(frameWith([{ type: 'TEXT', id: '5:2', name: 'Body', annotations: [old('body, last run'), old('body, design system', '92:0')] }]), { categories: reviewed });
   const result = await run(figma, { axes: ['accessibility'], marks: [] });
   assert.deepEqual(await texts(figma, '5:2'), ['body, design system']);
-  assert.deepEqual([result.cleared, result.written, result.layers], [1, 0, 0]);
+  assert.deepEqual([result.cleared, result.written, result.marked], [1, 0, 0]);
   assert.equal(figma.categories.length, 3);
 });
 
@@ -194,16 +194,16 @@ test('a mark on a layer that can\'t hold annotations, such as a group, goes on t
     ] },
   ]));
   const result = await run(figma, { marks: [
-    { axis: 'accessibility', nodes: ['5:2'], text: 'first' },
-    { axis: 'accessibility', nodes: ['5:2', '5:7'], text: 'second' },
+    { axis: 'accessibility', finding: 'first', nodes: ['5:2'], text: 'first' },
+    { axis: 'accessibility', finding: 'second', nodes: ['5:2', '5:7'], text: 'second' },
   ] });
   assert.deepEqual(await texts(figma, '5:6'), ['first', 'second']);
   assert.deepEqual(result.moved, [
-    { mark: 0, node: '5:2', to: '5:6' },
-    { mark: 1, node: '5:2', to: '5:6' },
-    { mark: 1, node: '5:7', to: '5:6' },
+    { finding: 'first', node: '5:2', to: '5:6' },
+    { finding: 'second', node: '5:2', to: '5:6' },
+    { finding: 'second', node: '5:7', to: '5:6' },
   ]);
-  assert.deepEqual([result.written, result.layers], [2, 1]);
+  assert.deepEqual([result.written, result.marked], [2, 2]);
 });
 
 test('a mark on a layer outside the scope, or with nothing in the scope to hold it, isn\'t written and is handed back', async () => {
@@ -213,16 +213,16 @@ test('a mark on a layer outside the scope, or with nothing in the scope to hold 
     { type: 'SECTION', id: '7:1', name: 'Checkout', children: [{ type: 'FRAME', id: '7:2', name: 'Payment' }] },
   ] });
   const result = await run(figma, { scope: ['5:1', '7:1'], marks: [
-    { axis: 'accessibility', nodes: ['6:1', '9:9', '7:1'], text: 'nowhere' },
-    { axis: 'accessibility', nodes: ['5:2', '7:2'], text: 'somewhere' },
+    { axis: 'accessibility', finding: 'nowhere', nodes: ['6:1', '9:9', '7:1'], text: 'nowhere' },
+    { axis: 'accessibility', finding: 'somewhere', nodes: ['5:2', '7:2'], text: 'somewhere' },
   ] });
   assert.deepEqual(result.unmarked, [
-    { mark: 0, node: '6:1', reason: 'not a layer in the scope' },
-    { mark: 0, node: '9:9', reason: 'not a layer in the scope' },
-    { mark: 0, node: '7:1', reason: 'no layer in the scope can hold an annotation here' },
+    { finding: 'nowhere', node: '6:1', reason: 'not a layer in the scope' },
+    { finding: 'nowhere', node: '9:9', reason: 'not a layer in the scope' },
+    { finding: 'nowhere', node: '7:1', reason: 'no layer in the scope can hold an annotation here' },
   ]);
   assert.deepEqual([await texts(figma, '6:1'), await texts(figma, '5:2'), await texts(figma, '7:2')], [[], ['somewhere'], ['somewhere']]);
-  assert.deepEqual([result.written, result.layers, result.moved], [2, 2, []]);
+  assert.deepEqual([result.written, result.marked, result.moved], [2, 1, []]);
 });
 
 test('a write Figma refuses, such as without edit access, leaves every layer as it was and returns the error, naming any category added', async () => {
@@ -230,7 +230,7 @@ test('a write Figma refuses, such as without edit access, leaves every layer as 
     { type: 'TEXT', id: '5:2', name: 'Body', annotations: [old('body, last run'), { label: 'Truncate after two lines' }] },
     { type: 'RECTANGLE', id: '5:3', name: 'Photo' },
   ]);
-  const marks = [{ axis: 'accessibility', nodes: ['5:3'], text: 'photo, this run' }, { axis: 'design-system', nodes: ['5:3'], text: 'photo, raw fill' }];
+  const marks = [{ axis: 'accessibility', finding: 'photo', nodes: ['5:3'], text: 'photo, this run' }, { axis: 'design-system', finding: 'raw', nodes: ['5:3'], text: 'photo, raw fill' }];
   const partway = fakeFigma(layers(), { categories: reviewed.slice(0, 1), refuseOn: '5:3' });
   const result = await run(partway, { marks });
   assert.deepEqual(result, {
@@ -253,11 +253,11 @@ test('a later part of a run split across calls, with no axes to clear, keeps the
     { type: 'RECTANGLE', id: '5:3', name: 'Photo' },
   ]), { categories: reviewed });
   const result = await run(figma, { axes: [], marks: [
-    { axis: 'accessibility', nodes: ['5:2'], text: 'first part' },
-    { axis: 'accessibility', nodes: ['5:3'], text: 'second part' },
+    { axis: 'accessibility', finding: 'body', nodes: ['5:2'], text: 'first part' },
+    { axis: 'accessibility', finding: 'photo', nodes: ['5:3'], text: 'second part' },
   ] });
   assert.deepEqual([await texts(figma, '5:2'), await texts(figma, '5:3')], [['first part'], ['second part']]);
-  assert.deepEqual([result.cleared, result.written, result.layers], [0, 1, 2]);
+  assert.deepEqual([result.cleared, result.written, result.marked], [0, 1, 2]);
   assert.equal(figma.writes.count, 1, 'a layer that didn\'t change was written');
 });
 
@@ -265,9 +265,10 @@ test('an axis or a mark the script doesn\'t know is refused before anything is w
   const figma = fakeFigma(frameWith([{ type: 'TEXT', id: '5:2', name: 'Body' }]));
   for (const [input, error] of [
     [{ axes: ['contrast'] }, /unknown axis: contrast/],
-    [{ marks: [{ axis: 'a11y', nodes: ['5:2'], text: 'x' }] }, /unknown axis: a11y/],
-    [{ marks: [{ axis: 'accessibility', nodes: ['5:2'], text: ' ' }] }, /mark 0 needs nodes and a text/],
-    [{ marks: [{ axis: 'accessibility', node: '5:2', text: 'x' }] }, /mark 0 needs nodes and a text/],
+    [{ marks: [{ axis: 'a11y', finding: 'x', nodes: ['5:2'], text: 'x' }] }, /unknown axis: a11y/],
+    [{ marks: [{ axis: 'accessibility', finding: 'x', nodes: ['5:2'], text: ' ' }] }, /mark 0 needs a finding, nodes and a text/],
+    [{ marks: [{ axis: 'accessibility', finding: 'x', node: '5:2', text: 'x' }] }, /mark 0 needs a finding, nodes and a text/],
+    [{ marks: [{ axis: 'accessibility', nodes: ['5:2'], text: 'x' }] }, /mark 0 needs a finding, nodes and a text/],
     [{ scope: ['9:9'] }, /no node with id 9:9/],
   ]) assert.match((await run(figma, input)).error, error);
   assert.deepEqual([figma.writes.count, figma.categories.length], [0, 0]);
@@ -276,8 +277,17 @@ test('an axis or a mark the script doesn\'t know is refused before anything is w
 test('the moved and unmarked lists stop at 20 each, with their totals, so the output stays small', async () => {
   const groups = Array.from({ length: 30 }, (_, i) => ({ type: 'GROUP', id: `6:${i}`, name: `Group ${i}`, children: [{ type: 'RECTANGLE', id: `7:${i}`, name: 'Dot' }] }));
   const figma = fakeFigma(frameWith(groups));
-  const result = await run(figma, { marks: [{ axis: 'accessibility', nodes: [...groups.map((g) => g.id), ...groups.map((_, i) => `8:${i}`)], text: 'grouped' }] });
+  const result = await run(figma, { marks: [{ axis: 'accessibility', finding: 'grouped', nodes: [...groups.map((g) => g.id), ...groups.map((_, i) => `8:${i}`)], text: 'grouped' }] });
   assert.deepEqual([result.moved.length, result.movedTotal, result.unmarked.length, result.unmarkedTotal], [20, 30, 20, 30]);
-  assert.deepEqual([await texts(figma, '5:1'), result.written, result.layers], [['grouped'], 1, 1]);
+  assert.deepEqual([await texts(figma, '5:1'), result.written, result.marked], [['grouped'], 1, 1]);
   assert.ok(JSON.stringify(result).length < 4000);
+});
+
+test('a category is the review\'s only when the annotations script would leave it out too: a label with leading spaces is the designer\'s', async () => {
+  const figma = fakeFigma(frameWith([{ type: 'TEXT', id: '5:2', name: 'Body', annotations: [old('the designer\'s', '94:0')] }]), {
+    categories: [{ id: '94:0', label: ' Design review: Accessibility' }],
+  });
+  const result = await run(figma, { marks: [{ axis: 'accessibility', finding: 'body', nodes: ['5:2'], text: 'this run' }] });
+  assert.deepEqual(await texts(figma, '5:2'), ['the designer\'s', 'this run']);
+  assert.deepEqual([result.cleared, result.categories[0].created], [0, true]);
 });

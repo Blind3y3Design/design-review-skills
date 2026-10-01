@@ -1224,21 +1224,21 @@ return { page: { id: page.id, name: page.name, created }, frame: { id: frame.id,
 
 ## Writing annotations
 
-The Report Writer may ask you to mark a review's Findings on their layers, as Figma annotations in the review's own categories. Like the report frame script, this script writes to the file. It writes the text it's given and judges nothing.
+The Report Writer may ask you to mark a review's Findings on their layers, as Figma annotations in the review's own annotation categories. Like the report frame script, this script writes to the file. It writes the text it's given and judges nothing.
 
 1. **Pick the tool** as in step 1 of Steps, with the reviewed file's key.
 2. **Set the script's first three lines** from the Report Writer's hand-over, and run everything else exactly as written, in one call:
    - `SCOPE`: the run's scope, as an array of node ids
    - `AXES`: the axes the run covered, such as `['accessibility']`
-   - `MARKS`: an array of marks, one per Finding, each `{ axis, nodes, text }`: the axis, the node ids to mark, and the annotation's Markdown
+   - `MARKS`: an array of marks, one per Finding, each `{ axis, finding, nodes, text }`: the axis, the Finding's short id, the node ids to mark, and the annotation's Markdown
 3. **If the call is refused because the script is too long,** split `MARKS` into parts that fit, and run one call per part, in order: the first with `AXES` as given, and each later one with `const AXES = [];`, so that only the first clears.
-4. **If the call errors or returns an `error`,** retry it as in step 2 of Steps. The script puts back every layer it changed before it returns an error, so a retry starts from the file as it was. If it fails again, hand back the error, with its `categoriesAdded`.
-5. **Hand back** the script's output, adding up the parts of a split run:
+4. **If the call errors or returns an `error`,** retry it as in step 2 of Steps. The script puts back every layer it changed before it returns an error, so a retry starts from the file as it was. If it fails again, hand back the error, with its `categoriesAdded`. When a later part of a split run fails, the parts before it stay written: hand back their output with the error.
+5. **Hand back** the script's output. For a split run, add up `cleared`, `written` and `marked`, and join the lists.
    - `categories`: each axis's category, `{ axis, label, id, created }`, where `created` says this call added it
    - `cleared`: how many of the review's annotations were removed, and `written`: how many were added
-   - `layers`: how many layers hold this run's marks
-   - `moved`: each mark on a layer that can't hold annotations, such as a group, that went on the nearest layer holding it, as `{ mark, node, to }`, where `mark` is its index in `MARKS`
-   - `unmarked`: each mark not written, as `{ mark, node, reason }`
+   - `marked`: how many marks were placed on at least one layer
+   - `moved`: each of a mark's nodes that can't hold annotations, such as a group, whose mark went on the nearest layer holding it, as `{ finding, node, to }`
+   - `unmarked`: each of a mark's nodes that wasn't marked, as `{ finding, node, reason }`
    - `movedTotal` and `unmarkedTotal`, when their lists were cut at 20
 
 The annotations are written when the script hands back its counts, or the error is handed back.
@@ -1255,7 +1255,7 @@ const AXES = ['AXES'];
 const MARKS = ['MARKS'];
 if (SCOPE[0] === 'SCOPE' || AXES[0] === 'AXES' || MARKS[0] === 'MARKS') return { error: 'set SCOPE, AXES and MARKS on the first three lines' };
 
-// The review's own categories, one per axis. The annotations script leaves out every category named "Design review: <axis>".
+// The review's own annotation categories, one per axis. The annotations script leaves out every category named "Design review: <axis>".
 const CATEGORIES = {
   'design-system': { label: 'Design review: Design system adherence', color: 'teal' },
   'accessibility': { label: 'Design review: Accessibility', color: 'violet' },
@@ -1263,17 +1263,18 @@ const CATEGORIES = {
 };
 const unknown = [...AXES, ...MARKS.map((m) => m.axis)].filter((axis) => !Object.prototype.hasOwnProperty.call(CATEGORIES, axis));
 if (unknown.length) return { error: `unknown axis: ${[...new Set(unknown)].join(', ')}` };
-const badMark = MARKS.findIndex((m) => !Array.isArray(m.nodes) || typeof m.text !== 'string' || !m.text.trim());
-if (badMark >= 0) return { error: `mark ${badMark} needs nodes and a text` };
+const badMark = MARKS.findIndex((m) => typeof m.finding !== 'string' || !Array.isArray(m.nodes) || typeof m.text !== 'string' || !m.text.trim());
+if (badMark >= 0) return { error: `mark ${badMark} needs a finding, nodes and a text` };
 
 const existing = await figma.annotations.getAnnotationCategoriesAsync();
-const isAxis = (c, axis) => c.label.trim().toLowerCase() === CATEGORIES[axis].label.toLowerCase();
-const categoryOf = (axis) => existing.find((c) => isAxis(c, axis)) || null;
+// A category is an axis's review category by its label, ignoring case and trailing spaces, as the annotations script reads it.
+const isReviewCategory = (c, axis) => c.label.trimEnd().toLowerCase() === CATEGORIES[axis].label.toLowerCase();
+const categoryOf = (axis) => existing.find((c) => isReviewCategory(c, axis)) || null;
 // This run clears the review's categories for the axes it covered.
-const clearing = new Set(existing.filter((c) => AXES.some((axis) => isAxis(c, axis))).map((c) => c.id));
+const clearing = new Set(existing.filter((c) => AXES.some((axis) => isReviewCategory(c, axis))).map((c) => c.id));
 
 // An annotation as Figma takes it back: its label or its Markdown (never both), its pinned properties and its category.
-const plain = (a) => {
+const writable = (a) => {
   const o = a.labelMarkdown ? { labelMarkdown: a.labelMarkdown } : a.label ? { label: a.label } : {};
   if (a.properties && a.properties.length) o.properties = a.properties.map((p) => ({ ...p }));
   if (a.categoryId) o.categoryId = a.categoryId;
@@ -1294,7 +1295,7 @@ for (const id of SCOPE) {
 // Each layer's annotations after this run, worked out before anything is written. A new mark waits for its category.
 const plan = new Map();
 const planFor = (n) => {
-  if (!plan.has(n.id)) { const before = n.annotations.map(plain); plan.set(n.id, { node: n, before, after: [...before] }); }
+  if (!plan.has(n.id)) { const before = n.annotations.map(writable); plan.set(n.id, { node: n, before, after: [...before] }); }
   return plan.get(n.id);
 };
 let cleared = 0;
@@ -1309,22 +1310,24 @@ for (const x of inScope.values()) {
 // Each mark goes on its layers. A layer that can't hold annotations, such as a group, passes its mark to the nearest
 // layer holding it that can. A layer never gets the same mark twice. Only layers in the scope are marked, so the next
 // run on this scope clears every mark this one writes.
-let written = 0;
-const marked = new Set(), moved = [], unmarked = [];
-for (const [index, mark] of MARKS.entries()) {
+let written = 0, marked = 0;
+const moved = [], unmarked = [];
+for (const mark of MARKS) {
+  let placed = false;
   for (const id of mark.nodes) {
-    if (!inScope.has(id)) { unmarked.push({ mark: index, node: id, reason: 'not a layer in the scope' }); continue; }
+    if (!inScope.has(id)) { unmarked.push({ finding: mark.finding, node: id, reason: 'not a layer in the scope' }); continue; }
     let holder = inScope.get(id);
     while (holder && !('annotations' in holder)) holder = holder.parent ? inScope.get(holder.parent.id) : undefined;
-    if (!holder) { unmarked.push({ mark: index, node: id, reason: 'no layer in the scope can hold an annotation here' }); continue; }
-    if (holder.id !== id) moved.push({ mark: index, node: id, to: holder.id });
-    marked.add(holder.id);
+    if (!holder) { unmarked.push({ finding: mark.finding, node: id, reason: 'no layer in the scope can hold an annotation here' }); continue; }
+    if (holder.id !== id) moved.push({ finding: mark.finding, node: id, to: holder.id });
+    placed = true;
     const entry = planFor(holder), category = categoryOf(mark.axis);
     const same = (a) => a.labelMarkdown === mark.text && (a.axis === mark.axis || (category && a.categoryId === category.id));
     if (entry.after.some(same)) continue;
     entry.after.push({ labelMarkdown: mark.text, axis: mark.axis });
     written++;
   }
+  if (placed) marked++;
 }
 
 // The writes: each category a new mark needs, then each layer whose annotations change. If Figma refuses one, such as
@@ -1350,7 +1353,7 @@ try {
 }
 // The moved and unmarked lists stop at SAMPLES each, with their totals, to keep the output small.
 const SAMPLES = 20;
-const out = { categories: [...categories.values()], cleared, written, layers: marked.size, moved: moved.slice(0, SAMPLES), unmarked: unmarked.slice(0, SAMPLES) };
+const out = { categories: [...categories.values()], cleared, written, marked, moved: moved.slice(0, SAMPLES), unmarked: unmarked.slice(0, SAMPLES) };
 if (moved.length > SAMPLES) out.movedTotal = moved.length;
 if (unmarked.length > SAMPLES) out.unmarkedTotal = unmarked.length;
 return out;

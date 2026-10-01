@@ -178,15 +178,15 @@ The header's Saved line says where the report went. Write it for the destination
 
 ### Annotations
 
-Annotations mark each Finding on its layers in the reviewed file, as Figma annotations in the review's own categories, one per axis: `Design review: <the axis's name in the report>`, such as `Design review: Accessibility`. They're off unless this run's `annotateRequest` is "annotate", or `reportSettings` has `Annotate layers: on` and the request isn't "don't annotate". With annotations off, leave every annotation in the file as it is.
+Annotations mark each Finding on its layers in the reviewed file, as Figma annotations in the review's own annotation categories, one per axis, such as `Design review: Accessibility`. They're off unless this run's `annotateRequest` is "annotate", or `reportSettings` has `Annotate layers: on` and the request isn't "don't annotate". With annotations off, leave every annotation in the file as it is.
 
-Each run replaces the review's annotations for what it covered: it clears them from the axes it reviewed, everywhere in its scope, then writes its own. A fixed Finding's annotation goes, and the rest stay current. The designer's own annotations, in any other category, are never changed. The review's categories aren't read back as annotations: the Design Scanner's annotations facts leave them out.
+Each run replaces the review's annotations for what it covered: it clears them from the axes it reviewed, everywhere in its scope, then writes its own. A fixed Finding's annotation goes, and the rest stay current. The designer's own annotations, in any other category, are never changed.
 
 Mark the layers before saving, so the saved copy carries the Annotated line. You MUST use the skill `design-review-scanner` to write them, as its Writing annotations describes. Hand it the file key, the runtime, and:
 
 - the scope: the node ids in `run.scope.nodes`
 - the axes covered: each axis with a Coverage entry other than a whole-axis `skipped`
-- a mark for each Finding with a `node` location: its axis, the node ids of those locations, and its text, written as below. A library component, style or variable can't hold an annotation in the reviewed file, so a Finding blamed on one is marked on its `node` locations only. A Finding with none isn't marked.
+- a mark for each Finding with a `node` location: its axis, its short id, the node ids of those locations, and its text, written as below. A library component, style or variable can't hold an annotation in the reviewed file, so a Finding blamed on one is marked on its `node` locations only. A Finding with none isn't marked.
 
 Each mark's text, in three lines, leaving out ` Fix: <fix>` when there's no fix:
 
@@ -196,16 +196,17 @@ Each mark's text, in three lines, leaving out ` Fix: <fix>` when there's no fix:
 From the design review on <date>.
 ```
 
-Writing annotations needs edit access to the file, and a Full seat. A script can't delete an annotation category, so a review category stays in the file once a run adds it, until someone deletes it in Figma. Inside Figma Design's agent, they're written the same way.
+Writing annotations needs edit access to the file, and a Full seat. A script can't delete an annotation category, so a review category stays in the file once a run adds it, until someone deletes it in Figma.
 
 ### The Annotated line
 
 The header's Annotated line says what the scanner handed back:
 
-- **Marked:** "Annotated: <number of Findings marked> Findings on <layers> layers, in "<the category label of each axis marked>"." Then, when `cleared` is more than 0, "<cleared> annotations from earlier reviews of this scope were cleared first." With no Findings to mark: "Annotated: no Findings to mark." and the cleared sentence.
+- **Marked:** "Annotated: <marked> Findings, with <written> annotations in "<the label of each axis's category that has a mark>"." Then, when `cleared` is more than 0, "<cleared> annotations from earlier reviews of this scope were cleared first." With no Findings to mark: "Annotated: no Findings to mark." and the cleared sentence.
 - **For each category `created`:** "This run added the "<label>" annotation category. A script can't delete it, so it stays in the file until someone deletes it in Figma."
-- **For `moved`:** "<short id> is marked on <the layer it went to>, since <its layer> can't hold annotations." When `movedTotal` is given, end with "and <the rest> more."
-- **For each Finding not marked,** because it has no `node` location or its marks are in `unmarked`: "<short id> isn't marked: <reason>.", where the reason is "it has no layer in this file" or the scanner's.
+- **For each entry in `moved`:** "<finding> is marked on <the layer it went to>, since <its layer> can't hold annotations." When `movedTotal` is given, end with "and <the rest> more."
+- **For each Finding not marked,** because it has no `node` location or every one of its nodes is in `unmarked`: "<short id> isn't marked: <reason>.", where the reason is "it has no layer in this file" or the scanner's. When `unmarkedTotal` is given, end with "and <the rest> more."
+- **Partly annotated,** when a later part of a split run failed: "Partly annotated:", then the Marked sentences for the parts written, then "The rest weren't marked: <the error>."
 - **Not annotated:** "Not annotated: <the error>." When the error has `categoriesAdded`, add the category sentence for each.
 
 ## Report settings
