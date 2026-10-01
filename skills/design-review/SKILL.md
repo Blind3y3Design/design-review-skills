@@ -49,7 +49,7 @@ Settle everything now, asking what's missing in one message. Nothing is asked on
 - **Scope:** the node ids of the frames to review: the user's selection, a page's top-level frames, or the frames the user names or links to.
 - **The research topic,** when research alignment is chosen. Take it only from the user. You may suggest topics from the file's page names. With no topic, research alignment is skipped, with the Coverage entry `{ "axis": "research", "status": "skipped", "reason": "no topic given" }`.
 - **What the profile leaves open:** whatever the chosen Review Skills' `For the caller to ask` lines name, each pre-filled with its default.
-- **Run-time settings:** what the user asked for this run's report ("don't save" or "save to <location>"), and anything meant for one review, such as a Reference Document location or a WCAG target.
+- **Run-time settings:** what the user asked for this run's report ("don't save" or "save to <location>") and its annotations ("annotate" or "don't annotate"), and anything meant for one review, such as a Reference Document location or a WCAG target.
 
 For example: "I'll use the Review Profile "Checkout team profile" from this file's "Review Profile" page. Which reviews should I run? [x] Design system adherence [x] Accessibility [ ] Research alignment (not set up). And what should I review: your selection (Checkout, Payment), this page, or other frames?"
 
@@ -85,6 +85,7 @@ Use the skill `design-review-report-writer` in `full report` mode, handing over 
 - `notes`: every report's notes, and your own, such as an axis left out because it isn't set up.
 - `reportSettings`: the profile's Report settings section, as `{ "<key>": "<value>" }`, or null.
 - `saveRequest`: "don't save" or "save to <location>" when the user said so, otherwise null.
+- `annotateRequest`: "annotate" or "don't annotate" when the user said so, otherwise null.
 
 Only this call delivers a report. The review is done when the Report Writer has delivered it, with every chosen axis's Findings and Coverage in it.
 
