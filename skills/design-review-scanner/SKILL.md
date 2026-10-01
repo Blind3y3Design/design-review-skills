@@ -11,20 +11,21 @@ Version 0.1.0-dev of the design review skills.
 
 Reads a design and returns its Design Facts: what was read or measured, never a judgement. The scanner holds no thresholds and no criteria. The Review Skill that asked for the facts judges them.
 
-All reading goes through **fixed scripts**, tested as written, so every review reads a file the same way. Design Facts come from one script per fact group, where you change only the node id on its first line. A Review Skill also asks you to find the team's Review Profile, which has a procedure and a script of its own (see Finding the Review Profile), and the Report Writer asks you to save its report frames (see Writing a report frame).
+All reading goes through **fixed scripts**, tested as written, so every review reads a file the same way. Design Facts come from one script per fact group, where you change only the input lines at the top. A Review Skill also asks you to find the team's Review Profile, which has a procedure and a script of its own (see Finding the Review Profile), and the Report Writer asks you to save its report frames (see Writing a report frame).
 
 ## Inputs
 
 The calling skill gives you:
 
 - **Scope:** the node ids to scan, one or more. Scripts can't see the user's selection, so the caller passes the ids of the selected or named frames.
-- **Fact groups:** the groups of facts it needs. This version reads five groups: `colourPairs`, with The colour pairs script, `bindings`, with The bindings script, `components`, with The components script, `text`, with The text script, and `structure`, with The structure script.
+- **Fact groups:** the groups of facts it needs. This version reads six groups: `colourPairs`, with The colour pairs script, `bindings`, with The bindings script, `components`, with The components script, `text`, with The text script, `structure`, with The structure script, and `annotations`, with The annotations script.
+- **Annotation kits,** optionally: the kits whose instances count as annotations, each named by what its components' names start with, such as `A11y annotations/`.
 - **Runtime:** `figma-agent` inside Figma Design's agent, or `external-agent` for an agent using the Figma MCP server.
 
 ## Steps
 
 1. **Pick the tool.** Inside Figma Design's agent, run scripts with `evaluate_script`. In an external agent, use the Figma MCP server's `use_figma`, with the file key from the file's link. If neither tool is available, stop and tell the caller: "The Design Scanner can't read the design: connect the Figma MCP server, or run the review in Figma Design's agent."
-2. **Scan each node id.** For each fact group asked for that has a script, copy the script and replace `NODE_ID` on its first line with one id, such as `const NODE_ID = '5:3';`. Run everything else exactly as written. Run one call per id and group, in parallel where the runtime allows. If a call errors, run it once more unchanged. If it errors again, record the id, the group and the error message in that result's `unread`.
+2. **Scan each node id.** For each fact group asked for that has a script, copy the script and replace `NODE_ID` on its first line with one id, such as `const NODE_ID = '5:3';`. In The annotations script, also put the annotation kits on its second line as quoted strings, such as `const KITS = ['A11y annotations/'];`, or leave the list empty. Run everything else exactly as written. Run one call per id and group, in parallel where the runtime allows. If a call errors, run it once more unchanged. If it errors again, record the id, the group and the error message in that result's `unread`.
 3. **Follow `scanInstead`.** A result whose `unread` lists `scanInstead` ids (for a page, or a frame too large for one call's output) is replaced by the results of running the same script on each of those ids.
 4. **Record groups you can't read.** For each fact group the caller asked for that has no script here, add `{ "what": "<group>", "reason": "not read by this version of the scanner" }` to every result's `unread`.
 5. **Name the libraries of components and styles,** when the caller asked for `components` or `bindings`. The bindings script names each library variable's library, but the Plugin API has no lookup for components or styles, so the scripts leave their `library` null. Name them by key with the Figma MCP server's `get_libraries` and `search_design_system` tools. Without those tools, as inside Figma Design's agent, do only 5.1 and 5.4.
@@ -48,7 +49,7 @@ Return the Design Facts to the calling skill: a JSON array holding one result pe
 - `scope`: the node scanned: `id`, `name`, `type`, `page`, and `topLevelFrame` when the node sits inside a top-level frame.
 - `groups`: the fact groups read.
 - `unread[]`: what couldn't be read, each `{ what, reason }`, with `scanInstead` ids when the answer is to scan those instead.
-- `colourPairs`, `bindings`, `components`, `text` and `structure`: each group's facts, or null when it wasn't read.
+- `colourPairs`, `bindings`, `components`, `text`, `structure` and `annotations`: each group's facts, or null when it wasn't read.
 
 Positions and sizes are in Figma px. `x` and `y` are measured from the top-level frame's top-left corner.
 
@@ -121,12 +122,25 @@ Each visible, non-empty text layer in the scope, in layer order.
 The top-level frame and every other visible layer in the scope, other than text.
 
 - `frame`: `{ id, name, width, height }` of the top-level frame.
+- `sections[]`: the Figma sections holding the scanned node, innermost first, each `{ id, name }`.
 - `layers[]`: each `{ id, path, type, x, y, width, height }`, in layer order, plus:
   - `reactions`: the prototype triggers set on the layer, such as `ON_CLICK`.
   - `image`: true when it shows an image or video fill.
+  - `variant`: a variant component's or instance's variant values, such as `{ "State": "Focused" }`.
+  - `look`: the layer's visible `fills`, `strokes` (colour, weight and alignment, such as `#C7C7C7 2 OUTSIDE`) and `effects`, for comparing two states of one component. Components and instances give it, and other layers when they have a stroke or an effect. Over the output limit, it's the first thing left out.
 
   Inside an instance, only nested instances and layers with reactions or images are listed. An instance's main component is in the components facts. Paths are shortened, then left out, when the output limit needs it.
-- Sections aren't read, and `unread` says so.
+
+### Annotations
+
+What might annotate the scanned node, read as it is, without deciding what any of it means.
+
+- `native[]`: Figma's own annotations on the scanned node, the layers inside it and the frames holding it. Each has `node` (`{ id, path, type }`), `category` (its label, or null), `text` and, when it pins properties, `properties`.
+- `kits[]`: instances of the annotation kits the caller named, in the scope (nested in other instances too) or on the canvas beside it. Each has `kit`, `component`, `node`, `text` (the text inside it) and `where`. With no kits named, none are looked for.
+- `notes[]`: free-text notes on the canvas: text layers outside every frame, nearest to this node's frame and within 200 px of it. Each has `node`, `text` and `gap` in px.
+- `excluded`: how many annotations in the review's own categories were left out. The review's categories are named `Design review: <axis>`, such as `Design review: Accessibility`.
+
+Comments aren't read. When the runtime can't read annotations, `unread` says why, and `annotations` is null.
 
 ## The colour pairs script
 
@@ -727,6 +741,28 @@ const round = (v) => Math.round(v * 100) / 100;
 const origin = topFrame.absoluteBoundingBox || { x: 0, y: 0 };
 
 const showsImage = (n) => 'fills' in n && Array.isArray(n.fills) && n.fills.some(p => p.visible !== false && (p.opacity ?? 1) > 0 && (p.type === 'IMAGE' || p.type === 'VIDEO'));
+const hex = (c) => '#' + [c.r, c.g, c.b].map(v => Math.round(v * 255).toString(16).padStart(2, '0')).join('').toUpperCase();
+const shown = (paints) => (Array.isArray(paints) ? paints.filter(p => p.visible !== false && (p.opacity ?? 1) > 0) : []);
+const paintOf = (p) => (p.type === 'SOLID' ? hex(p.color) : p.type === 'IMAGE' || p.type === 'VIDEO' ? p.type.toLowerCase() : p.type.startsWith('GRADIENT') ? 'gradient' : p.type);
+// A layer's look, for comparing two states of one component: its visible fills, strokes and effects.
+// Components and instances give it whenever they have any, other layers only when they have a stroke or an effect.
+const lookOf = (n) => {
+  const weight = typeof n.strokeWeight === 'number' ? n.strokeWeight : 'mixed';
+  const strokes = 'strokes' in n && weight !== 0 ? shown(n.strokes).map(p => `${paintOf(p)} ${weight} ${n.strokeAlign}`) : [];
+  const effects = Array.isArray(n.effects) ? n.effects.filter(e => e.visible !== false).map(e => [e.type, e.color ? hex(e.color) : null, e.spread ? `spread ${e.spread}` : null].filter(Boolean).join(' ')) : [];
+  if (n.type !== 'COMPONENT' && n.type !== 'INSTANCE' && !strokes.length && !effects.length) return null;
+  const fills = 'fills' in n ? shown(n.fills).map(paintOf) : [];
+  const look = {};
+  if (fills.length) look.fills = fills;
+  if (strokes.length) look.strokes = strokes;
+  if (effects.length) look.effects = effects;
+  return Object.keys(look).length ? look : null;
+};
+// A variant component's or instance's variant values, such as { State: 'Focused' }.
+const variantOf = (n) => {
+  if (n.type !== 'COMPONENT' && n.type !== 'INSTANCE') return null;
+  try { return n.variantProperties || null; } catch (e) { return null; }
+};
 
 // Layers in the scope other than text and the top-level frame, in layer order. Hidden layers and layers at zero opacity are skipped.
 // Inside an instance, only nested instances and layers with prototype triggers or images are listed.
@@ -742,6 +778,9 @@ const walk = async (n, inInstance, parentPath) => {
     const row = { id: n.id, path, type: n.type, x: round(b.x - origin.x), y: round(b.y - origin.y), width: round(b.width), height: round(b.height) };
     if (triggers.length) row.reactions = triggers;
     if (image) row.image = true;
+    const variant = variantOf(n), look = lookOf(n);
+    if (variant) row.variant = variant;
+    if (look) row.look = look;
     layers.push(row);
   }
   if ('children' in n && n.type !== 'BOOLEAN_OPERATION') for (const c of n.children) await walk(c, inInstance || n.type === 'INSTANCE', path);
@@ -752,11 +791,14 @@ for (let x = node.parent; x && x.type !== 'PAGE'; x = x.parent) {
   if (x.type === 'INSTANCE') aboveInstance = true;
 }
 await walk(node, aboveInstance, parentPath);
-out.unread.push({ what: 'sections', reason: 'not read by this version of the scanner' });
+// The Figma sections holding the scanned node, innermost first. A section's name can mark it for a criterion.
+const sections = [];
+for (let x = node.parent; x && x.type !== 'PAGE'; x = x.parent) if (x.type === 'SECTION') sections.push({ id: x.id, name: x.name });
 
 // Keep the output under the smaller runtime limit (about 20 kB through use_figma).
-out.structure = { frame: { id: topFrame.id, name: topFrame.name, width: round(topFrame.width), height: round(topFrame.height) }, layers };
+out.structure = { frame: { id: topFrame.id, name: topFrame.name, width: round(topFrame.width), height: round(topFrame.height) }, sections, layers };
 const size = () => JSON.stringify(out).length;
+if (size() > LIMIT) for (const l of layers) delete l.look;
 if (size() > LIMIT) for (const l of layers) l.path = l.path.split(' / ').slice(-3).join(' / ');
 if (size() > LIMIT) for (const l of layers) delete l.path;
 if (size() > LIMIT) {
@@ -835,6 +877,157 @@ if (size() > LIMIT) {
   out.components = null;
   out.groups = [];
   out.unread = [{ what: 'components', reason: `output limit: ${components.size} components are too many for one call; scan each id in scanInstead`, scanInstead: childIds(node) }];
+}
+return out;
+```
+
+## The annotations script
+
+```js
+const NODE_ID = 'NODE_ID';
+const KITS = [];
+
+const FACTS_VERSION = '0.3';
+const LIMIT = 18000;
+const NEAR = 200;
+const out = { factsVersion: FACTS_VERSION, fileKey: figma.fileKey || null, scope: null, groups: ['annotations'], unread: [], annotations: null };
+const childIds = (n) => ('children' in n ? n.children.map(c => c.id) : []);
+
+const node = await figma.getNodeByIdAsync(NODE_ID);
+if (!node) { out.groups = []; out.unread.push({ what: NODE_ID, reason: 'no node with this id' }); return out; }
+let page = node;
+while (page.parent && page.type !== 'PAGE') page = page.parent;
+if (page.type === 'PAGE') await page.loadAsync();
+if (node.type === 'PAGE' || node.type === 'DOCUMENT') {
+  out.groups = [];
+  out.unread.push({ what: NODE_ID, reason: 'a page, not a layer: scan each id in scanInstead', scanInstead: childIds(node) });
+  return out;
+}
+let topFrame = node;
+while (topFrame.parent && topFrame.parent.type !== 'PAGE') topFrame = topFrame.parent;
+out.scope = { id: node.id, name: node.name, type: node.type, page: page.name, topLevelFrame: topFrame.id === node.id ? null : { id: topFrame.id, name: topFrame.name } };
+
+const hidden = (n) => n.visible === false || ('opacity' in n && n.opacity === 0);
+const cut = (s, n) => (s.length > n ? `${s.slice(0, n)}…` : s);
+const pathOf = (n) => {
+  const names = [];
+  for (let a = n; a && a.type !== 'PAGE'; a = a.parent) names.unshift(a.name);
+  return names.join(' / ');
+};
+// The visible text inside a layer, such as a kit instance's note.
+const textIn = (n) => {
+  const parts = [];
+  const visit = (x) => {
+    if (hidden(x)) return;
+    if (x.type === 'TEXT') { if (x.characters.trim()) parts.push(x.characters.trim()); }
+    else if ('children' in x) x.children.forEach(visit);
+  };
+  visit(n);
+  return cut(parts.join(' / '), 500);
+};
+
+let categories;
+try {
+  categories = new Map((await figma.annotations.getAnnotationCategoriesAsync()).map(c => [c.id, c.label]));
+} catch (e) {
+  out.groups = [];
+  out.unread.push({ what: 'annotations', reason: `annotations can't be read here: ${String((e && e.message) || e)}` });
+  return out;
+}
+// The review's own categories are named "Design review: <axis>", and are left out.
+const reviewCategory = (label) => /^design review: /i.test(label || '');
+
+// An instance's component, and the kit it belongs to. Only looked up when the caller names kits, since lookups are slow.
+const componentOf = async (n) => {
+  const main = await n.getMainComponentAsync();
+  const name = main ? main.name : null;
+  const set = main && main.parent && main.parent.type === 'COMPONENT_SET' ? main.parent.name : null;
+  const kit = KITS.find(k => [name, set].some(s => s && s.toLowerCase().startsWith(String(k).toLowerCase()))) || null;
+  return { kit, label: set ? `${set} (${name})` : name };
+};
+
+const native = [], kits = [], notes = [];
+let excluded = 0;
+const readAnnotations = (n, path) => {
+  if (!Array.isArray(n.annotations)) return;
+  for (const a of n.annotations) {
+    const category = a.categoryId ? categories.get(a.categoryId) || null : null;
+    if (reviewCategory(category)) { excluded++; continue; }
+    const entry = { node: { id: n.id, path, type: n.type }, category, text: cut(a.labelMarkdown || a.label || '', 500) };
+    if (a.properties && a.properties.length) entry.properties = a.properties.map(p => p.type);
+    native.push(entry);
+  }
+};
+const walk = async (n, path) => {
+  if (hidden(n)) return;
+  readAnnotations(n, path);
+  if (n.type === 'INSTANCE' && n.id !== node.id && KITS.length) {
+    const c = await componentOf(n);
+    if (c.kit) { kits.push({ kit: c.kit, component: c.label, node: { id: n.id, path }, text: textIn(n), where: 'in scope' }); return; }
+  }
+  if ('children' in n) for (const c of n.children) await walk(c, `${path} / ${c.name}`);
+};
+try {
+  // Annotations on the frames holding the scanned node apply to it too.
+  const holders = [];
+  for (let a = node.parent; a && a.type !== 'PAGE'; a = a.parent) holders.unshift(a);
+  for (const a of holders) readAnnotations(a, pathOf(a));
+  await walk(node, pathOf(node));
+} catch (e) {
+  out.groups = [];
+  out.unread.push({ what: 'annotations', reason: `the read failed: ${String((e && e.message) || e)}` });
+  return out;
+}
+
+// Free-text notes and kit instances on the canvas: outside every frame, nearest to this node's frame, and within NEAR px of it.
+const canvasFrames = [], canvasItems = [];
+const gather = (n) => {
+  for (const c of n.children) {
+    if (hidden(c)) continue;
+    if (c.type === 'TEXT') canvasItems.push(c);
+    else if (c.type === 'INSTANCE') { canvasItems.push(c); canvasFrames.push(c); }
+    else if (c.type === 'SECTION' || c.type === 'GROUP') gather(c);
+    else if (c.absoluteBoundingBox) canvasFrames.push(c);
+  }
+};
+gather(page);
+const onCanvas = new Set(canvasFrames.map(f => f.id));
+let frameOnCanvas = node;
+for (let a = node; a && a.type !== 'PAGE'; a = a.parent) if (onCanvas.has(a.id)) frameOnCanvas = a;
+const gap = (a, b) => {
+  const dx = Math.max(0, a.x - (b.x + b.width), b.x - (a.x + a.width));
+  const dy = Math.max(0, a.y - (b.y + b.height), b.y - (a.y + a.height));
+  return Math.hypot(dx, dy);
+};
+const inside = (n) => { for (let a = n.parent; a; a = a.parent) if (a.id === node.id) return true; return false; };
+for (const c of canvasItems) {
+  const b = c.absoluteBoundingBox;
+  if (!b || c.id === frameOnCanvas.id) continue;
+  if (c.type === 'INSTANCE' && !KITS.length) continue;
+  const component = c.type === 'INSTANCE' ? await componentOf(c) : null;
+  if (component && !component.kit) continue;
+  let nearest = null, best = Infinity;
+  if (inside(c)) { nearest = frameOnCanvas; best = 0; }
+  else for (const f of canvasFrames) {
+    if (f.id === c.id) continue;
+    const d = gap(b, f.absoluteBoundingBox);
+    if (d < best) { best = d; nearest = f; }
+  }
+  if (!nearest || nearest.id !== frameOnCanvas.id || best > NEAR) continue;
+  if (component) kits.push({ kit: component.kit, component: component.label, node: { id: c.id, path: c.name }, text: textIn(c), where: `on the canvas, ${Math.round(best)} px away` });
+  else if (c.characters.trim()) notes.push({ node: { id: c.id }, text: cut(c.characters.trim(), 500), gap: Math.round(best) });
+}
+
+// Keep the output under the smaller runtime limit (about 20 kB through use_figma).
+out.annotations = { native, kits, notes, excluded };
+const size = () => JSON.stringify(out).length;
+const located = () => [...native, ...kits].map(a => a.node);
+if (size() > LIMIT) for (const x of located()) x.path = x.path.split(' / ').slice(-3).join(' / ');
+if (size() > LIMIT) for (const a of [...native, ...kits, ...notes]) a.text = cut(a.text, 150);
+if (size() > LIMIT) {
+  out.annotations = null;
+  out.groups = [];
+  out.unread = [{ what: 'annotations', reason: `output limit: ${native.length + kits.length + notes.length} annotations are too many for one call; scan each id in scanInstead`, scanInstead: childIds(node) }];
 }
 return out;
 ```

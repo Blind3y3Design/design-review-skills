@@ -3,11 +3,12 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { AsyncFunction, scriptUnder } from './scanner-script.mjs';
 
-// Sets NODE_ID on the script's first line, as the skill says, then runs it.
-const scan = (heading, figma, id) => {
+// Sets NODE_ID on the script's first line, and the annotation kits on KITS's line when it has one, as the skill says, then runs it.
+const scan = (heading, figma, id, kits = []) => {
   const script = scriptUnder(heading);
   assert.ok(script, `no js block under "## ${heading}"`);
-  return new AsyncFunction('figma', script.replace(/^const NODE_ID = .*$/m, `const NODE_ID = ${JSON.stringify(id)};`))(figma);
+  const set = script.replace(/^const NODE_ID = .*$/m, `const NODE_ID = ${JSON.stringify(id)};`).replace(/^const KITS = .*$/m, `const KITS = ${JSON.stringify(kits)};`);
+  return new AsyncFunction('figma', set)(figma);
 };
 
 // A read-only fake of a file. Each node is a spec: { type, name, x, y, width, height, children, ...props },
@@ -19,14 +20,15 @@ const solid = (color, props = {}) => ({ type: 'SOLID', color, visible: true, opa
 const rgb = (hex) => ({ r: parseInt(hex.slice(1, 3), 16) / 255, g: parseInt(hex.slice(3, 5), 16) / 255, b: parseInt(hex.slice(5, 7), 16) / 255 });
 
 // `collections` are the file's variable collections by id, and `libraries` what figma.teamLibrary lists, or an Error it throws.
-function fakeFigma(pageSpec, { variables = {}, styles = {}, components = {}, collections = {}, libraries = [] } = {}) {
+function fakeFigma(pageSpec, { variables = {}, styles = {}, components = {}, collections = {}, libraries = [], categories = [], noAnnotations = false } = {}) {
   let next = 1;
+  const lookups = { count: 0 };
   const byId = new Map();
   const build = (spec, parent) => {
     const { children = [], x = 0, y = 0, width = 100, height = 100, segments, main, ...props } = spec;
     const node = {
       id: spec.id || `1:${next++}`, name: '', visible: true, opacity: 1, blendMode: 'PASS_THROUGH', fills: [], strokes: [], strokeWeight: 0,
-      x, y, width, height, absoluteBoundingBox: { x, y, width, height }, parent, reactions: [], ...props,
+      x, y, width, height, absoluteBoundingBox: { x, y, width, height }, parent, reactions: [], annotations: [], ...props,
     };
     byId.set(node.id, node);
     if (node.type === 'TEXT') {
@@ -48,7 +50,7 @@ function fakeFigma(pageSpec, { variables = {}, styles = {}, components = {}, col
         });
       };
     }
-    if (node.type === 'INSTANCE') node.getMainComponentAsync = async () => components[main] || null;
+    if (node.type === 'INSTANCE') node.getMainComponentAsync = async () => { lookups.count++; return components[main] || null; };
     if (spec.type !== 'TEXT') node.children = children.map((c) => build(c, node));
     return node;
   };
@@ -60,6 +62,8 @@ function fakeFigma(pageSpec, { variables = {}, styles = {}, components = {}, col
     root,
     fileKey: 'FAKEFILEKEY',
     mixed: MIXED,
+    lookups,
+    annotations: noAnnotations ? undefined : { async getAnnotationCategoriesAsync() { return categories; } },
     async getNodeByIdAsync(id) { return byId.get(id) || null; },
     async getStyleByIdAsync(id) { return styles[id] || null; },
     variables: {
@@ -277,14 +281,44 @@ test('colour pairs: with too many raw-coloured layers for one call, the frame\'s
   assert.deepEqual(result.unread.map((u) => [u.what, u.reason.split(';')[0], u.scanInstead.length]), [['colourPairs', 'output limit: 0 text layers and 120 other layers are too many for one call', 120]]);
 });
 
-test('structure: the result says the sections a frame sits in aren\'t read', async () => {
-  const result = await scan('The structure script', fakeFigma(frameWith([])), '5:1');
-  assert.deepEqual(result.unread, [{ what: 'sections', reason: 'not read by this version of the scanner' }]);
+test('structure: names the Figma sections holding the scanned node, innermost first', async () => {
+  const figma = fakeFigma({ children: [{ type: 'SECTION', id: '4:1', name: 'Focus states', x: 0, y: 0, width: 900, height: 700, children: [
+    { type: 'SECTION', id: '4:2', name: 'Buttons', x: 50, y: 50, width: 800, height: 600, children: [
+      { type: 'FRAME', id: '5:1', name: 'A11Y-99', x: 100, y: 200, width: 360, height: 240, fills: [solid(white)] },
+    ] },
+  ] }] });
+  const result = await scan('The structure script', figma, '5:1');
+  assert.deepEqual(result.unread, []);
+  assert.deepEqual(result.structure.sections, [{ id: '4:2', name: 'Buttons' }, { id: '4:1', name: 'Focus states' }]);
+  const onPage = await scan('The structure script', fakeFigma(frameWith([])), '5:1');
+  assert.deepEqual([onPage.unread, onPage.structure.sections], [[], []]);
+});
+
+test('structure: a variant gives its values, and a component, an instance or a layer with a stroke or an effect gives its look', async () => {
+  const shadow = { type: 'DROP_SHADOW', visible: true, color: { ...rgb(BLUE), a: 1 }, offset: { x: 0, y: 0 }, radius: 0, spread: 2 };
+  const figma = fakeFigma(frameWith([
+    { type: 'COMPONENT_SET', id: '5:2', name: 'Continue button', x: 124, y: 224, width: 246, height: 55, children: [
+      { type: 'COMPONENT', id: '5:3', name: 'State=Default', x: 132, y: 232, width: 103, height: 39, variantProperties: { State: 'Default' }, fills: [solid(rgb(BLUE))] },
+      { type: 'COMPONENT', id: '5:4', name: 'State=Focused', x: 259, y: 232, width: 103, height: 39, variantProperties: { State: 'Focused' }, fills: [solid(rgb(BLUE))], strokes: [solid(rgb(GREY))], strokeWeight: 2, strokeAlign: 'OUTSIDE' },
+    ] },
+    { type: 'INSTANCE', id: '5:5', name: 'Continue button', x: 124, y: 300, width: 103, height: 39, variantProperties: { State: 'Focused' }, fills: [solid(rgb(BLUE))], effects: [shadow] },
+    { type: 'FRAME', id: '5:6', name: 'Card', x: 124, y: 360, width: 200, height: 40, fills: [solid(white)], strokes: [solid(rgb(GREY))], strokeWeight: 1, strokeAlign: 'INSIDE' },
+    { type: 'RECTANGLE', id: '5:7', name: 'Plain', x: 124, y: 420, width: 20, height: 20, fills: [solid(white)] },
+  ]));
+  const { structure } = await scan('The structure script', figma, '5:1');
+  const row = (id) => structure.layers.find((l) => l.id === id);
+  assert.deepEqual(Object.keys(row('5:2')), ['id', 'path', 'type', 'x', 'y', 'width', 'height']);
+  assert.deepEqual([row('5:3').variant, row('5:3').look], [{ State: 'Default' }, { fills: [BLUE] }]);
+  assert.deepEqual([row('5:4').variant, row('5:4').look], [{ State: 'Focused' }, { fills: [BLUE], strokes: [`${GREY} 2 OUTSIDE`] }]);
+  assert.deepEqual([row('5:5').variant, row('5:5').look], [{ State: 'Focused' }, { fills: [BLUE], effects: [`DROP_SHADOW ${BLUE} spread 2`] }]);
+  assert.deepEqual(row('5:6').look, { fills: ['#FFFFFF'], strokes: [`${GREY} 1 INSIDE`] });
+  assert.deepEqual(Object.keys(row('5:7')), ['id', 'path', 'type', 'x', 'y', 'width', 'height']);
+  assert.equal(figma.lookups.count, 0, 'the structure script looked up a main component');
 });
 
 // Rectangles nested `depth` groups deep.
-const manyShapes = (count, depth) => frameWith(Array.from({ length: count }, (_, i) => {
-  let layer = { type: 'RECTANGLE', id: `6:${i}`, name: `Swatch ${i}`, x: 124, y: 224 };
+const manyShapes = (count, depth, props = {}) => frameWith(Array.from({ length: count }, (_, i) => {
+  let layer = { type: 'RECTANGLE', id: `6:${i}`, name: `Swatch ${i}`, x: 124, y: 224, ...props };
   for (let d = 0; d < depth; d++) layer = { type: 'GROUP', id: `7:${i}:${d}`, name: `A long wrapper name ${d}`, x: 124, y: 224, children: [layer] };
   return layer;
 }));
@@ -462,4 +496,126 @@ test('bindings: each variable and style counts the uses instances take unchanged
     'k-body': [2, 1, ['5:3']],
   });
   assert.deepEqual(bindings.styles.map((s) => [s.name, s.library]), [['Test Foundation/Body', null]]);
+});
+
+test('structure: over the output limit, looks are left out first, and paths stay whole while that\'s enough', async () => {
+  const stroked = { strokes: [solid(rgb(GREY))], strokeWeight: 1, strokeAlign: 'INSIDE' };
+  const fits = await scan('The structure script', fakeFigma(manyShapes(5, 4, stroked)), '5:1');
+  assert.ok(fits.structure.layers.filter((l) => l.type === 'RECTANGLE').every((l) => l.look), 'looks were left out with no need');
+  const tight = await scan('The structure script', fakeFigma(manyShapes(22, 4, stroked)), '5:1');
+  assert.ok(tight.structure.layers.every((l) => !('look' in l)));
+  assert.equal(Math.max(...tight.structure.layers.map((l) => l.path.split(' / ').length)), 6);
+  assert.ok(JSON.stringify(tight).length <= 18000);
+});
+
+// A top-level frame at (100, 200), 360 x 240, beside the other given layers on the page.
+const canvas = (frameChildren, others = [], frameProps = {}) => ({ children: [
+  { type: 'FRAME', id: '5:1', name: 'A11Y-99', x: 100, y: 200, width: 360, height: 240, fills: [solid(white)], children: frameChildren, ...frameProps },
+  ...others,
+] });
+const categories = [{ id: 'c:a11y', label: 'Accessibility' }, { id: 'c:review', label: 'Design review: Accessibility' }, { id: 'c:team', label: 'Design reviews' }];
+
+test('annotations: gives the native annotations on the scanned node, its layers and the frames holding it, leaving out the review\'s own categories', async () => {
+  const figma = fakeFigma(canvas([
+    { type: 'FRAME', id: '5:2', name: 'Card', x: 124, y: 224, width: 312, height: 160, annotations: [{ labelMarkdown: 'Reading order: title, then price', categoryId: 'c:a11y' }], children: [
+      { type: 'RECTANGLE', id: '5:3', name: 'Photo', x: 132, y: 232, width: 100, height: 60, annotations: [
+        { label: 'Alt: a lake at sunrise', categoryId: 'c:a11y' },
+        { labelMarkdown: 'Raise the contrast', categoryId: 'c:review' },
+        { labelMarkdown: 'Checked in the design review', categoryId: 'c:team' },
+        { labelMarkdown: 'Width', properties: [{ type: 'width' }] },
+      ] },
+    ] },
+  ], [], { annotations: [{ labelMarkdown: 'Page title: Checkout', categoryId: 'c:a11y' }] }), { categories });
+  const result = await scan('The annotations script', figma, '5:2');
+  assert.deepEqual([result.groups, result.unread], [['annotations'], []]);
+  assert.deepEqual(result.scope.topLevelFrame, { id: '5:1', name: 'A11Y-99' });
+  assert.deepEqual(result.annotations, {
+    native: [
+      { node: { id: '5:1', path: 'A11Y-99', type: 'FRAME' }, category: 'Accessibility', text: 'Page title: Checkout' },
+      { node: { id: '5:2', path: 'A11Y-99 / Card', type: 'FRAME' }, category: 'Accessibility', text: 'Reading order: title, then price' },
+      { node: { id: '5:3', path: 'A11Y-99 / Card / Photo', type: 'RECTANGLE' }, category: 'Accessibility', text: 'Alt: a lake at sunrise' },
+      { node: { id: '5:3', path: 'A11Y-99 / Card / Photo', type: 'RECTANGLE' }, category: 'Design reviews', text: 'Checked in the design review' },
+      { node: { id: '5:3', path: 'A11Y-99 / Card / Photo', type: 'RECTANGLE' }, category: null, text: 'Width', properties: ['width'] },
+    ],
+    kits: [],
+    notes: [],
+    excluded: 1,
+  });
+});
+
+test('annotations: instances of the named kits count in the scope, nested in an instance, or on the canvas beside the frame, and with no kits named nothing is looked up', async () => {
+  const label = (id, characters) => ({ type: 'TEXT', id, name: 'Label', characters });
+  const components = {
+    alt: { name: 'Alt text', parent: { type: 'COMPONENT_SET', name: 'A11y kit/Markers' } },
+    card: { name: 'Card', parent: { type: 'PAGE' } },
+    sticker: { name: 'Sticker', parent: { type: 'PAGE' } },
+  };
+  const page = canvas([
+    { type: 'INSTANCE', id: '5:2', name: 'Alt marker', main: 'alt', x: 124, y: 224, width: 80, height: 20, children: [label('5:3', 'Alt: lake photo')] },
+    { type: 'INSTANCE', id: '5:4', name: 'Card', main: 'card', x: 124, y: 260, width: 200, height: 100, children: [
+      { type: 'INSTANCE', id: 'I5:4;1:1', name: 'Icon note', main: 'alt', x: 132, y: 268, width: 80, height: 20, children: [label('I5:4;1:2', 'Alt: none, decorative')] },
+    ] },
+  ], [
+    { type: 'INSTANCE', id: '6:1', name: 'Hero note', main: 'alt', x: 100, y: 460, width: 120, height: 20, children: [label('6:2', 'Alt: hero')] },
+    { type: 'INSTANCE', id: '6:3', name: 'Sticker', main: 'sticker', x: 240, y: 460, width: 40, height: 40 },
+  ]);
+  const figma = fakeFigma(page, { components, categories });
+  const { annotations } = await scan('The annotations script', figma, '5:1', ['a11y kit/']);
+  assert.deepEqual(annotations.kits, [
+    { kit: 'a11y kit/', component: 'A11y kit/Markers (Alt text)', node: { id: '5:2', path: 'A11Y-99 / Alt marker' }, text: 'Alt: lake photo', where: 'in scope' },
+    { kit: 'a11y kit/', component: 'A11y kit/Markers (Alt text)', node: { id: 'I5:4;1:1', path: 'A11Y-99 / Card / Icon note' }, text: 'Alt: none, decorative', where: 'in scope' },
+    { kit: 'a11y kit/', component: 'A11y kit/Markers (Alt text)', node: { id: '6:1', path: 'Hero note' }, text: 'Alt: hero', where: 'on the canvas, 20 px away' },
+  ]);
+  const plain = fakeFigma(page, { components, categories });
+  const none = await scan('The annotations script', plain, '5:1');
+  assert.deepEqual([none.annotations.kits, plain.lookups.count], [[], 0]);
+});
+
+test('annotations: a free-text note on the canvas counts when it\'s outside every frame, nearest to this frame and within 200 px', async () => {
+  const note = (id, x, y, characters, more = {}) => ({ type: 'TEXT', id, name: characters, x, y, width: 100, height: 20, characters, ...more });
+  const figma = fakeFigma(canvas([note('5:2', 124, 224, 'Inside the frame is content')], [
+    { type: 'FRAME', id: '7:1', name: 'Other', x: 600, y: 200, width: 360, height: 240 },
+    note('6:1', 100, 460, 'Alt text: lake'),
+    note('6:2', 470, 300, 'Between, nearer this frame'),
+    note('6:3', 575, 300, 'Between, nearer the other', { width: 20 }),
+    note('6:4', 100, 700, 'Too far away'),
+    { type: 'GROUP', id: '6:5', name: 'Notes', children: [note('6:6', 100, 480, 'In a group')] },
+    note('6:7', 100, 520, 'Hidden', { visible: false }),
+  ]), { categories });
+  const { annotations } = await scan('The annotations script', figma, '5:1');
+  assert.deepEqual(annotations.notes, [
+    { node: { id: '6:1' }, text: 'Alt text: lake', gap: 20 },
+    { node: { id: '6:2' }, text: 'Between, nearer this frame', gap: 10 },
+    { node: { id: '6:6' }, text: 'In a group', gap: 40 },
+  ]);
+});
+
+test('annotations: when the runtime can\'t read annotations, the result says so and gives none, and a page or an unknown id is handled as by the other scripts', async () => {
+  const figma = fakeFigma(canvas([]), { noAnnotations: true });
+  const result = await scan('The annotations script', figma, '5:1');
+  assert.deepEqual([result.annotations, result.groups], [null, []]);
+  assert.equal(result.unread.length, 1);
+  assert.equal(result.unread[0].what, 'annotations');
+  assert.match(result.unread[0].reason, /^annotations can't be read here/);
+  const readable = fakeFigma(canvas([]), { categories });
+  const pageResult = await scan('The annotations script', readable, '0:1');
+  assert.deepEqual([pageResult.annotations, pageResult.groups, pageResult.unread[0].scanInstead], [null, [], ['5:1']]);
+  const missing = await scan('The annotations script', readable, '9:9');
+  assert.deepEqual(missing.unread, [{ what: '9:9', reason: 'no node with this id' }]);
+});
+
+test('annotations: over the output limit, paths are shortened and long text is cut, before the frame\'s children are handed back to scan instead', async () => {
+  const annotated = (count) => canvas(Array.from({ length: count }, (_, i) => ({
+    type: 'GROUP', id: `7:${i}`, name: `A long wrapper name ${i}`, children: [
+      { type: 'RECTANGLE', id: `6:${i}`, name: `Photo ${i}`, x: 124, y: 224, annotations: [{ labelMarkdown: `Alt: ${'x'.repeat(400)}`, categoryId: 'c:a11y' }] },
+    ],
+  })));
+  const fits = await scan('The annotations script', fakeFigma(annotated(60), { categories }), '5:1');
+  assert.equal(fits.annotations.native.length, 60);
+  assert.ok(fits.annotations.native.every((a) => a.text.length <= 151));
+  assert.ok(JSON.stringify(fits).length <= 18000);
+  const tooMany = await scan('The annotations script', fakeFigma(annotated(200), { categories }), '5:1');
+  assert.deepEqual([tooMany.annotations, tooMany.groups], [null, []]);
+  assert.match(tooMany.unread[0].reason, /^output limit: 200 annotations are too many for one call/);
+  assert.equal(tooMany.unread[0].scanInstead.length, 200);
 });

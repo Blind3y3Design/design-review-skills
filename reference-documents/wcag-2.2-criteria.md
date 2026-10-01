@@ -1,7 +1,7 @@
 # WCAG 2.2 criteria reference
 
 - Name: WCAG 2.2 criteria reference
-- Version: 0.3
+- Version: 0.4
 - Covers: WCAG 2.2 and WCAG 2.1, Levels A and AA
 
 A Reference Document for `design-review-accessibility`. For each WCAG success criterion it gives what a design-stage review needs: whether the criterion can be judged from a design, what triggers it, how to judge it with its thresholds, and its default Severity. The review skill holds only the procedure. Everything specific to a criterion lives here.
@@ -25,7 +25,7 @@ Each criterion is a `###` heading with its number and name, then these lines:
 - **Removed:** only on an entry that has one, the version that removed it. The criterion applies only to earlier versions.
 - **Group:** `static` (judged from layers and their values), `annotation/prototype` (judged when the annotation or prototype state exists), or `code` (never judged from a design: Coverage gives `needs-code`).
 - **Facts:** the Design Facts groups it's judged from: `colourPairs`, `text`, `structure`, `components` or `annotations`. `none` for `code` criteria.
-- **Trigger:** what in the design brings the criterion into play. With no trigger in the scope, Coverage gives `not-applicable`.
+- **Trigger:** what in the design brings the criterion into play. With no trigger in the scope, Coverage gives `not-applicable`. A trigger that names a **screen** means a frame at least 320 px wide and 320 px high, either on the page or directly inside a Figma section. A smaller frame, such as a card, a component or a set of variants, isn't a screen.
 - **Needs:** for `annotation/prototype` criteria, what must exist before it can be judged: `annotation: <kind>` or `state: <kind>`, where a state is a prototype, variant or frame showing the behaviour. Criteria that need the same annotation name the same kind. `none` for the other groups.
 - **Markers:** for criteria judged only in a section explicitly marked for them, what marks one: the criterion number, a marker word, or a variant value. The first marker word is the section title to suggest when there's none. `none` otherwise.
 - **Default Severity:** where a failure starts. Level A starts at serious, Level AA at moderate, and AAA at advisory.
@@ -50,7 +50,7 @@ Target sizes (2.5.8 and 2.5.5) are in CSS px. The Design Facts give Figma px, wh
 - Since: 2.0
 - Group: annotation/prototype
 - Facts: structure, annotations
-- Trigger: images, icons, charts or other non-text content, including icon-only controls
+- Trigger: images, icons, charts or other non-text content, including icon-only controls. A part of a control that has a visible text label, such as a checkbox's check mark, doesn't trigger it
 - Needs: annotation: text alternative
 - Markers: none
 - Default Severity: serious
@@ -155,7 +155,7 @@ Target sizes (2.5.8 and 2.5.5) are in CSS px. The Design Facts give Figma px, wh
 - Since: 2.0
 - Group: annotation/prototype
 - Facts: structure, annotations
-- Trigger: a screen whose content could be read in more than one order, such as columns, cards, side panels or overlapping layers
+- Trigger: content laid out so it could be read in more than one order: two or more columns, a row or grid of cards, side panels, or a panel laid over other content, such as a floating card or a drawer. A single column read from top to bottom doesn't trigger it, even where a label sits beside its control or a caption sits on an image
 - Needs: annotation: reading order
 - Markers: none
 - Default Severity: serious
@@ -188,7 +188,7 @@ Target sizes (2.5.8 and 2.5.5) are in CSS px. The Design Facts give Figma px, wh
 - Since: 2.1
 - Group: annotation/prototype
 - Facts: structure, annotations
-- Trigger: screens for a device that can rotate: mobile or tablet frames, by the product's target platforms or the frame's size
+- Trigger: a screen narrower than 1024 px, the width of a phone or tablet, unless the product's target platforms leave out phones and tablets
 - Needs: annotation: orientation
 - Markers: none
 - Default Severity: moderate
@@ -216,7 +216,7 @@ Target sizes (2.5.8 and 2.5.5) are in CSS px. The Design Facts give Figma px, wh
 - Since: 2.0
 - Group: static
 - Facts: text, colourPairs, structure
-- Trigger: colour that carries meaning: links in running text, states such as error, required or selected, status indicators, or charts and their legends
+- Trigger: colour that carries meaning: links in running text, states such as error, required, selected or focused, status indicators, or charts and their legends
 - Needs: none
 - Markers: none
 - Default Severity: serious
@@ -307,7 +307,7 @@ Target sizes (2.5.8 and 2.5.5) are in CSS px. The Design Facts give Figma px, wh
 - Since: 2.1
 - Group: static
 - Facts: structure
-- Trigger: a page or screen of content
+- Trigger: a screen
 - Needs: none
 - Markers: 1.4.10, "Reflow"
 - Default Severity: moderate
@@ -335,6 +335,7 @@ Target sizes (2.5.8 and 2.5.5) are in CSS px. The Design Facts give Figma px, wh
 
 - **Threshold:** at least 3:1 against every adjacent colour: `against`, and `inside` for a stroke. No rounding up.
 - **Applies to:** what identifies a component when nothing else does (such as a text field's border), what shows its state (a checkbox's check, a selected tab's indicator, a focus indicator), and the parts of a graphic needed to understand it (an icon with no text label, a chart's lines or segments). A component is identified when one of its edges meets the threshold, such as a white checkbox's border on a white background.
+- **Focus indicators:** one outside the component, such as an outside stroke or a ring around it, is judged against the colour behind the component (`against`). One inside it is judged against the component's own fill (`inside`). The structure facts give a stroke's alignment in the layer's `look`.
 - **Doesn't apply to:** a button's shape when its text identifies it, inactive components, native controls whose look the platform sets and the design hasn't changed, graphics whose particular look is essential, such as a logo or a flag, and containers that group content, such as a card, a panel or the fill behind text.
 - **Root Cause:** the failing colour's source.
 - **Evidence:** `<element colour> on <adjacent colour> = <ratio>:1, needs 3:1`, naming the element.
@@ -484,7 +485,7 @@ Exceptions: real-time events such as an auction, limits essential to the activit
 - Since: 2.0
 - Group: annotation/prototype
 - Facts: structure, annotations
-- Trigger: a frame that's a whole web page or app screen
+- Trigger: a screen: a whole web page or app screen
 - Needs: annotation: page title
 - Markers: none
 - Default Severity: serious
@@ -498,7 +499,7 @@ Exceptions: real-time events such as an auction, limits essential to the activit
 - Since: 2.0
 - Group: annotation/prototype
 - Facts: structure, annotations
-- Trigger: a screen with more than one focusable component
+- Trigger: more than one focusable component in the scope. The states of one component, such as its variants, count as one
 - Needs: annotation: reading order
 - Markers: none
 - Default Severity: serious
@@ -531,7 +532,7 @@ Exceptions: real-time events such as an auction, limits essential to the activit
 - Since: 2.0
 - Group: annotation/prototype
 - Facts: text, structure, annotations
-- Trigger: a page within a set of pages, unless it's the result of a process or a step in one, such as a checkout step
+- Trigger: a screen that's one page in a set of pages, such as an article or a product page. A step in a process, such as a checkout or order review step, or the page that ends one, doesn't trigger it
 - Needs: annotation: ways to find the page
 - Markers: none
 - Default Severity: moderate
@@ -562,14 +563,14 @@ Exceptions: real-time events such as an auction, limits essential to the activit
 - Level: AA
 - Since: 2.0
 - Group: static
-- Facts: structure, components
+- Facts: structure
 - Trigger: focusable components
 - Needs: none
 - Markers: 2.4.7, "Focus states", a variant value `Focus` or `Focused`
 - Default Severity: moderate
 - W3C: https://www.w3.org/TR/WCAG22/#focus-visible
 
-**How to judge.** Judged only in a section marked for it, or on a component whose variants mark it. Compare each focused state with the same component's default state.
+**How to judge.** Judged only in a section marked for it, or on a component whose variants mark it. Compare each focused state with the same component's default state, by their fills, strokes and effects.
 
 - **Fails:** a focused state that looks the same as the default, or a focusable component in the marked section with no focused state.
 - **Contrast** of the focus indicator is judged under 1.4.11, not here.
@@ -691,7 +692,7 @@ Exceptions: real-time events such as an auction, limits essential to the activit
 - Since: 2.0
 - Group: annotation/prototype
 - Facts: annotations
-- Trigger: a frame that's a whole web page or app screen
+- Trigger: a screen: a whole web page or app screen
 - Needs: annotation: language
 - Markers: none
 - Default Severity: serious
@@ -725,7 +726,7 @@ Exceptions: real-time events such as an auction, limits essential to the activit
 - Default Severity: serious
 - W3C: https://www.w3.org/TR/WCAG22/#on-focus
 
-**How to judge.** Judge prototype interactions or annotations that say what happens on focus. Focusing a component doesn't change the context: it doesn't submit a form, open a page or window, move focus elsewhere, or change content in a way that alters the page's meaning. Fix: make the change happen on an explicit action, such as a button.
+**How to judge.** Judge prototype interactions or annotations that say what happens on focus. A focused variant shows only how focus looks, not what it does. Focusing a component doesn't change the context: it doesn't submit a form, open a page or window, move focus elsewhere, or change content in a way that alters the page's meaning. Fix: make the change happen on an explicit action, such as a button.
 
 ### 3.2.2 On Input
 
@@ -784,7 +785,7 @@ Exceptions: real-time events such as an auction, limits essential to the activit
 - Since: 2.2
 - Group: static
 - Facts: structure, text
-- Trigger: help: contact details, a contact form or chat, or a self-help link such as FAQs
+- Trigger: help: contact details, a contact form or chat, or a link to help, such as FAQs or a help centre. Other links, such as to a policy, aren't help
 - Needs: none
 - Markers: 3.2.6, "User flow"
 - Default Severity: serious
