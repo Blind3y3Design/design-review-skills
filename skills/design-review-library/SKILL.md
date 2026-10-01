@@ -1,6 +1,6 @@
 ---
 name: design-review-library
-description: Design system adherence review of Figma frames. Judges how a design uses the team's Design System Layers, such as raw values where a variable or style could be bound, or assets from outside the stack, and reports Findings and Coverage. Use when the user asks for a design system adherence, design token or variable review of a Figma design.
+description: Design system adherence review of Figma frames. Judges how a design uses the team's Design System Layers, such as raw values where a variable or style could be bound, assets from outside the stack, detached instances and overridden components, and reports Findings and Coverage. Use when the user asks for a design system adherence, design token, variable or component review of a Figma design.
 metadata:
   version: "0.1.0-dev"
 ---
@@ -54,6 +54,8 @@ Judge every check in the baseline, and give each exactly one Coverage entry, `{ 
 2. `not-applicable` when its trigger isn't in the scope. Add a `note` saying so.
 3. `judged` otherwise, following its How to judge. When `unread` lists part of a group it needs, such as gradient paints, add a `note` saying what wasn't read.
 
+Judge components from the components facts alone. A frame is a detached instance when, and only when, the facts' `detached` list has it: the scanner reads that from the frame's `detachedInfo`, which records the component it came from. An instance's changes are the ones the facts' `overrides` list, each with how it was made. A layer's name, look or structure never shows either.
+
 Each Finding its How to judge calls for is written this way:
 
 - **Root Cause** and **evidence,** as the check's How to judge says. A Root Cause is written `node:<id>` for a layer, or `variable:<key>`, `style:<key>` or `component:<key>` for an asset. Give one Finding per Root Cause per check, with every layer it covers in `locations`.
@@ -61,7 +63,7 @@ Each Finding its How to judge calls for is written this way:
 - **Certainty:** the check's Certainty line.
 - **Title:** one line naming the layer or component and what's wrong.
 - **Fix:** as the check's How to judge says, with tokens only from Token suggestions below.
-- **Locations:** `{ "kind": "node", "fileKey", "nodeId", "layerPath" }` for each layer in the facts. A library asset or local asset that the Finding is about goes first: a component as `{ "kind": "component", "key", "name", "library" }` (for a set, the set's key and name), a style as `{ "kind": "style", "key", "name", "library" }`, or a variable as `{ "kind": "variable", "collection", "name", "library" }`, with `collection` its collection's name. Its `library` is as Attributing an asset gives it.
+- **Locations:** `{ "kind": "node", "fileKey", "nodeId", "layerPath" }` for each layer in the facts. A library asset or local asset that the Finding is about goes first, unless the check's How to judge orders them otherwise: a component as `{ "kind": "component", "key", "name", "library" }` (for a set, the set's key and name), a style as `{ "kind": "style", "key", "name", "library" }`, or a variable as `{ "kind": "variable", "collection", "name", "library" }`, with `collection` its collection's name. Its `library` is as Attributing an asset gives it.
 - **Standard:** `{ "source": "Design system baseline", "ref": "<check id>", "url": "<the baseline's location>" }`, leaving out `url` when the location isn't a link.
 
 Judging is done when every check in the baseline has one Coverage entry, and every Finding that each check's How to judge calls for is written.

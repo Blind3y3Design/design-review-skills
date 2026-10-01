@@ -42,7 +42,7 @@ Return the Design Facts to the calling skill: a JSON array holding one result pe
 
 ## Design Facts format
 
-`factsVersion` 0.3. Each result holds:
+`factsVersion` 0.4. Each result holds:
 
 - `factsVersion`, and `runtime` (added by you).
 - `fileKey`: the file's key, or null when the runtime doesn't give it.
@@ -96,7 +96,7 @@ How each visible layer in the scope uses variables and styles, and the raw value
 
 ### Components
 
-Each visible instance in the scope, grouped by its main component. Hidden instances and instances at zero opacity are skipped.
+Each visible instance in the scope, grouped by its main component, the frames detached from an instance, and what each instance changes from its main component. Hidden layers and layers at zero opacity are skipped. Each main component is read once, however many instances use it.
 
 - `instances`: how many instances were read.
 - `components[]`: one per main component, in the order first found: `{ key, name, set, remote, library, instances, nested, nodes }`.
@@ -106,6 +106,18 @@ Each visible instance in the scope, grouped by its main component. Hidden instan
   - `instances`: how many of its instances are placed in the scope, outside any other instance. `nested`: how many sit inside another instance, and so come with that instance's component.
   - `nodes[]`: up to 10 of its instances, each `{ id, path }`, plus `inside`, the id of the outermost instance a nested one sits in.
 - An instance whose main component can't be read counts in `instances`, and `unread` says so.
+- `detached[]`: each frame outside any instance whose `detachedInfo` says it was detached from an instance: `{ node: { id, path }, source }`.
+  - `source`: the component it came from, as `detachedInfo` names it: `{ type, key, name, set, remote }`, with `type` `library` or `local`, and `id` for a local one. A library's component that no instance in the scope uses is imported by key to read it, which adds nothing to the file. When the component can't be read, its `name`, `set` and `remote` are null, and `unread` says why.
+- `overrides[]`: each layer that an instance changes from its main component, as the outermost instance's `overrides` list it, plus each nested instance swapped for another component: `{ node: { id, path }, instance, detached, changes }`.
+  - `instance`: `{ id, name, component }` of the outermost instance, which holds the change, with its main component's key. `detached`: the id of the detached frame the instance sits in, when there is one.
+  - `changes[]`: one per property changed, each `{ property, fields, through, uncertain, values }`, the last three only when they apply.
+  - `property`: what the change is to. A style property: `fill`, `stroke`, `effect`, `radius`, `spacing` or `text` (as in the bindings facts), `opacity` (opacity or blend mode) or `layout` (auto-layout direction, alignment, wrapping or clipping). Or else `size` (width, height or how it's sized), `content` (text content or a link), `visible`, `component` (a nested instance swapped), `variables` (bound variables changed, when the facts can't say on which property), or `other` (any other field). A layer's new name isn't a change, so it isn't listed.
+  - `fields`: the Figma fields the instance's `overrides` list, such as `fills` or `boundVariables`. A swap isn't in `overrides`, so its `fields` is empty: it's found by comparing the nested instance's component with the one its main component has there.
+  - `through`: how a change came about when it wasn't made on the property itself. A component property's name, such as `Label` or `Icon`, when the layer's field is bound to one. `swap`, when Figma carried the main component's own change over to a component swapped in: its main component changes the same fields to the same values on the instance it has there.
+  - `uncertain`: why the facts can't tell how the change came about, such as a change inside a nested instance whose component couldn't be read.
+  - `values`: what the layer has now. A fill or stroke gives each paint, `{ value, variable }` or `{ value, style }` when it's bound, a radius, spacing or opacity `{ field, value, variable }`, text `{ value, style }`, an effect `{ value }` or `{ style }`, and layout `{ field, value }`. A `variable` or `style` is `{ key, name }`, and values are written as in the bindings facts. A size gives `{ width, height, component: { width, height }, sizing: { horizontal, vertical } }`: the layer's size, its main component's, and whether each axis is `FIXED`, `HUG` or `FILL`. A swap gives `{ key, name, was: { key, name } }`.
+
+  A hugging instance takes a new size whenever its content changes, such as through a text property, so a `size` change on its own doesn't mean anyone resized it.
 
 ### Text
 
@@ -147,7 +159,7 @@ Comments aren't read. When the runtime can't read annotations, `unread` says why
 ```js
 const NODE_ID = 'NODE_ID';
 
-const FACTS_VERSION = '0.3';
+const FACTS_VERSION = '0.4';
 const LIMIT = 18000;
 const SAMPLES = 10;
 const out = { factsVersion: FACTS_VERSION, fileKey: figma.fileKey || null, scope: null, groups: ['colourPairs'], unread: [], colourPairs: null };
@@ -377,7 +389,7 @@ return out;
 ```js
 const NODE_ID = 'NODE_ID';
 
-const FACTS_VERSION = '0.3';
+const FACTS_VERSION = '0.4';
 const LIMIT = 18000;
 const SAMPLES = 10;
 const out = { factsVersion: FACTS_VERSION, fileKey: figma.fileKey || null, scope: null, groups: ['bindings'], unread: [], bindings: null };
@@ -630,7 +642,7 @@ return out;
 ```js
 const NODE_ID = 'NODE_ID';
 
-const FACTS_VERSION = '0.3';
+const FACTS_VERSION = '0.4';
 const LIMIT = 18000;
 const out = { factsVersion: FACTS_VERSION, fileKey: figma.fileKey || null, scope: null, groups: ['text'], unread: [], text: null };
 const childIds = (n) => ('children' in n ? n.children.map(c => c.id) : []);
@@ -718,7 +730,7 @@ return out;
 ```js
 const NODE_ID = 'NODE_ID';
 
-const FACTS_VERSION = '0.3';
+const FACTS_VERSION = '0.4';
 const LIMIT = 18000;
 const out = { factsVersion: FACTS_VERSION, fileKey: figma.fileKey || null, scope: null, groups: ['structure'], unread: [], structure: null };
 const childIds = (n) => ('children' in n ? n.children.map(c => c.id) : []);
@@ -814,7 +826,7 @@ return out;
 ```js
 const NODE_ID = 'NODE_ID';
 
-const FACTS_VERSION = '0.3';
+const FACTS_VERSION = '0.4';
 const LIMIT = 18000;
 const SAMPLES = 10;
 const out = { factsVersion: FACTS_VERSION, fileKey: figma.fileKey || null, scope: null, groups: ['components'], unread: [], components: null };
@@ -1143,7 +1155,7 @@ return out;
 const NODE_ID = 'NODE_ID';
 const KITS = [];
 
-const FACTS_VERSION = '0.3';
+const FACTS_VERSION = '0.4';
 const LIMIT = 18000;
 const NEAR = 200;
 const out = { factsVersion: FACTS_VERSION, fileKey: figma.fileKey || null, scope: null, groups: ['annotations'], unread: [], annotations: null };
