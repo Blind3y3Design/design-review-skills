@@ -7,7 +7,7 @@ A published skill is the repo's `SKILL.md` exactly as it stands in a release: no
 - This fully supersedes ADR 0002 and removes ADR 0003's inlining fallback.
 - **Reference Documents.** Each skill's default Reference Document link points to the public repo, pinned to that release's tag, so a skill reads the version of the document it was released with. A team's own documents, such as a layer's rules document, are pointed to from its Review Profile, never by editing a skill. If `curl` stops working (it's undocumented, ADR 0005), a team copies the document onto a page in a shared Figma file and points to it from the profile.
 - **No default Review Profile** in a published copy: #7's lookup step 4 is removed. In Figma the profile is a page in the file (#12).
-- **One version for the whole set,** following semantic versioning, recorded in each skill's `metadata`. Each release is a git tag. `schemaVersion` and `factsVersion` change only with their formats. Each report records the set's version, and the Orchestrator warns in its report when a skill it invokes is at a different version.
+- **One version for the whole set,** following semantic versioning, recorded in each skill's `metadata` and in a `Version … of the design review skills` line in its body, because an agent strips the frontmatter when it loads a skill. Each release is a git tag. `schemaVersion` and `factsVersion` change only with their formats. Each report records the set's version, and the Orchestrator warns in its report when a skill it invokes is at a different version.
 - **A release:**
   1. The smoke test passes in Figma Design's agent and in an external agent.
   2. The version and the pinned Reference Document links are set in every skill in the set, committed and tagged.
