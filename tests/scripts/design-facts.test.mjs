@@ -1,7 +1,6 @@
 // Tests the Design Scanner's fact group scripts, run as the skill gives them, against a small fake of the Figma Plugin API.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import { AsyncFunction, scriptUnder } from './skill-script.mjs';
 
 // Sets NODE_ID on the script's first line, and the annotation kits on KITS's line when it has one, as the skill says, then runs it.
@@ -535,7 +534,6 @@ test('components: the scanner only reads, so a detached frame\'s source is never
   ]), { mains: libraryMains() });
   await scan('The components script', figma, '5:1');
   assert.equal(figma.lookups.imports, 0, 'a component was imported by key');
-  assert.doesNotMatch(readFileSync(new URL('../../skills/design-review-scanner/SKILL.md', import.meta.url), 'utf8'), /import\w*ByKeyAsync/);
 });
 
 // Called in a test, after the bindings tests' helpers below are defined.

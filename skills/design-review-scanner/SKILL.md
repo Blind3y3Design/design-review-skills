@@ -107,7 +107,7 @@ Each visible instance in the scope, grouped by its main component, the frames de
   - `nodes[]`: up to 10 of its instances, each `{ id, path }`, plus `inside`, the id of the outermost instance a nested one sits in.
 - An instance whose main component can't be read counts in `instances`, and `unread` says so.
 - `detached[]`: each frame outside any instance whose `detachedInfo` says it was detached from an instance, in the scope or holding the scanned node: `{ node: { id, path }, source }`.
-  - `source`: the component it came from, as `detachedInfo` names it: `{ type, key, name, set, remote, library }`, with `type` `library` or `local`, and `id` for a local one. The scanner only reads, so it names the component only when an instance in the scope uses it, and gives `name`, `set` and `remote` as read from that instance's main component, with `library` as for `components`. Otherwise `name`, `set` and `remote` are null, and `key` is the library component's key from `detachedInfo`, or null for a local one. A null `name` leaves `unread` empty: it says the frame is detached from a component the scope doesn't show.
+  - `source`: the component it came from, as `detachedInfo` names it: `{ type, key, name, set, remote, library }`, with `type` `library` or `local`, and `id` for a local one. The scanner only reads, so it names the component only when an instance in the scope uses it, and gives `name`, `set` and `remote` as read from that instance's main component, with `library` as for `components`. Otherwise `name`, `set` and `remote` are null, and `key` is the library component's key from `detachedInfo`, or null for a local one. With a null `name`, `unread` stays empty: the frame is detached from a component the scope doesn't show.
 - `overrides[]`: each layer that an instance changes from its main component, as the outermost instance's `overrides` list it, plus each nested instance swapped for another component: `{ node: { id, path }, instance, detached, changes }`. A scanned node inside an instance also gets the changes on the layers holding it.
   - `instance`: `{ id, name, component }` of the outermost instance, which holds the change, with its main component's key. `detached`: the id of the detached frame the instance sits in, when there is one.
   - `changes[]`: one per property changed, each `{ property, fields, through, carried, uncertain, values }`, the last four only when they apply.
@@ -910,8 +910,8 @@ try {
   for (const { n, path } of detachedFrames) {
     const info = n.detachedInfo, local = info.type === 'local';
     const main = local ? mainsById.get(info.componentId) : mainsByKey.get(info.componentKey);
-    const named = main ? readMain(main) : { key: local ? null : info.componentKey, name: null, set: null, remote: null };
-    detached.push({ node: { id: n.id, path }, source: { type: info.type, ...(local ? { id: info.componentId } : {}), key: named.key, name: named.name, set: named.set, remote: named.remote, library: null } });
+    const read = main ? readMain(main) : { key: local ? null : info.componentKey, name: null, set: null, remote: null };
+    detached.push({ node: { id: n.id, path }, source: { type: info.type, ...(local ? { id: info.componentId } : {}), key: read.key, name: read.name, set: read.set, remote: read.remote, library: null } });
   }
 
   // Overrides: what each outermost instance changes from its main component, as its `overrides` list it, by layer and property.
