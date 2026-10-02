@@ -93,7 +93,7 @@ Use the skill `design-review-report-writer` in `full report` mode, handing over 
 - `run`: today's `date`, the `scope` (`fileKey`, and `nodes` as `{ id, name }`), the `runtime`, `setVersion` from this skill's Version line, `factsVersion` and `factGroups` from the scan, and `settings`: every report's `run.settings` joined into one object, or null when each is null.
 - `profile`: the found result's `profile`. For a profile created in a first run, the `profile` you built (First run, question 8).
 - `references`: every report's references, each once.
-- `findings`: every report's Findings, each as it came, keeping its axis and id. The Report Writer links those on different axes that share a Root Cause.
+- `findings`: every report's Findings, each as it came, keeping its axis and id. The Report Writer links those on different axes that share a Root Cause and a property.
 - `coverage`: every report's Coverage entries, and the entry for each skipped axis, whether step 3 or step 5 skipped it.
 - `notes`: every report's notes, and your own, such as an axis left out because it isn't set up, the note for a failed Review Skill, and the version warning, if Versions below gives one.
 - `reportSettings`: the profile's Report settings section, as `{ "<key>": "<value>" }`, or null.

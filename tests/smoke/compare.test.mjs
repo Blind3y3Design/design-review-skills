@@ -369,6 +369,14 @@ test('each expected case passes against itself and fails when any compared field
       (r) => { entry(r, '1.4.3').status = 'not-readable'; },
       (r) => { r.coverage = r.coverage.filter((c) => c.axis !== 'design-system'); },
     ],
+    'X-02': [
+      (r) => { r.findings.find((f) => f.axis === 'accessibility').relatedFindings = ['design-system/raw-value/node:38:9']; },
+      (r) => { r.findings.find((f) => f.id === 'design-system/raw-value/node:38:9').relatedFindings = ['accessibility/1.3.2/node:38:9']; },
+      (r) => { r.findings.find((f) => f.axis === 'accessibility').severity = 'moderate'; },
+      (r) => { r.findings = r.findings.filter((f) => f.id !== 'design-system/raw-value/node:38:10'); },
+      (r) => { entry(r, '1.3.2').status = 'judged'; },
+      (r) => { entry(r, 'raw-value').status = 'not-applicable'; },
+    ],
     'DS-07': [
       (r) => { r.findings[0].id = 'design-system/unattributed/component:4bf5425db9d53db51af6a3e411b0b4c24d0fdc89'; },
       (r) => { r.findings[0].certainty = 'likely'; },
