@@ -26,7 +26,7 @@ Use the skill `design-review-profile` to find the Review Profile, once for the w
 
 - **found:** keep the whole result. Its `text` says which axes the profile covers, as Axes below describes, and every Review Skill in the run gets it.
 - **unreadable:** the team has a profile this run can't see, so stop. Reply with the location, the reason, and that the review didn't run. Write no report.
-- **none:** the team has no profile, so this is a first run. Go to First run and ask question 1, naming where the lookup looked (`searched`).
+- **none:** the team has no profile, so this is a first run. Go to First run, which says what comes before question 1.
 
 The profile is found when the lookup has handed back `found`, or question 1 has been answered and the run has gone on or stopped.
 
@@ -40,7 +40,7 @@ This step is done when the Review Skill of every axis that may run is loaded wit
 
 ## 3. Settle the run
 
-Settle everything now, asking what's missing in one message. Nothing is asked once the review starts.
+Settle everything now, asking what's missing in one message. Nothing is asked once the review starts. The set-up questions of First run and Setting up an axis come in messages of their own, because they read the scan.
 
 - **Axes:**
   - **all:** every axis the profile covers
@@ -72,7 +72,7 @@ The run is settled when the chosen axes, the scope and the runtime are known, ev
 
 ## 4. Scan once
 
-Use the skill `design-review-scanner` once for the whole run. Give it the scope's node ids, the runtime, every fact group the runnable Review Skills' `Fact groups` lines name, and whatever else those lines say to give it. Every Review Skill judges from these Design Facts, so the design is read once. When First run or Setting up an axis scanned already, because set-up reads the Design Facts, keep that scan and skip this step. The scan is done when the scanner has handed back the Design Facts for every node in the scope.
+Use the skill `design-review-scanner` once for the whole run. Give it the scope's node ids, the runtime, every fact group the runnable Review Skills' `Fact groups` lines name, and whatever else those lines say to give it. Every Review Skill judges from these Design Facts, so the design is read once. First run and Setting up an axis scan at this step's inputs as soon as the chosen axes are known, because a set-up mode reads the Design Facts, and add the `structure` group in a first run; step 4 then keeps that scan and skips itself. The scan is done when the scanner has handed back the Design Facts for every node in the scope.
 
 ## 5. Run the Review Skills
 
@@ -104,7 +104,7 @@ Only this call delivers a report, even when every runnable axis was skipped as f
 
 ## First run
 
-With no Review Profile, you build one with the designer, then run the review against it. You ask seven questions, numbered 1 to 5, 7 and 8, one in each message, each pre-filled from the file where you can, and each waits for its answer before the next. Question 6, the research source, isn't asked in this release, because research alignment isn't available in it. Every question comes before the review runs. The Review Skills ask 4 and 5 in their `set up` mode, and you ask the rest.
+With no Review Profile, you build one with the designer, then run the review against it. You ask seven questions, numbered 1 to 5, 7 and 8, one in each message, each pre-filled from the file where you can. A question is done when the user has answered it, and the next waits for that. Question 6, the research source, isn't asked in this release, because research alignment isn't available in it. Every question comes before the review runs. The Review Skills ask 4 and 5 in their `set up` mode, and you ask the rest.
 
 **Two things come before question 1.** Take the scope from the user's request, as step 3 describes, and ask for it when the request names no frames: that isn't one of the seven. Then load the Review Skills as step 2 describes, every one in the Axes table that is installed, so that a run with none of them stops before it asks anything.
 
@@ -112,24 +112,22 @@ With no Review Profile, you build one with the designer, then run the review aga
    - **A profile to use:** run the Profile Finder with it as the profile given at run time, as step 1 describes. `found` goes on to step 2 as a found profile, and step 3 also asks whether to save a pointer to it (Saving a profile). `unreadable` stops the run as step 1 does, and adds that you won't create another profile, because two would then stand for the same work.
    - **Set one up:** go on to question 2.
    - **Neither:** stop. Reply that there is nothing to judge a full review against, that each review can run on its own without a profile, such as `/design-review-accessibility`, and that it asks what to check against each time. Write no report.
-2. **Which reviews.** List each axis whose Review Skill is loaded and has a `Set up` line, all ticked. List research alignment as "not available in this release", and any other axis whose skill isn't loaded as "not installed: install `<skill>` to set it up". These **chosen axes** are the profile's axes. When no axis can be set up, stop as step 2 does. Then scan once (below).
+2. **Which reviews.** List each axis whose Review Skill is loaded and has a `Set up` line, all ticked. List research alignment as "not available in this release", and any other axis whose skill isn't loaded as "not installed: install `<skill>` to set it up". The axes left ticked are the run's chosen axes, and the profile's. When no axis can be set up, stop as step 2 does. Then scan (step 4).
 3. **Name and owner.** Ask what the profile is called and who owns it, a person or a team its readers can ask. For example: "What should the profile be called, and who owns it? Something like "Checkout team profile", owned by the Checkout design team." Take no owner as `not named`.
 4. **Design System Layers,** when design system adherence is chosen. Use the skill `design-review-library` in `set up` mode. Give it the scope, the runtime and the Design Facts.
 5. **Accessibility target,** when accessibility is chosen. Use the skill `design-review-accessibility` in `set up` mode. Give it the scope and the runtime.
 7. **Product context.** Ask where the product runs, pre-filled with `Target platforms: Web` and, as `Supported viewport widths`, the distinct widths of the scope's top-level frames (the structure facts' `frame.width`), smallest first, such as `360px, 1440px`. For example: "From your frames, I'd say this is a web product at 360px and 1440px wide. Is that where it runs?"
-8. **Review and save.** Write the profile as Profile layout describes, and show all of it in the chat. Ask whether to save it, and where (Saving a profile). On a change to an answer, go back to the question that asked it. Saving ends the first run. When the user won't save it, stop: say nothing was saved, and that each review can run on its own. When no place takes the save, stop the same way, with the reason for each, and say that the profile in the chat can be saved by hand as a page named "Review Profile".
+8. **Review and save.** Write the profile as Profile layout describes, and show all of it in the chat. Ask whether to save it, and where (Saving a profile). On a change to an answer, go back to the question that asked it. Saving ends the first run. When the user won't save it, or no place takes the save, stop as question 1 does when the user wants neither, saying what happened and, for a failed save, that the profile in the chat can be saved by hand as a page named "Review Profile".
 
 A Review Skill's `set up` mode hands back its section and notes, or says it can't set the axis up, such as design system adherence with no library in the design. Leave that axis out of the profile, say why, and go on with the others. When none is left, stop.
-
-**Scan once.** After question 2, use the skill `design-review-scanner` as step 4 describes, for the chosen Review Skills' `Fact groups` and the `structure` group. The set-up modes and the review judge from this one scan.
 
 The first run is done when the profile is saved. Go on to step 3 with it as the found result: `{ "result": "found", "from": "run time", "pointers": [], "profile": { "name", "location", "lastUpdated" }, "text": "<the profile's text>" }`, where `location` is where you saved it and `lastUpdated` is today's date. The chosen axes are the profile's axes, and the user has agreed to its settings, so no Review Skill asks about them again. Step 3 then asks only for what the user hasn't said, such as the run-time settings.
 
 ## Setting up an axis
 
-A found profile that doesn't cover a chosen axis is set up in step 3 once the user has chosen it, with the same set-up mode a first run uses. Scan once as First run describes, if you haven't, for the chosen axes. Use the Review Skill in `set up` mode, and ask the user: "Add this <section name> section to the "<name>" profile, or use it for this run only?"
+A found profile that doesn't cover an axis the user chose is set up in step 3, with the same set-up mode a first run uses. Scan as step 4 describes, if you haven't. Use the Review Skill in `set up` mode, then ask the user: "Add this <section name> section to the "<name>" profile, or use it for this run only?"
 
-- **Add:** save the profile with the section in its place (Saving a profile), and set its `Last updated` to today's date. When you can't write the change, show the section in the chat and name the profile's owner, from its Identity section, as the person to add it. The review still uses the section.
+- **Add:** save the profile with the section in its place (Saving a profile), and set its `Last updated` to today's date. When Saving a profile can't write the change, show the section in the chat and name the profile's owner, from its Identity section, as the person to add it. The review still uses the section.
 - **This run only:** change nothing in the profile, and add a note: "The <axis> settings come from set-up answers for this run only, not from the profile."
 
 Either way, the Review Skills receive the profile's text with the section in it. The set-up is done when the section is added or shown, or the user chose this run only.
@@ -148,7 +146,7 @@ The profile's `location` is where it was saved: the page's link, the file's path
 
 **A pointer** is one line, `Review Profile: <location>`. Offer to save one when the user pointed to a profile in question 1: in Figma Design's agent, as the "Review Profile" page, with the pointer line as `TEXT`; in an external agent, as the page, or as a line in `AGENTS.md`. Ask it with step 3's other questions. On no, save nothing.
 
-A save that fails because of edit access or a tool is not used: say why, and offer the next place. A save is done when the profile is written and the `location` is known, or every place has failed.
+A save that fails because of edit access or a tool is not used: say why, and offer the next place for a new profile; for a change to a found profile, say why and name the profile's owner. A save is done when the profile is written and the `location` is known, or every place has failed.
 
 ## Profile layout
 
@@ -161,7 +159,7 @@ You own the profile's layout, so every profile reads the same to the skills and 
 | `Accessibility` | `design-review-accessibility` | its own |
 | `Product context` | you: `Target platforms`, `Supported viewport widths` | Where the product runs, used by checks that depend on screen size. |
 | `Report settings` | you: `Report location: none (a report page in the Figma file)`, `Annotate layers: off` | Where reports are saved, and whether Findings are marked on layers. |
-| `Severity Overrides` | the team, by hand: not asked, and not written on a first run | The starting Severity this team sets for a type of rule, in place of the review's default. No override lowers a Locked Rule breach below serious, and one that sets critical names the core task it's tied to. |
+| `Severity Overrides` | the team, by hand: not asked, and not written on a first run. A line reads `<type of rule>: <Severity>`, with `, core task: <task>` when it sets critical | The starting Severity this team sets for a type of rule, in place of the review's default. |
 
 The text opens with `# Review Profile: <name>`, a blank line, `Profile version: 0.1`, and a blank line. Put a section the profile lacks before the first section that follows it in this order, or last. Put each Review Skill's section in as it handed it back, without editing its settings.
 

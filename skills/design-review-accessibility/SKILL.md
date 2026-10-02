@@ -190,7 +190,7 @@ Set up is done when the user has agreed to the target and you've handed the sect
 
 ## Review Profile
 
-A team's Review Profile names the standards its reviews are judged against. This skill uses only the profile's **Accessibility** and **Product context** sections and the Severity Overrides about WCAG, and hands its **Report settings** section to the Report Writer, which saves the report. It never creates or changes a profile, nor offers to.
+A team's Review Profile names the standards its reviews are judged against. This skill uses only the profile's **Accessibility** and **Product context** sections and the Severity Overrides about WCAG, and hands its **Report settings** section to the Report Writer, which saves the report. It never creates or changes a profile, nor offers to: in `set up` mode it hands a section to the Orchestrator, which writes it.
 
 ### Finding the profile
 
