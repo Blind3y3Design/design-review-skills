@@ -13,7 +13,7 @@ A skill that evaluates a design along exactly one Review Axis.
 _Avoid_: Checker, auditor, sub-skill
 
 **Orchestrator**:
-The skill that runs several Review Skills in one review, choosing them from the Review Profile and the user's request, and merges their Findings into one report.
+The skill that runs several Review Skills in one review, choosing them from the Review Profile and the user's request, and merges their Findings into one report. With no Review Profile, it first creates one with the designer (a first run).
 _Avoid_: Meta skill, meta agent, coordinator
 
 **Report Writer**:
@@ -29,7 +29,7 @@ The skill that finds the team's Review Profile and hands back its text, or says 
 _Avoid_: Profile loader, config reader
 
 **Figma Writer**:
-The skill that writes a review's output into the reviewed Figma file, as a report frame or as annotations on layers, exactly as the Report Writer hands it over. The Report Writer decides what to write and where.
+The skill that writes into the reviewed Figma file, exactly as its caller hands it over: a report frame or annotations on layers for the Report Writer, and a Review Profile page for the Orchestrator. The caller decides what to write and where.
 _Avoid_: Annotator, exporter
 
 **Design Facts**:
@@ -64,6 +64,10 @@ Material that strengthens a Finding by pointing to another source of the same pr
 **Review Profile**:
 A reusable document, shareable across files and teams, naming the standards a review is judged against: its Design System Layers, research sources, accessibility target, product context and any Severity overrides. An Orchestrator run always uses exactly one Review Profile. A Review Skill run on its own may use one or none.
 _Avoid_: Config, settings, ruleset
+
+**Set-up mode**:
+How a Review Skill, used by the Orchestrator, asks its own questions for a new Review Profile and hands back its section of it, judging nothing.
+_Avoid_: Wizard step, onboarding mode
 
 **Reference Document**:
 A document of standards content that a Review Skill reads from a location it is pointed to rather than carrying inside itself, such as the WCAG criteria and how to judge each from a design, or a Design System Layer's rules written by the team that owns it.
