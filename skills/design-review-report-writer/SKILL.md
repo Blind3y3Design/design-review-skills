@@ -31,7 +31,7 @@ The calling skill hands over:
 1. **Check the hand-over.** Every Finding has each required field, and every axis, Severity, Certainty and Coverage status is one from the lists below, and every `skipped` entry has a `reasonCode` from the list under Coverage entries. If anything is missing or out of range, write no report. Tell the calling skill which Finding or entry and which field, so it can hand over again.
 2. **Give each Finding its id** from its `rootCause`, as Finding ids below describes, and each `node` location its `url`. The `rootCause` itself stays out of the report.
 3. **Write the prose** as Writing rules below describes, so the JSON and the Markdown carry the same words.
-4. **Link Findings across axes.** Findings on different axes that share a Root Cause stay separate, and each lists the ids of the others in its `relatedFindings`.
+4. **Link Findings across axes,** as Linking Findings below describes.
 5. **Write the report JSON** as described below. In `json only` mode, stop here, and hand back only the `notes`, if any, as a list headed "Notes:", then the report JSON in one fenced `json` block.
 6. **Write the Markdown,** in the layout below, ending with the JSON in one fenced `json` block.
 7. **Deliver** the report, as Delivery below describes: mark its Findings on their layers when annotations are on, save it, then show the whole report in the chat.
@@ -77,6 +77,24 @@ Build the id from exactly these parts, so the same Root Cause always gives the s
 
 The Markdown shows a **short id**: the axis's short name, the ref, and the Root Cause without its kind, cut to its first 8 characters. For example, `a11y/1.4.3/5:5`.
 
+## Linking Findings
+
+Findings are **joined** when one fix clears them. That takes a shared Root Cause **and** the same **property** of it. A frame's raw fill and its missing reading-order annotation share the frame but need two fixes, so they stay apart.
+
+A Finding's **properties** are the attributes of its Root Cause that its evidence is about, read from its title, evidence and standard:
+
+- **A visual attribute:** `fill`, `stroke`, `effect`, `radius`, `spacing`, `text` (typeface, size, weight, line height) or `size`. A raw value written as `fill #8A8A8A` is about `fill`, and a Finding with several raw values is about each. An override is about the property it overrides, and a resize about `size`. A contrast Finding is about the colour it measures: the `fill` of a text layer, or the `fill` or `stroke` the evidence names for a control or graphic.
+- **The asset itself:** `asset`, for which library a component, style or variable comes from, or whether an instance is detached.
+- **Any other attribute the evidence names,** such as reading order, a text alternative or a layer's name, under its plain name.
+
+Two Findings with the same Root Cause are joined when they have a property in common. A Finding whose evidence names no property is joined to none. Joins carry across: Findings joined through a third are in one group.
+
+For example, the body text's raw `fill #8A8A8A` and its 1.4.3 contrast failure measured on that fill are both about `fill`, so they are joined. The frame's raw `fill` and its 1.3.2 reading-order Finding are about `fill` and reading order, so they are not.
+
+A Finding's `relatedFindings` holds the ids of the Findings joined to it on other axes, and each of those lists it back. Fixes by Root Cause also groups Findings joined on one axis.
+
+Linking is done when every pair of Findings with the same Root Cause has been checked for a common property, and every pair on different axes that has one lists the other both ways.
+
 ## Report JSON
 
 `schemaVersion` 0.2. One object with these fields, in this order:
@@ -104,7 +122,7 @@ The Markdown shows a **short id**: the axis's short name, the ref, and the Root 
 | `evidence` | yes | What was read or measured, with the measurement's inputs and result |
 | `fix` | no | What to change |
 | `supportingEvidence` | no | Other sources for the same problem |
-| `relatedFindings` | no | Ids of Findings on other axes with the same Root Cause |
+| `relatedFindings` | no | Ids of Findings on other axes joined to this one, as Linking Findings describes |
 
 Leave out an optional field that has nothing in it.
 
@@ -137,7 +155,7 @@ In this order. Leave out a section that has nothing in it, except Coverage.
    - Skills: "design review skills `<setVersion>`, Design Facts `<factsVersion>` (`<factGroups>`), `<runtime>`"
    - The Saved line, under Delivery
    - The Annotated line, under Annotations, when annotations are on
-3. **Fixes by Root Cause:** one numbered item per Root Cause across all axes: its fix and the short ids of the Findings it clears. When those Findings are on several axes, give each axis's fix. Order them by how many Findings each clears, most first, then by their highest Severity.
+3. **Fixes by Root Cause:** one numbered item per group of Findings that one fix clears: its fix and the short ids of those Findings. A group is the Findings joined to each other, as Linking Findings describes, on any axes. Findings that share a Root Cause but no property are separate items. When a group's Findings are on several axes, give each axis's fix. Order them by how many Findings each clears, most first, then by their highest Severity.
 4. **Findings, one `##` section per axis,** headed with the axis's name in the report. List its Findings from the most severe down, `confirmed` before `likely` before `needs-review`. Each is a `###` heading with its short id and title, then:
    - Severity and Certainty
    - Where: each location as a link, `[<layerPath>](<url>)`
