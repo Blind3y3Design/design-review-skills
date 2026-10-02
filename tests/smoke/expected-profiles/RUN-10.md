@@ -1,0 +1,52 @@
+# Review Profile: Design review first-run test
+
+Profile version: 0.1
+
+## Identity
+
+What this profile is called and who maintains it.
+
+- Name: Design review first-run test
+- Owner: Design review skills maintainers
+- Last updated: 2026-10-02
+
+## Design System Layers
+
+The design systems this work is checked against, most general first. A more specific layer overrides a more general one, unless the general layer locked the rule.
+
+- Baseline: the skill's default
+
+### 1. DRS Test Foundation
+
+- Libraries: DRS Test Foundation
+- Match hints: prefix `Test Foundation/`
+- Rules document: none (Design system baseline only)
+
+### 2. DRS Test Product
+
+- Libraries: DRS Test Product
+- Match hints: prefix `Test Product/`
+- Rules document: none (Design system baseline only)
+
+## Accessibility
+
+The accessibility standard designs are judged against.
+
+- Standard: WCAG
+- Version: 2.2
+- Level: AA
+- Criteria reference: the skill's default
+
+## Product context
+
+Where the product runs, used by checks that depend on screen size.
+
+- Target platforms: Web
+- Supported viewport widths: 360px
+
+## Report settings
+
+Where reports are saved, and whether Findings are marked on layers.
+
+- Report location: none (a report page in the Figma file)
+- Annotate layers: off

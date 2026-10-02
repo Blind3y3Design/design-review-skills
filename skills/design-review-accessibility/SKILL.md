@@ -126,10 +126,11 @@ Only the sampled `nodes` of a group are checked. One Finding per owner: a group 
 
 ## Run by another skill
 
-Another skill, such as `design-review`, can run this review as one part of a larger one. It loads this skill first, for two lines:
+Another skill, such as `design-review`, can run this review as one part of a larger one. It loads this skill first, for three lines:
 
 - **Fact groups:** `colourPairs`, `text`, `structure`, `components`, `annotations`: every group a criteria reference's `Facts` lines can name. The caller scans for them once, for every review in the run, giving the scanner the `Annotation kits` from the Accessibility section, or from the run-time settings.
 - **For the caller to ask:** nothing. With no Accessibility section, this review uses its default target, WCAG 2.2 AA, and with no Product context, `Target platforms: Web`, and says so.
+- **Set up:** `Accessibility`: the section this skill writes in `set up` mode (Set up mode).
 
 Then it settles the run, asks the user everything, and hands over:
 
@@ -167,9 +168,29 @@ A criterion with markers (a Markers line other than `none`) is judged only insid
 - **Nothing marked:** `needs-section`, with the note `No section is marked for it. Add a section titled "<the first marker word on its Markers line>".` When a marked section lacks what the How to judge needs, it's `needs-section` too, and the note says what to add.
 - **Inside a marked section,** judge what it holds as the How to judge says. Its failures are ordinary Findings.
 
+## Set up mode
+
+The Orchestrator uses this skill in `set up` mode, in a first run or to add this axis to a profile, to settle the **Accessibility** section. Judge nothing, scan nothing and write no report. Ask the one question below, and hand back the section.
+
+1. **Ask the target,** pre-filled with the default: "Judge against WCAG 2.2 level AA, using the default criteria reference? Name another version or level to change it." Take the standard, version and level from the answer. Add nothing the user didn't name: the other settings below stay at their defaults.
+2. **Hand back** the section, in this format:
+
+   ```markdown
+   ## Accessibility
+
+   The accessibility standard designs are judged against.
+
+   - Standard: WCAG
+   - Version: 2.2
+   - Level: AA
+   - Criteria reference: the skill's default
+   ```
+
+Set up is done when the user has agreed to the target and you've handed the section back.
+
 ## Review Profile
 
-A team's Review Profile names the standards its reviews are judged against. This skill uses only the profile's **Accessibility** and **Product context** sections and the Severity Overrides about WCAG, and hands its **Report settings** section to the Report Writer, which saves the report. It never creates or changes a profile, nor offers to.
+A team's Review Profile names the standards its reviews are judged against. This skill uses only the profile's **Accessibility** and **Product context** sections and the Severity Overrides about WCAG, and hands its **Report settings** section to the Report Writer, which saves the report. It never creates or changes a profile, nor offers to: in `set up` mode it hands a section to the Orchestrator, which writes it.
 
 ### Finding the profile
 

@@ -88,10 +88,11 @@ The review is done when the Report Writer has delivered the report. In `json onl
 
 ## Run by another skill
 
-Another skill, such as `design-review`, can run this review as one part of a larger one. It loads this skill first, for two lines:
+Another skill, such as `design-review`, can run this review as one part of a larger one. It loads this skill first, for three lines:
 
 - **Fact groups:** `bindings`, `components`: the groups the baseline's checks are judged from. The caller scans for them once, for every review in the run.
 - **For the caller to ask:** nothing. Without Design System Layers, there's nothing to check against.
+- **Set up:** `Design System Layers`: the section this skill writes in `set up` mode (Set up mode).
 
 Then it settles the run, asks the user everything, and hands over:
 
@@ -102,6 +103,23 @@ Then it settles the run, asks the user everything, and hands over:
 - notes for the report, if any, such as a version warning
 
 The user has been asked everything already, so ask nothing. With no Design System Layers given at run time or in the profile, skip the axis: hand the Report Writer no Findings and one Coverage entry, `{ "axis": "design-system", "status": "skipped", "reasonCode": "no-layers", "reason": "no Design System Layers: the Review Profile has no Design System Layers section" }`. When a fact group you need is neither read in the handed-over facts nor in their `unread`, scan for that group yourself, as step 3 describes.
+
+## Set up mode
+
+The Orchestrator uses this skill in `set up` mode, in a first run or to add this axis to a profile, to settle the **Design System Layers** section. Judge nothing, read no baseline and write no report. It hands over the scope, the runtime and the Design Facts (`bindings` and `components`). Ask the one question below, and hand back the section.
+
+1. **Read the libraries from the facts.** A library is **used** when the facts name it as the `library` of a variable in the bindings facts' `variables`, a style in `styles`, or a component in the components facts' `components`. Its **uses** count only what the design uses itself: the `uses` of its variables and styles beyond their `inComponents`, plus the `instances` of its components. What comes inside an instance counts with the instance. A library **builds on** another when one of its variables has an `alias`, directly or down the chain the facts follow, to a variable of the other. A used library that builds on one, or has one built on it, is **linked**. Every other used library is **unlinked**.
+2. **Propose the stack.**
+   - **Layers:** one for each linked library, named after it, ordered as What to check against orders pre-filled layers: a library before every library that builds on it. Libraries that don't build on each other go in the order of their uses, most first.
+   - **Unlinked libraries,** when a linked library gives the stack its layers: one with fewer than 10 uses is proposed to be left out, with the reason, such as "used 3 times, and no library's variables link to it". Its assets are reported as outside the stack. Ask about each other one: which layer it belongs with, or whether it is a layer of its own, and where.
+   - **No linked library:** with one used library, it is the only layer, however few its uses. With several, none can be placed by its links and none is proposed to be left out. Ask which of them make up the design system, most general first, giving each one's uses.
+   - **Match hints:** for each library, `prefix `<prefix>`` when every component (its set's name, for a variant) and style the facts name from it starts with the same text up to and including its first `/`, otherwise `none`. Variables' names and collections give no hint.
+   - **Rules document:** `none (Design system baseline only)`. Don't ask for one, or for an owner.
+   - **Baseline:** `the skill's default`.
+3. **Ask once,** with the proposal, the questions about unlinked libraries, and the libraries left out. When the facts show variables, styles or components defined in the reviewed file itself (`remote` false), add that they are outside the stack unless a layer lists this file, with its link. For example: "This design uses variables from Foundation Tokens and Web Platform Kit. I worked out the stack from which libraries' variables point at which, most general first: 1. Foundation Tokens, 2. Web Platform Kit. I've left out Old Marketing Kit: it's used 3 times, and no library's variables link to it, so anything from it is reported as outside your design system. No layer has a rules document yet, so only the built-in checks run. Does this look right?" When the facts' `unread` lists libraries it couldn't name, say so in the question, since they are missing from the proposal. Take the user's changes: a library moved, left out, put back in (then ask which layer it belongs with, if it is unlinked), or a rules document location they give. Ask again only for a library still unplaced.
+4. **Hand back** the section in the format of Design System Layers below, with one layer per proposed layer, and a note for each library left out: "<library> was left out of the stack: <reason>."
+
+Set up is done when every used library is in a layer or left out, and the user has agreed to the stack. With no library in the facts, hand back that the axis can't be set up: "this design uses no library, so there are no Design System Layers to set up".
 
 ## Attributing an asset
 
@@ -132,7 +150,7 @@ A fix names a token only when one was found in the design: a variable or style i
 
 ## Review Profile
 
-A team's Review Profile names the standards its reviews are judged against. This skill uses only the profile's **Design System Layers** section, and hands its **Report settings** section to the Report Writer, which saves the report. It never creates or changes a profile, nor offers to.
+A team's Review Profile names the standards its reviews are judged against. This skill uses only the profile's **Design System Layers** section, and hands its **Report settings** section to the Report Writer, which saves the report. It never creates or changes a profile, nor offers to: in `set up` mode it hands a section to the Orchestrator, which writes it.
 
 ### Finding the profile
 
@@ -165,7 +183,7 @@ The design systems this work is checked against, most general first. A more spec
 - `Baseline`: the baseline's location, or `the skill's default`.
 - Each layer is a `###` heading, numbered from 1 for the most general, with its name.
   - `Owner`: optional.
-  - `Libraries`: each library's name as Figma shows it, with its file link in brackets, separated by commas. Library assets are matched to a library by that name, and local assets by the file key in its link, so a team can list its working file to cover its local variables, styles and components.
+  - `Libraries`: each library's name as Figma shows it, separated by commas, with its file link in brackets when it has one. Library assets are matched to a library by that name, and local assets by the file key in a link, so a team can list its working file, with its link, to cover its local variables, styles and components. A library needs no link.
   - `Match hints`: name prefixes for components and styles, each written prefix `<prefix>`, separated by commas, or `none`.
   - `Rules document`: the location of the layer owner's rules, or `none`. This version judges the baseline only. When a layer names a rules document, keep a note for the report: "This version judges the Design system baseline only, so the rules document for <layer> wasn't read."
   - `Docs`: optional guideline links.
