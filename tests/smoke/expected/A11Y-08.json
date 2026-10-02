@@ -1,0 +1,22 @@
+{
+  "case": "A11Y-08",
+  "findings": [
+    {
+      "id": "accessibility/1.4.11/node:38:24",
+      "axis": "accessibility",
+      "severity": "moderate",
+      "certainty": "confirmed",
+      "relatedFindings": []
+    }
+  ],
+  "coverage": [
+    { "axis": "accessibility", "ref": "1.4.1", "status": "judged" },
+    { "axis": "accessibility", "ref": "1.4.3", "status": "judged" },
+    { "axis": "accessibility", "ref": "1.4.11", "status": "judged" },
+    { "axis": "accessibility", "ref": "2.4.6", "status": "judged" },
+    { "axis": "accessibility", "ref": "2.4.7", "status": "judged" },
+    { "axis": "accessibility", "ref": "2.5.8", "status": "judged" },
+    { "axis": "accessibility", "ref": "3.2.1", "status": "needs-state" },
+    { "axis": "accessibility", "ref": "3.2.4", "status": "needs-section" }
+  ]
+}

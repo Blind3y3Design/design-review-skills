@@ -1,0 +1,35 @@
+{
+  "case": "X-02",
+  "findings": [
+    {"id": "design-system/raw-value/node:38:9", "axis": "design-system", "severity": "moderate", "certainty": "confirmed", "relatedFindings": []},
+    {"id": "design-system/raw-value/node:38:10", "axis": "design-system", "severity": "moderate", "certainty": "confirmed", "relatedFindings": []},
+    {"id": "design-system/raw-value/node:38:11", "axis": "design-system", "severity": "moderate", "certainty": "confirmed", "relatedFindings": []},
+    {"id": "design-system/raw-value/node:38:12", "axis": "design-system", "severity": "moderate", "certainty": "confirmed", "relatedFindings": []},
+    {"id": "design-system/raw-value/node:38:13", "axis": "design-system", "severity": "moderate", "certainty": "confirmed", "relatedFindings": []},
+    {"id": "design-system/raw-value/node:38:14", "axis": "design-system", "severity": "moderate", "certainty": "confirmed", "relatedFindings": []},
+    {"id": "design-system/raw-value/node:38:15", "axis": "design-system", "severity": "moderate", "certainty": "confirmed", "relatedFindings": []},
+    {"id": "design-system/raw-value/node:38:16", "axis": "design-system", "severity": "moderate", "certainty": "confirmed", "relatedFindings": []},
+    {"id": "design-system/raw-value/node:38:17", "axis": "design-system", "severity": "moderate", "certainty": "confirmed", "relatedFindings": []},
+    {"id": "design-system/raw-value/node:38:18", "axis": "design-system", "severity": "moderate", "certainty": "confirmed", "relatedFindings": []},
+    {"id": "design-system/raw-value/node:38:19", "axis": "design-system", "severity": "moderate", "certainty": "confirmed", "relatedFindings": []},
+    {"id": "accessibility/1.3.2/node:38:9", "axis": "accessibility", "severity": "serious", "certainty": "needs-review", "relatedFindings": []}
+  ],
+  "coverage": [
+    {"axis": "design-system", "ref": "raw-value", "status": "judged"},
+    {"axis": "design-system", "ref": "outside-stack", "status": "not-applicable"},
+    {"axis": "design-system", "ref": "unattributed", "status": "not-applicable"},
+    {"axis": "design-system", "ref": "detached-instance", "status": "judged"},
+    {"axis": "design-system", "ref": "override", "status": "not-applicable"},
+    {"axis": "design-system", "ref": "resize", "status": "not-applicable"},
+    {"axis": "accessibility", "ref": "1.3.1", "status": "judged"},
+    {"axis": "accessibility", "ref": "1.3.2", "status": "needs-annotation"},
+    {"axis": "accessibility", "ref": "1.4.3", "status": "judged"},
+    {"axis": "accessibility", "ref": "1.4.11", "status": "judged"},
+    {"axis": "accessibility", "ref": "2.4.3", "status": "needs-annotation"},
+    {"axis": "accessibility", "ref": "2.4.6", "status": "judged"},
+    {"axis": "accessibility", "ref": "2.4.7", "status": "needs-section"},
+    {"axis": "accessibility", "ref": "2.5.8", "status": "judged"},
+    {"axis": "accessibility", "ref": "3.2.1", "status": "needs-state"},
+    {"axis": "accessibility", "ref": "3.2.4", "status": "needs-section"}
+  ]
+}

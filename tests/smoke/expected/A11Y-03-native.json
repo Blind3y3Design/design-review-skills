@@ -1,0 +1,22 @@
+{
+  "case": "A11Y-03-native",
+  "findings": [
+    {
+      "id": "accessibility/2.5.8/node:64:7",
+      "axis": "accessibility",
+      "severity": "moderate",
+      "certainty": "needs-review",
+      "relatedFindings": []
+    }
+  ],
+  "coverage": [
+    { "axis": "accessibility", "ref": "1.1.1", "status": "judged" },
+    { "axis": "accessibility", "ref": "1.4.5", "status": "judged" },
+    { "axis": "accessibility", "ref": "1.4.11", "status": "judged" },
+    { "axis": "accessibility", "ref": "2.4.3", "status": "judged" },
+    { "axis": "accessibility", "ref": "2.4.7", "status": "needs-section" },
+    { "axis": "accessibility", "ref": "2.5.8", "status": "not-readable" },
+    { "axis": "accessibility", "ref": "3.2.1", "status": "needs-state" },
+    { "axis": "accessibility", "ref": "3.2.4", "status": "needs-section" }
+  ]
+}

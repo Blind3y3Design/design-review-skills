@@ -1,0 +1,24 @@
+{
+  "case": "RUN-03",
+  "findings": [
+    {
+      "id": "design-system/raw-value/node:62:8",
+      "axis": "design-system",
+      "severity": "moderate",
+      "certainty": "confirmed",
+      "relatedFindings": ["accessibility/1.4.3/node:62:8"]
+    },
+    {
+      "id": "accessibility/1.4.3/node:62:8",
+      "axis": "accessibility",
+      "severity": "moderate",
+      "certainty": "confirmed",
+      "relatedFindings": ["design-system/raw-value/node:62:8"]
+    }
+  ],
+  "coverage": [
+    { "axis": "design-system", "ref": "raw-value", "status": "judged" },
+    { "axis": "accessibility", "ref": "1.4.3", "status": "judged" },
+    { "axis": "research", "status": "skipped", "reasonCode": "skill-not-installed", "reason": "the skill design-review-research isn't installed" }
+  ]
+}

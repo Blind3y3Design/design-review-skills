@@ -1,0 +1,27 @@
+{
+  "case": "DS-14-foundation-only",
+  "findings": [
+    {
+      "id": "design-system/outside-stack/variable:ba3f4e8e57bfa23dae3bee3bdae61193bc8f47dc",
+      "axis": "design-system",
+      "severity": "moderate",
+      "certainty": "confirmed",
+      "relatedFindings": []
+    },
+    {
+      "id": "design-system/outside-stack/variable:31165e1460ea59cf65c8d27ac047bd981ea450a5",
+      "axis": "design-system",
+      "severity": "moderate",
+      "certainty": "confirmed",
+      "relatedFindings": []
+    }
+  ],
+  "coverage": [
+    { "axis": "design-system", "ref": "raw-value", "status": "judged" },
+    { "axis": "design-system", "ref": "outside-stack", "status": "judged" },
+    { "axis": "design-system", "ref": "unattributed", "status": "not-applicable" },
+    { "axis": "design-system", "ref": "detached-instance", "status": "judged" },
+    { "axis": "design-system", "ref": "override", "status": "not-applicable" },
+    { "axis": "design-system", "ref": "resize", "status": "not-applicable" }
+  ]
+}

@@ -1,0 +1,194 @@
+// Tests the release script (scripts/release.mjs) through its command line, on small skill trees built in a temporary folder.
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const script = fileURLToPath(new URL('../../scripts/release.mjs', import.meta.url));
+const BASE = 'https://raw.githubusercontent.com/Blind3y3Design/design-review-skills';
+const run = (root, args, env = {}) => spawnSync(process.execPath, [script, ...args, '--root', root], { encoding: 'utf8', env: { ...process.env, ...env } });
+
+// A skill file as the repo has them. `link` is the ref in a default Reference Document link, or null for a skill with none.
+const skillText = ({ name, version = '0.1.0-dev', bodyVersion = version, link = null }) => `---
+name: ${name}
+description: A skill.
+metadata:
+  version: "${version}"
+---
+
+# ${name}
+
+Version ${bodyVersion} of the design review skills.
+
+Steps.
+${link ? `\nIts default is \`${BASE}/${link}/reference-documents/${name}.md\`, read whole.\n` : ''}`;
+
+// A repo root holding the given skills, each as { name, ...overrides } for skillText, plus any extra files.
+const makeRoot = (skills, extra = {}) => {
+  const root = mkdtempSync(join(tmpdir(), 'release-'));
+  for (const s of skills) {
+    mkdirSync(join(root, 'skills', s.name), { recursive: true });
+    writeFileSync(join(root, 'skills', s.name, 'SKILL.md'), skillText(s));
+  }
+  for (const [path, text] of Object.entries(extra)) {
+    mkdirSync(join(root, path, '..'), { recursive: true });
+    writeFileSync(join(root, path), text);
+  }
+  return root;
+};
+const read = (root, name) => readFileSync(join(root, 'skills', name, 'SKILL.md'), 'utf8');
+
+test('set puts a release version in both places and pins the default links to its tag', () => {
+  const root = makeRoot([{ name: 'a', link: 'main' }, { name: 'b' }]);
+  const result = run(root, ['set', '0.2.0']);
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(read(root, 'a'), skillText({ name: 'a', version: '0.2.0', link: 'v0.2.0' }));
+  assert.equal(read(root, 'b'), skillText({ name: 'b', version: '0.2.0' }));
+});
+
+test('set with a -dev version points the default links back at main', () => {
+  const root = makeRoot([{ name: 'a', version: '0.2.0', link: 'v0.2.0' }]);
+  assert.equal(run(root, ['set', '0.3.0-dev']).status, 0);
+  assert.equal(read(root, 'a'), skillText({ name: 'a', version: '0.3.0-dev', link: 'main' }));
+});
+
+test('set refuses a version that is not semantic and changes nothing', () => {
+  const root = makeRoot([{ name: 'a', link: 'main' }]);
+  const result = run(root, ['set', 'v1']);
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /not a semantic version/);
+  assert.equal(read(root, 'a'), skillText({ name: 'a', link: 'main' }));
+});
+
+test('set stops and changes nothing when a skill has no Version line in its body', () => {
+  const root = makeRoot([{ name: 'a' }, { name: 'b' }]);
+  writeFileSync(join(root, 'skills', 'b', 'SKILL.md'), skillText({ name: 'b' }).replace(/^Version .*\n/m, ''));
+  const result = run(root, ['set', '0.2.0']);
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /b: no "Version … of the design review skills" line/);
+  assert.equal(read(root, 'a'), skillText({ name: 'a' }));
+});
+
+test('check passes for a consistent -dev tree and for a consistent release tree', () => {
+  const dev = makeRoot([{ name: 'a', link: 'main' }, { name: 'b' }]);
+  assert.equal(run(dev, ['check']).status, 0);
+  const released = makeRoot([{ name: 'a', version: '0.2.0', link: 'v0.2.0' }, { name: 'b', version: '0.2.0' }]);
+  const result = run(released, ['check', '--release', '0.2.0']);
+  assert.equal(result.status, 0, result.stdout);
+  assert.match(result.stdout, /^PASS /);
+});
+
+test('check names a skill whose frontmatter and body versions differ', () => {
+  const root = makeRoot([{ name: 'a', version: '0.2.0', bodyVersion: '0.1.0-dev' }, { name: 'b', version: '0.2.0' }]);
+  const result = run(root, ['check']);
+  assert.equal(result.status, 1);
+  assert.match(result.stdout, /^FAIL/);
+  assert.match(result.stdout, /a: metadata.version is 0.2.0 but the body says 0.1.0-dev/);
+});
+
+test('check names a skill at a different version from the rest of the set', () => {
+  const root = makeRoot([{ name: 'a', version: '0.2.0' }, { name: 'b', version: '0.2.1' }, { name: 'c', version: '0.2.0' }]);
+  const result = run(root, ['check']);
+  assert.equal(result.status, 1);
+  assert.match(result.stdout, /b: version 0.2.1, but the set is at 0.2.0/);
+});
+
+test('check --release fails a -dev version, and a version other than the one named', () => {
+  const dev = makeRoot([{ name: 'a' }]);
+  assert.match(run(dev, ['check', '--release']).stdout, /a: 0.1.0-dev is a -dev version/);
+  const other = makeRoot([{ name: 'a', version: '0.2.0' }]);
+  assert.match(run(other, ['check', '--release', '0.3.0']).stdout, /a: version 0.2.0, expected 0.3.0/);
+});
+
+test('check fails a default link that is not pinned to the version, in either direction', () => {
+  const released = makeRoot([{ name: 'a', version: '0.2.0', link: 'main' }]);
+  assert.match(run(released, ['check']).stdout, /a: .*\/main\/.* should point at v0.2.0/);
+  const dev = makeRoot([{ name: 'a', link: 'v0.1.0' }]);
+  assert.match(run(dev, ['check']).stdout, /a: .*\/v0.1.0\/.* should point at main/);
+});
+
+test('check fails a skill folder that holds more than its SKILL.md, and a folder with no SKILL.md', () => {
+  const root = makeRoot([{ name: 'a' }], { 'skills/a/notes.md': 'x', 'skills/empty/README.md': 'x' });
+  const out = run(root, ['check']).stdout;
+  assert.match(out, /a: holds notes.md besides SKILL.md/);
+  assert.match(out, /empty: has no SKILL.md/);
+});
+
+test('check fails a SKILL.md whose name differs from its folder', () => {
+  const root = makeRoot([{ name: 'a' }]);
+  writeFileSync(join(root, 'skills', 'a', 'SKILL.md'), skillText({ name: 'other' }));
+  assert.match(run(root, ['check']).stdout, /a: name is "other", not the folder's/);
+});
+
+// A stand-in for `npx skills`, which installs the skills named in STUB_INSTALLS into .agents/skills of the current folder.
+const stubCli = () => {
+  const path = join(mkdtempSync(join(tmpdir(), 'stub-')), 'skills-stub.sh');
+  writeFileSync(path, '#!/bin/sh\nfor n in $STUB_INSTALLS; do mkdir -p ".agents/skills/$n" && echo x > ".agents/skills/$n/SKILL.md"; done\n');
+  chmodSync(path, 0o755);
+  return path;
+};
+
+test('install-check passes when the scratch project gets exactly the repo\'s skills', () => {
+  const root = makeRoot([{ name: 'a' }, { name: 'b' }]);
+  const result = run(root, ['install-check', 'some/source'], { SKILLS_CLI: stubCli(), STUB_INSTALLS: 'a b' });
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+  assert.match(result.stdout, /^PASS install-check: 2 skills/);
+});
+
+test('install-check fails on an extra skill, such as a vendored development skill, and on a missing one', () => {
+  const root = makeRoot([{ name: 'a' }, { name: 'b' }]);
+  const result = run(root, ['install-check', 'some/source'], { SKILLS_CLI: stubCli(), STUB_INSTALLS: 'a tdd' });
+  assert.equal(result.status, 1);
+  assert.match(result.stdout, /installed but not in skills\/: tdd/);
+  assert.match(result.stdout, /in skills\/ but not installed: b/);
+});
+
+test('install-check says what to give it when it is not given a source', () => {
+  const result = run(makeRoot([{ name: 'a' }]), ['install-check']);
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /Usage/);
+});
+
+test('check fails, without crashing, on a root with no skills or no versions', () => {
+  const result = run(makeRoot([]), ['check']);
+  assert.equal(result.status, 1);
+  assert.match(result.stdout, /^FAIL/);
+  assert.match(result.stdout, /no skills found/);
+  assert.equal(result.stderr, '');
+});
+
+test('a --root without a folder prints the usage', () => {
+  const result = spawnSync(process.execPath, [script, 'check', '--root'], { encoding: 'utf8' });
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /Usage/);
+});
+
+test('set and check read a SKILL.md saved with Windows line endings', () => {
+  const root = makeRoot([{ name: 'a', link: 'main' }]);
+  const file = join(root, 'skills', 'a', 'SKILL.md');
+  writeFileSync(file, skillText({ name: 'a', link: 'main' }).replace(/\n/g, '\r\n'));
+  assert.equal(run(root, ['check']).status, 0);
+  assert.equal(run(root, ['set', '0.2.0']).status, 0);
+  assert.equal(read(root, 'a'), skillText({ name: 'a', version: '0.2.0', link: 'v0.2.0' }).replace(/\n/g, '\r\n'));
+});
+
+test('set stops and changes nothing when a skill folder has no SKILL.md', () => {
+  const root = makeRoot([{ name: 'a' }], { 'skills/empty/README.md': 'x' });
+  const result = run(root, ['set', '0.2.0']);
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /empty: has no SKILL.md/);
+  assert.equal(read(root, 'a'), skillText({ name: 'a' }));
+});
+
+test('install-check passes a source with a space or a dollar sign to the CLI as it was given', () => {
+  const root = makeRoot([{ name: 'a' }]);
+  const log = join(mkdtempSync(join(tmpdir(), 'args-')), 'args.txt');
+  const cli = join(mkdtempSync(join(tmpdir(), 'stub-')), 'cli.sh');
+  writeFileSync(cli, `#!/bin/sh\nprintf '%s\\n' "$2" > "${log}"\nmkdir -p .agents/skills/a\n`);
+  chmodSync(cli, 0o755);
+  assert.equal(run(root, ['install-check', 'my dir/$HOME'], { SKILLS_CLI: cli }).status, 0);
+  assert.equal(readFileSync(log, 'utf8').trim(), 'my dir/$HOME');
+});

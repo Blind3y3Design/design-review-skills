@@ -1,0 +1,12 @@
+{
+  "case": "DS-06",
+  "findings": [],
+  "coverage": [
+    { "axis": "design-system", "ref": "raw-value", "status": "judged" },
+    { "axis": "design-system", "ref": "outside-stack", "status": "judged" },
+    { "axis": "design-system", "ref": "unattributed", "status": "judged" },
+    { "axis": "design-system", "ref": "detached-instance", "status": "judged" },
+    { "axis": "design-system", "ref": "override", "status": "judged" },
+    { "axis": "design-system", "ref": "resize", "status": "judged" }
+  ]
+}
