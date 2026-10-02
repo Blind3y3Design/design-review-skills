@@ -107,7 +107,7 @@ Each visible instance in the scope, grouped by its main component, the frames de
   - `nodes[]`: up to 10 of its instances, each `{ id, path }`, plus `inside`, the id of the outermost instance a nested one sits in.
 - An instance whose main component can't be read counts in `instances`, and `unread` says so.
 - `detached[]`: each frame outside any instance whose `detachedInfo` says it was detached from an instance, in the scope or holding the scanned node: `{ node: { id, path }, source }`.
-  - `source`: the component it came from, as `detachedInfo` names it: `{ type, key, name, set, remote, library }`, with `type` `library` or `local`, and `id` for a local one. `library` is as for `components`. A library's component that no instance in the scope uses is imported by key to read it, which loads it and places nothing in the file. When the component can't be read, its `name`, `set` and `remote` are null, and `unread` says why.
+  - `source`: the component it came from, as `detachedInfo` names it: `{ type, key, name, set, remote, library }`, with `type` `library` or `local`, and `id` for a local one. The scanner only reads, so it names the component only when an instance in the scope uses it, and gives `name`, `set` and `remote` as read from that instance's main component, with `library` as for `components`. Otherwise `name`, `set` and `remote` are null, and `key` is the library component's key from `detachedInfo`, or null for a local one. A null `name` leaves `unread` empty: it says the frame is detached from a component the scope doesn't show.
 - `overrides[]`: each layer that an instance changes from its main component, as the outermost instance's `overrides` list it, plus each nested instance swapped for another component: `{ node: { id, path }, instance, detached, changes }`. A scanned node inside an instance also gets the changes on the layers holding it.
   - `instance`: `{ id, name, component }` of the outermost instance, which holds the change, with its main component's key. `detached`: the id of the detached frame the instance sits in, when there is one.
   - `changes[]`: one per property changed, each `{ property, fields, through, carried, uncertain, values }`, the last four only when they apply.
@@ -891,12 +891,12 @@ try {
   await Promise.all(found.map(f => fetchMain(f.n)));
 
   // Grouped by main component, in the order first found.
-  const components = new Map(), mainsByKey = new Map(), missing = [];
+  const components = new Map(), mainsByKey = new Map(), mainsById = new Map(), missing = [];
   for (const { n, path, outerInstance } of found) {
     const main = await fetchMain(n);
     if (!main) { missing.push(n.id); continue; }
     const { key, name, set, remote } = readMain(main);
-    if (!components.has(key)) { components.set(key, { key, name, set, remote, library: null, instances: 0, nested: 0, nodes: [] }); mainsByKey.set(key, main); }
+    if (!components.has(key)) { components.set(key, { key, name, set, remote, library: null, instances: 0, nested: 0, nodes: [] }); mainsByKey.set(key, main); mainsById.set(main.id, main); }
     const entry = components.get(key);
     if (outerInstance) entry.nested++; else entry.instances++;
     if (entry.nodes.length < SAMPLES) entry.nodes.push(outerInstance ? { id: n.id, path, inside: outerInstance.id } : { id: n.id, path });
@@ -904,30 +904,15 @@ try {
   const instances = found.length;
   if (missing.length) out.unread.push({ what: 'main components', reason: `${missing.length} instances' main components couldn't be read, such as ${missing[0]}` });
 
-  // The component each detached frame came from, as its detachedInfo names it: a library's by key, a local one by id.
-  // A library's component that no instance here uses is imported by key to read it: that loads it, and places nothing in the file. Each is read once.
-  const sources = new Map(), unreadSources = [];
-  const sourceOf = async (info) => {
-    const id = info.type === 'local' ? `local:${info.componentId}` : `library:${info.componentKey}`;
-    if (!sources.has(id)) {
-      let main = null, reason = null;
-      try {
-        if (info.type === 'local') main = await figma.getNodeByIdAsync(info.componentId);
-        else main = mainsByKey.get(info.componentKey) || await figma.importComponentByKeyAsync(info.componentKey);
-        if (!main) reason = 'the component no longer exists';
-      } catch (e) { reason = String((e && e.message) || e); }
-      sources.set(id, main ? readMain(main) : { reason });
-    }
-    return sources.get(id);
-  };
+  // The component each detached frame came from. detachedInfo names it by key (a library's) or id (a local one). It is named here only
+  // when an instance in the scope already uses it: the scanner only reads, so it loads no other component into the file.
   const detached = [];
   for (const { n, path } of detachedFrames) {
-    const info = n.detachedInfo, source = await sourceOf(info);
-    if (source.reason) unreadSources.push(`${n.id}'s: ${source.reason}`);
-    const component = source.reason ? { key: info.componentKey || null, name: null, set: null, remote: null } : source;
-    detached.push({ node: { id: n.id, path }, source: { type: info.type, ...(info.type === 'local' ? { id: info.componentId } : {}), key: component.key, name: component.name, set: component.set, remote: component.remote, library: null } });
+    const info = n.detachedInfo, local = info.type === 'local';
+    const main = local ? mainsById.get(info.componentId) : mainsByKey.get(info.componentKey);
+    const named = main ? readMain(main) : { key: local ? null : info.componentKey, name: null, set: null, remote: null };
+    detached.push({ node: { id: n.id, path }, source: { type: info.type, ...(local ? { id: info.componentId } : {}), key: named.key, name: named.name, set: named.set, remote: named.remote, library: null } });
   }
-  if (unreadSources.length) out.unread.push({ what: 'detached sources', reason: `the components ${unreadSources.length} detached frames came from couldn't be read, such as ${unreadSources[0]}` });
 
   // Overrides: what each outermost instance changes from its main component, as its `overrides` list it, by layer and property.
   // A renamed layer isn't a change to the design, so `name` isn't listed.
