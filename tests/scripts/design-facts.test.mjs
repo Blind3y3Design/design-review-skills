@@ -499,27 +499,41 @@ test('components: each main component is read once, however many instances use i
   assert.deepEqual(figma.lookups.keyReads, { 'c:primary': 1, 'c:button': 1, 'c:check': 1 });
 });
 
-test('components: each detached instance gives the component it was detached from, read from detachedInfo, for a library\'s component or a local one', async () => {
-  const mains = [...libraryMains(), { type: 'COMPONENT', id: 'c:card', name: 'Card', key: 'k-card-local', remote: false }];
+test('components: a detached frame says it is detached, and names its source only when an instance in the scope already uses that component', async () => {
+  const mains = [
+    ...libraryMains(),
+    { type: 'COMPONENT', id: 'c:card', name: 'Card', key: 'k-card-local', remote: false },
+    { type: 'COMPONENT', id: 'c:other', name: 'Other', key: 'k-other-local', remote: false },
+  ];
   const figma = fakeFigma(dsFrame([
     button('6:1'),
+    { type: 'INSTANCE', id: '6:8', name: 'Card', main: 'c:card' },
     { type: 'FRAME', id: '6:2', name: 'Test Foundation/Button', detachedInfo: { type: 'library', componentKey: 'k-primary' } },
     { type: 'FRAME', id: '6:3', name: 'Card', detachedInfo: { type: 'local', componentId: 'c:card' } },
     { type: 'FRAME', id: '6:4', name: 'Tile', detachedInfo: { type: 'library', componentKey: 'k-tag' } },
     { type: 'FRAME', id: '6:5', name: 'Gone', detachedInfo: { type: 'library', componentKey: 'k-gone' } },
     { type: 'FRAME', id: '6:6', name: 'Hidden', visible: false, detachedInfo: { type: 'library', componentKey: 'k-tag' } },
     { type: 'FRAME', id: '6:7', name: 'Plain frame', detachedInfo: null },
+    { type: 'FRAME', id: '6:9', name: 'Other', detachedInfo: { type: 'local', componentId: 'c:other' } },
   ]), { mains });
   const { components, unread } = await scan('The components script', figma, '5:1');
   const at = (id, name) => ({ id, path: `DS-99 / ${name}` });
   assert.deepEqual(components.detached, [
     { node: at('6:2', 'Test Foundation/Button'), source: { type: 'library', key: 'k-primary', name: 'Type=Primary', set: { key: 'k-button', name: 'Test Foundation/Button' }, remote: true, library: null } },
     { node: at('6:3', 'Card'), source: { type: 'local', id: 'c:card', key: 'k-card-local', name: 'Card', set: null, remote: false, library: null } },
-    { node: at('6:4', 'Tile'), source: { type: 'library', key: 'k-tag', name: 'Test Foundation/Tag', set: null, remote: true, library: null } },
+    { node: at('6:4', 'Tile'), source: { type: 'library', key: 'k-tag', name: null, set: null, remote: null, library: null } },
     { node: at('6:5', 'Gone'), source: { type: 'library', key: 'k-gone', name: null, set: null, remote: null, library: null } },
+    { node: at('6:9', 'Other'), source: { type: 'local', id: 'c:other', key: null, name: null, set: null, remote: null, library: null } },
   ]);
-  assert.deepEqual(unread, [{ what: 'detached sources', reason: 'the components 1 detached frames came from couldn\'t be read, such as 6:5\'s: no published component with the key k-gone' }]);
-  assert.equal(figma.lookups.imports, 2, 'a component already read from an instance was imported again');
+  assert.deepEqual(unread, []);
+});
+
+test('components: the scanner only reads, so a detached frame\'s source is never loaded into the file', async () => {
+  const figma = fakeFigma(dsFrame([
+    { type: 'FRAME', id: '6:2', name: 'Tile', detachedInfo: { type: 'library', componentKey: 'k-tag' } },
+  ]), { mains: libraryMains() });
+  await scan('The components script', figma, '5:1');
+  assert.equal(figma.lookups.imports, 0, 'a component was imported by key');
 });
 
 // Called in a test, after the bindings tests' helpers below are defined.
