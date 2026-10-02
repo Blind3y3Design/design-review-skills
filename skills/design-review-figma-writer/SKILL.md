@@ -1,6 +1,6 @@
 ---
 name: design-review-figma-writer
-description: Writes a design review's output into the reviewed Figma file, as a report frame or as annotations on layers, for the Report Writer, which invokes it. To start a review, use /design-review or a single review such as /design-review-accessibility.
+description: Writes a design review's output into the reviewed Figma file, as a report frame or as annotations on layers, and a team's Review Profile as a page, for the Report Writer and the Orchestrator, which invoke it. To start a review, use /design-review or a single review such as /design-review-accessibility.
 metadata:
   version: "0.1.0-dev"
 ---
@@ -9,9 +9,9 @@ metadata:
 
 Version 0.1.0-dev of the design review skills.
 
-Writes what the Report Writer hands over into the reviewed Figma file, exactly as given. It decides nothing about the content: the Report Writer chooses what to write and where. Every write goes through a **fixed script**, tested as written, where you change only the input lines at the top. Each script puts the file back as it was when a write fails, so a retry never writes twice.
+Writes what the Report Writer or the Orchestrator hands over into the reviewed Figma file, exactly as given. It decides nothing about the content: the caller chooses what to write and where. Every write goes through a **fixed script**, tested as written, where you change only the input lines at the top. Each script puts the file back as it was when a write fails, so a retry never writes twice.
 
-The Report Writer asks for one of two writes: a report frame (Writing a report frame) or layer annotations (Writing annotations).
+The Report Writer asks for a report frame (Writing a report frame) or layer annotations (Writing annotations). The Orchestrator asks for a Review Profile page (Writing a Review Profile page).
 
 ## Writing a report frame
 
@@ -138,6 +138,76 @@ try {
   return { error: String((e && e.message) || e) };
 }
 return { page: { id: page.id, name: page.name, created }, frame: { id: frame.id, name: frame.name }, json, ...(jsonError ? { jsonError } : {}) };
+```
+
+## Writing a Review Profile page
+
+The Orchestrator may ask you to save a Review Profile as the page named "Review Profile" in the reviewed file, where the Profile Finder looks for it, or to replace the text it read from that page. The script writes the text it's given into one text layer.
+
+1. **Pick the tool.** As for a report frame.
+2. **Set the script's first two lines** from the Orchestrator's hand-over, and run everything else exactly as written, in one call:
+   - `TEXT`: the profile's Markdown, as an array of strings, one per line
+   - `BEFORE`: `null` to add the page, or, to replace the page's text, the text the Profile Finder read from it, as an array of strings, one per line
+3. **If the call is refused because the script is too long,** hand back `{ "error": "the profile is too long to save as a page" }`.
+4. **If the call errors or returns an `error`,** run it once more unchanged, unless the error says the page is already there, the text changed or the page isn't one text layer: hand those back at once. The script removes the page it added, and puts the old text back, before it returns an error, so a retry starts from the file as it was. If it fails again, hand back the error.
+5. **Hand back** the script's output: `page` (`id`, `name`, `url`, and `created`) and `layer` (`id`).
+
+The page is written when the script hands back a `page`, or the error is handed back.
+
+What the script refuses, with an `error` and no change to the file:
+
+- **To add a page that is already there,** whatever it holds.
+- **To replace text** unless the page holds exactly one visible text layer, whose text is `BEFORE`. A page with more text layers, a designer's notes among them, or text that changed since the Profile Finder read it, is theirs to edit.
+
+```js
+const TEXT = ['TEXT'];
+const BEFORE = 'BEFORE';
+if (TEXT[0] === 'TEXT' || BEFORE === 'BEFORE') return { error: 'set TEXT and BEFORE on the first two lines' };
+
+const PAGE = 'Review Profile';
+const WIDTH = 720;
+const FONT = { family: 'Inter', style: 'Regular' };
+const same = (a, b) => a.trim() === b.trim();
+// The page, found as the Profile Finder finds it, and the text layers it reads there.
+const visible = (n) => { for (let x = n; x && x.type !== 'PAGE'; x = x.parent) if (x.visible === false) return false; return true; };
+const profileTexts = (p) => p.findAllWithCriteria({ types: ['TEXT'] }).filter(visible).filter((t) => t.characters.trim());
+
+let page = figma.root.children.find((p) => p.name.trim().toLowerCase() === PAGE.toLowerCase());
+const created = BEFORE === null;
+if (created && page) return { error: `a "${PAGE}" page is already in this file` };
+if (!created && !page) return { error: `no "${PAGE}" page in this file` };
+
+let layer = null, previous = null;
+try {
+  if (created) { page = figma.createPage(); page.name = PAGE; }
+  await page.loadAsync();
+  if (created) {
+    await figma.loadFontAsync(FONT);
+    layer = figma.createText();
+    page.appendChild(layer);
+    layer.name = PAGE;
+    layer.fontName = FONT;
+    layer.fontSize = 14;
+    layer.textAutoResize = 'HEIGHT';
+    layer.resize(WIDTH, layer.height);
+    layer.characters = TEXT.join('\n');
+  } else {
+    const found = profileTexts(page);
+    if (!found.length) return { error: `the "${PAGE}" page has no text layer to replace` };
+    if (found.length > 1) return { error: `the "${PAGE}" page holds ${found.length} text layers, so it isn't safe to replace its text` };
+    layer = found[0];
+    if (!same(layer.characters, BEFORE.join('\n'))) return { error: `the "${PAGE}" page's text changed since it was read` };
+    previous = layer.characters;
+    await Promise.all(layer.getRangeAllFontNames(0, layer.characters.length).map((f) => figma.loadFontAsync(f)));
+    layer.characters = TEXT.join('\n');
+  }
+} catch (e) {
+  if (created && page && !page.removed) page.remove();
+  else if (layer && previous !== null) { try { layer.characters = previous; } catch (_) { /* nothing more to undo */ } }
+  return { error: String((e && e.message) || e) };
+}
+const url = figma.fileKey ? `https://www.figma.com/design/${figma.fileKey}/?node-id=${page.id.replace(/:/g, '-')}` : null;
+return { page: { id: page.id, name: page.name, url, created }, layer: { id: layer.id } };
 ```
 
 ## Writing annotations
