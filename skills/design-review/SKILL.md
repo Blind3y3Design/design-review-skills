@@ -117,7 +117,7 @@ With no Review Profile, you build one with the designer, then run the review aga
 4. **Design System Layers,** when design system adherence is chosen. Use the skill `design-review-library` in `set up` mode. Give it the scope, the runtime and the Design Facts.
 5. **Accessibility target,** when accessibility is chosen. Use the skill `design-review-accessibility` in `set up` mode. Give it the scope and the runtime.
 7. **Product context.** Ask where the product runs, pre-filled with `Target platforms: Web` and, as `Supported viewport widths`, the distinct widths of the scope's top-level frames (the structure facts' `frame.width`), smallest first, such as `360px, 1440px`.
-8. **Review and save.** Write the profile as Profile layout describes, and show all of it in the chat. Ask whether to save it, and where (Saving a profile). On a change to an answer, go back to the question that asked it. Saving ends the first run. When the user won't save it, or no place takes the save, stop as question 1 does for neither, saying what happened and, for a failed save, that the profile in the chat can be saved by hand as a page named "Review Profile".
+8. **Review and save.** Write the profile as Profile layout describes, and show all of it in the chat. Ask whether to save it, and where (Saving a profile). On a change to an answer, go back to the question that asked it. Saving ends the first run. When the user won't save it, or no place takes the save, stop as question 1 does when the user wants neither, saying what happened and, for a failed save, that the profile in the chat can be saved by hand as a page named "Review Profile".
 
 A Review Skill's `set up` mode hands back its section and notes, or says it can't set the axis up, such as design system adherence with no library in the design. Leave that axis out of the profile, say why, and go on with the others. When none is left, stop.
 
@@ -127,7 +127,7 @@ The first run is done when the profile is saved. Go on to step 3 with it as the 
 
 A found profile that doesn't cover an axis the user chose is set up in step 3 with the same set-up mode a first run uses. Scan as step 4 describes, if you haven't, use the Review Skill in `set up` mode, then ask the user: "Add this <section name> section to the "<name>" profile, or use it for this run only?"
 
-- **Add:** save the profile with the section in its place and its `Last updated` set to today's date (Saving a profile). When that can't write the change, show the section in the chat, which the review still uses.
+- **Add:** save the profile with the section in its place and its `Last updated` set to today's date (Saving a profile). When Saving a profile can't write the change, show the section in the chat, and the review still uses the section.
 - **This run only:** change nothing in the profile, and add a note: "The <axis> settings come from set-up answers for this run only, not from the profile."
 
 Either way, the Review Skills receive the profile's text with the section in it. The set-up is done when the section is added or shown, or the user chose this run only.
@@ -177,4 +177,4 @@ Every skill in the set opens with a Version line: "Version <version> of the desi
 | Design system adherence | `design-review-library` | a Design System Layers section |
 | Accessibility | `design-review-accessibility` | always: without an Accessibility section, the skill uses its default target |
 
-Research alignment has no row until its Review Skill `design-review-research` ships in v0.2, so it is not one of the set. A profile with a Research Sources section covers it, and step 3 skips it as an axis whose Review Skill is not loaded. When the user names it and the profile has no such section, it is an axis that isn't set up and can't be.
+Research alignment has no row until its Review Skill `design-review-research` exists, so it is not one of the set. A profile with a Research Sources section covers it, and step 3 skips it as an axis whose Review Skill is not loaded. When the user names it and the profile has no such section, leave it out, saying it isn't available in this release.
