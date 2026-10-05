@@ -125,6 +125,34 @@ test('check fails a skill folder that holds more than its SKILL.md, and a folder
   assert.match(out, /empty: has no SKILL.md/);
 });
 
+test('check ignores hidden files a system leaves in a skill folder, such as .DS_Store, and still names a real extra file', () => {
+  const root = makeRoot([{ name: 'a' }], { 'skills/a/.DS_Store': 'x', 'skills/a/.hidden/x': 'x' });
+  assert.equal(run(root, ['check']).status, 0, run(root, ['check']).stdout);
+  const withNotes = makeRoot([{ name: 'a' }], { 'skills/a/.DS_Store': 'x', 'skills/a/notes.md': 'x' });
+  assert.match(run(withNotes, ['check']).stdout, /a: holds notes.md besides SKILL.md/);
+});
+
+test('a version with a leading zero is not semantic, for set and for check', () => {
+  for (const version of ['01.2.3', '1.02.3', '1.2.03', '0.1.0-rc.01', '0.1.0-alpha.00']) {
+    const root = makeRoot([{ name: 'a', link: 'main' }]);
+    const set = run(root, ['set', version]);
+    assert.equal(set.status, 2, version);
+    assert.match(set.stderr, /not a semantic version/, version);
+    assert.equal(run(root, ['check', version]).status, 2, version);
+  }
+  for (const version of ['0.0.0', '10.20.30', '0.1.0-alpha.0', '1.0.0-rc.10']) {
+    assert.equal(run(makeRoot([{ name: 'a' }]), ['set', version]).status, 0, version);
+  }
+});
+
+test('a default link whose ref holds a slash is read, pinned by set, and failed by check when it is the wrong one', () => {
+  const root = makeRoot([{ name: 'a', link: 'release/0.1.0-alpha.2' }]);
+  assert.match(run(root, ['check']).stdout, /a: .*\/release\/0.1.0-alpha.2\/.* should point at main/);
+  assert.equal(run(root, ['set', '0.2.0']).status, 0);
+  assert.equal(read(root, 'a'), skillText({ name: 'a', version: '0.2.0', link: 'v0.2.0' }));
+  assert.equal(run(root, ['check', '--release', '0.2.0']).status, 0);
+});
+
 test('check fails a SKILL.md whose name differs from its folder', () => {
   const root = makeRoot([{ name: 'a' }]);
   writeFileSync(join(root, 'skills', 'a', 'SKILL.md'), skillText({ name: 'other' }));

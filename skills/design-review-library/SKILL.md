@@ -2,12 +2,12 @@
 name: design-review-library
 description: Design system adherence review of Figma frames. Judges how a design uses the team's Design System Layers, such as raw values where a variable or style could be bound, assets from outside the stack, detached instances and overridden components, and reports Findings and Coverage. Use when the user asks for a design system adherence, design token, variable or component review of a Figma design.
 metadata:
-  version: "0.1.0-dev"
+  version: "0.1.0-alpha.2"
 ---
 
 # Design system adherence review
 
-Version 0.1.0-dev of the design review skills.
+Version 0.1.0-alpha.2 of the design review skills.
 
 A review of Figma frames along one Review Axis, `design-system`, which reports call design system adherence. This skill holds only the procedure. Everything about a check, such as its trigger, how to judge it and its default Severity, comes from the Design system baseline Reference Document. Judge from that document, the Design System Layers and the Design Facts alone, never from what you know of design systems.
 
@@ -33,7 +33,7 @@ The inputs are settled when the scope, runtime and anything given at run time ar
 
 ## 2. Read the baseline
 
-Its location is the first of: given at run time, the `Baseline` line of the section you use unless that's the skill's default, then the skill's default, `https://raw.githubusercontent.com/Blind3y3Design/design-review-skills/main/reference-documents/design-system-baseline.md`. Read the whole document, as Reading a location describes.
+Its location is the first of: given at run time, the `Baseline` line of the section you use unless that's the skill's default, then the skill's default, `https://raw.githubusercontent.com/Blind3y3Design/design-review-skills/v0.1.0-alpha.2/reference-documents/design-system-baseline.md`. Read the whole document, as Reading a location describes.
 
 - If a location the user or the profile gave can't be read, and nothing is running this review for another skill, stop. Tell the user the location and the error, and write no report.
 - Any other unreadable baseline, the default link or a given location when another skill runs this review, means there's no baseline, so the axis is skipped. Hand the Report Writer no Findings and one Coverage entry, `{ "axis": "design-system", "status": "skipped", "reasonCode": "reference-unreadable", "reason": "no Design system baseline: <location> couldn't be read: <error>" }`, and go to step 5.
@@ -52,7 +52,7 @@ If the Design System Layers are still to be asked, ask now, as What to check aga
 
 Judge every check in the baseline, and give each exactly one Coverage entry, `{ "axis": "design-system", "ref": "<check id>", "status": "<status>" }`. The status is the first that fits:
 
-1. `not-readable` when a fact group it needs is in the facts' `unread`. Add a `note` with the scanner's reason.
+1. `not-readable` when a fact group it needs is in the facts' `unread`, by its name or through the id of a node that couldn't be read (a node that isn't there, is hidden or sits under a hidden layer has no `groups`). Add a `note` with the scanner's reason.
 2. `not-applicable` when its trigger isn't in the scope. Add a `note` saying so.
 3. `judged` otherwise, following its How to judge. When `unread` lists part of a group it needs, such as gradient paints, add a `note` saying what wasn't read.
 
@@ -61,7 +61,7 @@ Judge detached instances and overrides from the components facts alone: the scan
 Each Finding its How to judge calls for is written this way:
 
 - **Root Cause** and **evidence,** as the check's How to judge says. A Root Cause is written `node:<id>` for a layer, or `variable:<key>`, `style:<key>` or `component:<key>` for an asset. Give one Finding per Root Cause per check, with every layer it covers in `locations`.
-- **Severity:** the check's Default Severity.
+- **Severity:** the check's Default Severity, or the one a profile's Severity Override sets (see Severity Overrides).
 - **Certainty:** the check's Certainty line.
 - **Title:** one line naming the layer or component and what's wrong.
 - **Fix:** as the check's How to judge says, with tokens only from Token suggestions below.
@@ -75,7 +75,7 @@ Judging is done when every check in the baseline has one Coverage entry, and eve
 Use the skill `design-review-report-writer`, handing over:
 
 - `mode`: `json only` when the skill running this review asked for it, otherwise `full report`.
-- `run`: today's `date`, the `scope` (`fileKey`, and `nodes` as `{ id, name }`, the name null when nothing was scanned), the `runtime`, `setVersion` from this skill's Version line, `factsVersion` and `factGroups` from the Design Facts (null with no scan), and `settings`. `settings` is null when a profile's Design System Layers section gave the layers, whatever the baseline's location. Otherwise it's `{ "designSystem": { "from": "run time" or "asked", "layers": ["1. <layer>: <library>, <library>", …] } }`.
+- `run`: today's `date`, the `scope` (`fileKey`, and `nodes` as `{ id, name }`, the name null when nothing was scanned), the `runtime`, `setVersion` from this skill's Version line, `factsVersion` and `factGroups` from the Design Facts (null with no scan), and `settings`: always the layers the run used, so that a reader sees what it judged by, wherever they came from: `{ "designSystem": { "from": "profile", "run time" or "asked", "layers": ["1. <layer>: <library>, <library>", …] } }`, where `from` is "profile" for layers a profile's section gave, even a profile given at run time, "run time" for layers the user named, and "asked" for those your question settled.
 - `profile`: the `profile` `design-review-profile` handed back, when you used its section, otherwise null.
 - `references`: the baseline's name, version and location, when it was read.
 - `findings`, each with its `rootCause`, and `coverage`.
@@ -119,7 +119,10 @@ The Orchestrator uses this skill in `set up` mode, in a first run or to add this
 3. **Ask once,** with the proposal, the questions about unlinked libraries, and the libraries left out. When the facts show variables, styles or components defined in the reviewed file itself (`remote` false), add that they are outside the stack unless a layer lists this file, with its link. For example: "This design uses variables from Foundation Tokens and Web Platform Kit. I worked out the stack from which libraries' variables point at which, most general first: 1. Foundation Tokens, 2. Web Platform Kit. I've left out Old Marketing Kit: it's used 3 times, and no library's variables link to it, so anything from it is reported as outside your design system. No layer has a rules document yet, so only the built-in checks run. Does this look right?" When the facts' `unread` lists libraries it couldn't name, say so in the question, since they are missing from the proposal. Take the user's changes: a library moved, left out, put back in (then ask which layer it belongs with, if it is unlinked), or a rules document location they give. Ask again only for a library still unplaced.
 4. **Hand back** the section in the format of Design System Layers below, with one layer per proposed layer, and a note for each library left out: "<library> was left out of the stack: <reason>."
 
-Set up is done when every used library is in a layer or left out, and the user has agreed to the stack. With no library in the facts, hand back that the axis can't be set up: "this design uses no library, so there are no Design System Layers to set up".
+Set up is done when every used library is in a layer or left out, and the user has agreed to the stack. With no used library, hand back that the axis can't be set up, with the message of the branch that fits. The facts hold **remote assets** when a variable, style or component in them has `remote` true, or a detached frame's `source` has `type` `library` (its `remote` is null when the scanner didn't name it).
+
+- **Remote assets:** "this design uses assets from libraries, but their libraries couldn't be read, so there are no Design System Layers to set up from it", then the reasons the facts' `unread` gives for the library names (`library names`, `component and style libraries`). When a reason says the libraries aren't among those the file has, add that a library is added to the file in Assets > Libraries.
+- **No remote assets:** "this design uses no library, so there are no Design System Layers to set up".
 
 ## Attributing an asset
 
@@ -150,7 +153,7 @@ A fix names a token only when one was found in the design: a variable or style i
 
 ## Review Profile
 
-A team's Review Profile names the standards its reviews are judged against. This skill uses only the profile's **Design System Layers** section, and hands its **Report settings** section to the Report Writer, which saves the report. It never creates or changes a profile, nor offers to: in `set up` mode it hands a section to the Orchestrator, which writes it.
+A team's Review Profile names the standards its reviews are judged against. This skill uses only the profile's **Design System Layers** section and the Severity Overrides about design system adherence, and hands its **Report settings** section to the Report Writer, which saves the report. It never creates or changes a profile, nor offers to: in `set up` mode it hands a section to the Orchestrator, which writes it.
 
 ### Finding the profile
 
@@ -193,10 +196,18 @@ The design systems this work is checked against, most general first. A more spec
 Settle the layers by what the lookup found:
 
 - **A profile given at run time (`from` is `run time`), or handed over by another skill, with a Design System Layers section:** use the section without asking. Giving the profile is the user's agreement.
-- **A profile found on the page or through a pointer in a project file, with the section:** ask before using it, with any other question still open. For example: "I found the Review Profile "<name>" on the "Review Profile" page in this file. Use its Design System Layers for this review? They're 1. Foundation (Foundation Tokens) and 2. Web Platform (Web Platform Kit), with the default baseline. I'll use only them and where it saves reports, and I won't change it." Name where it saves reports, and whether it annotates layers, from its Report settings, if it has them. On yes, use the section. On no, go on as below.
+- **A profile found on the page or through a pointer in a project file, with the section:** ask before using it, with any other question still open. For example: "I found the Review Profile "<name>" on the "Review Profile" page in this file. Use its Design System Layers for this review? They're 1. Foundation (Foundation Tokens) and 2. Web Platform (Web Platform Kit), with the default baseline, and the Severity Override "Detached instance: serious". I'll use only them and where it saves reports, and I won't change it." Name where it saves reports, and whether it annotates layers, from its Report settings, if it has them. Name any Severity Override you'll refuse or can't match too, and why. On yes, use the section. On no, go on as below.
 - **No profile, no section, or the user said no:** the layers are asked after the scan in step 3, pre-filled from the file. Say why you're asking, from the lookup's `searched` when there's no profile, then ask which libraries make up the design system, most general first. Pre-fill each library named in the facts' `variables`, one layer each, placing a library before any whose variables alias its own, then each other library named in the facts' `components` and `styles`. With no library named there, offer no layers. For example: "I couldn't find a Review Profile: none was given, this file has no "Review Profile" page, and AGENTS.md has no pointer to one. Which libraries make up your design system, most general first? This design uses variables from Foundation Tokens and Web Platform Kit, so I'll use them as two layers in that order unless you name others. The layers decide what's outside your design system and which tokens I can suggest in fixes. Your answer is for this run only, and isn't saved to a profile." With the layers already given at run time, there's nothing to ask. For a profile without the section, keep a note for the report: "The Review Profile "<name>" has no Design System Layers section, so this run used the layers below."
 
-Layers given at run time or in an answer have the libraries they name, and match hints only when the user gives some. From a profile whose section you use, also note its `profile`. From any profile the lookup found, unless the user said no to it, note its Report settings.
+Layers given at run time or in an answer have the libraries they name, and match hints only when the user gives some. From a profile whose section you use, also note its `profile` and its Severity Overrides about design system adherence. From any profile the lookup found, unless the user said no to it, note its Report settings.
+
+### Severity Overrides
+
+A profile's **Severity Overrides** section sets the starting Severity for a type of rule, one `<type of rule>: <Severity>` per line, such as `Detached instance: serious`. Apply the lines about design system adherence: a line's type of rule is the id (`detached-instance`) or the name (`Detached instance`) of a check in the baseline you read, matched on the whole value, ignoring case. It sets the Severity of that check's Findings. When two lines name one check, the later one wins. Lines about WCAG, those starting `WCAG` or with a criterion number such as `1.4.3`, are for `design-review-accessibility`.
+
+- **Say when a line can't be matched.** A line that names no check in the baseline, or sets a Severity other than critical, serious, moderate or minor, applies to nothing here: keep a note for the report: "The Severity Override "<line>" wasn't applied here: it names no check in the <baseline's name>, or sets no Severity this review applies." This includes a line meant for another axis's skill, since only WCAG lines can be told apart.
+- **Critical needs a core task.** A line that sets critical names the core task it's tied to, such as `detached-instance: critical, core task: paying for an order`, and the evidence of each Finding it changes gives that task. Refuse a line that names none: treat it as absent, so the Default Severity applies, and keep a note for the report: "The Severity Override "<line>" wasn't applied: it sets critical without naming a core task."
+- **Say so in the evidence.** When an override changes a Finding's Severity, its evidence says so, whether it raised or lowered the Severity, such as "Severity raised from moderate to serious by the Review Profile's Severity Override "Detached instance: serious"."
 
 ## Reading a location
 

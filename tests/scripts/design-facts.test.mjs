@@ -499,7 +499,7 @@ test('components: each main component is read once, however many instances use i
   assert.deepEqual(figma.lookups.keyReads, { 'c:primary': 1, 'c:button': 1, 'c:check': 1 });
 });
 
-test('components: a detached frame says it is detached, and names its source only when an instance in the scope already uses that component', async () => {
+test('components: a detached frame says it is detached, and names its source when it is a local component or a library component an instance in the scope uses', async () => {
   const mains = [
     ...libraryMains(),
     { type: 'COMPONENT', id: 'c:card', name: 'Card', key: 'k-card-local', remote: false },
@@ -515,6 +515,7 @@ test('components: a detached frame says it is detached, and names its source onl
     { type: 'FRAME', id: '6:6', name: 'Hidden', visible: false, detachedInfo: { type: 'library', componentKey: 'k-tag' } },
     { type: 'FRAME', id: '6:7', name: 'Plain frame', detachedInfo: null },
     { type: 'FRAME', id: '6:9', name: 'Other', detachedInfo: { type: 'local', componentId: 'c:other' } },
+    { type: 'FRAME', id: '6:10', name: 'Deleted', detachedInfo: { type: 'local', componentId: 'c:deleted' } },
   ]), { mains });
   const { components, unread } = await scan('The components script', figma, '5:1');
   const at = (id, name) => ({ id, path: `DS-99 / ${name}` });
@@ -523,7 +524,8 @@ test('components: a detached frame says it is detached, and names its source onl
     { node: at('6:3', 'Card'), source: { type: 'local', id: 'c:card', key: 'k-card-local', name: 'Card', set: null, remote: false, library: null } },
     { node: at('6:4', 'Tile'), source: { type: 'library', key: 'k-tag', name: null, set: null, remote: null, library: null } },
     { node: at('6:5', 'Gone'), source: { type: 'library', key: 'k-gone', name: null, set: null, remote: null, library: null } },
-    { node: at('6:9', 'Other'), source: { type: 'local', id: 'c:other', key: null, name: null, set: null, remote: null, library: null } },
+    { node: at('6:9', 'Other'), source: { type: 'local', id: 'c:other', key: 'k-other-local', name: 'Other', set: null, remote: false, library: null } },
+    { node: at('6:10', 'Deleted'), source: { type: 'local', id: 'c:deleted', key: null, name: null, set: null, remote: null, library: null } },
   ]);
   assert.deepEqual(unread, []);
 });
@@ -934,14 +936,139 @@ test('annotations: over the output limit, paths are shortened and long text is c
       { type: 'RECTANGLE', id: `6:${i}`, name: `Photo ${i}`, x: 124, y: 224, annotations: [{ labelMarkdown: `Alt: ${'x'.repeat(400)}`, categoryId: 'c:a11y' }] },
     ],
   })));
-  const fits = await scan('The annotations script', fakeFigma(annotated(60), { categories }), '5:1');
-  assert.equal(fits.annotations.native.length, 60);
+  const fits = await scan('The annotations script', fakeFigma(annotated(56), { categories }), '5:1');
+  assert.equal(fits.annotations.native.length, 56);
   assert.ok(fits.annotations.native.every((a) => a.text.length <= 151));
+  assert.ok(fits.annotations.native.every((a) => a.truncated));
+  assert.deepEqual(fits.unread, [{ what: 'annotation text', reason: 'output limit: text longer than 150 characters was cut' }]);
   assert.ok(JSON.stringify(fits).length <= 18000);
   const tooMany = await scan('The annotations script', fakeFigma(annotated(200), { categories }), '5:1');
   assert.deepEqual([tooMany.annotations, tooMany.groups], [null, []]);
   assert.match(tooMany.unread[0].reason, /^output limit: 200 annotations are too many for one call/);
   assert.equal(tooMany.unread[0].scanInstead.length, 200);
+});
+
+// A frame inside a Figma section, as the scripts see a design the team has sorted into sections: the section is not the top-level frame.
+const SIX = ['The colour pairs script', 'The text script', 'The structure script', 'The annotations script', 'The bindings script', 'The components script'];
+const FIELD = { 'The colour pairs script': 'colourPairs', 'The text script': 'text', 'The structure script': 'structure', 'The annotations script': 'annotations', 'The bindings script': 'bindings', 'The components script': 'components' };
+const inSection = (frameChildren, frameProps = {}) => ({ children: [
+  { type: 'SECTION', id: '4:1', name: 'Checkout', x: 0, y: 0, width: 900, height: 700, fills: [solid(rgb('#EEEEEE'))], children: [
+    { type: 'FRAME', id: '5:1', name: 'A11Y-99', x: 100, y: 200, width: 360, height: 240, fills: [], children: frameChildren, ...frameProps },
+  ] },
+] });
+const sectionCard = [{ type: 'FRAME', id: '5:2', name: 'Card', x: 124, y: 260, width: 312, height: 120, annotations: [{ labelMarkdown: 'Reading order: title', categoryId: 'c:a11y' }], children: [
+  { type: 'TEXT', id: '5:3', name: 'Hello', x: 140, y: 276, width: 100, height: 20, characters: 'Hello', fills: [solid(rgb(GREY))] },
+  { type: 'RECTANGLE', id: '5:4', name: 'Chip', x: 140, y: 310, width: 40, height: 20, fills: [solid(rgb(BLUE))] },
+  { type: 'INSTANCE', id: '5:5', name: 'Promo', main: 'promo', x: 190, y: 310, width: 40, height: 20 },
+] }];
+const sectionComponents = { promo: { key: 'k-promo', name: 'Promo', remote: false, parent: null } };
+
+test('a frame inside a Figma section is its own top-level frame, so no script reports the section as one', async () => {
+  const figma = fakeFigma(inSection(sectionCard), { categories, components: sectionComponents });
+  for (const heading of SIX) {
+    const frame = await scan(heading, figma, '5:1');
+    assert.equal(frame.scope.topLevelFrame, null, `${heading}: the frame is the top-level frame`);
+    assert.deepEqual([frame.unread, frame.groups], [[], [FIELD[heading]]], heading);
+    const card = await scan(heading, figma, '5:2');
+    assert.deepEqual(card.scope.topLevelFrame, { id: '5:1', name: 'A11Y-99' }, `${heading}: a layer in the frame names the frame`);
+  }
+  const section = await scan('The structure script', figma, '4:1');
+  assert.equal(section.scope.topLevelFrame, null, 'a section scanned itself is its own top-level node');
+});
+
+test('a frame inside a Figma section: structure and text measure from the frame, and paths start at the frame', async () => {
+  const figma = fakeFigma(inSection(sectionCard), { categories, components: sectionComponents });
+  const { structure } = await scan('The structure script', figma, '5:1');
+  assert.deepEqual(structure.frame, { id: '5:1', name: 'A11Y-99', width: 360, height: 240 });
+  assert.deepEqual(structure.sections, [{ id: '4:1', name: 'Checkout' }]);
+  assert.deepEqual(structure.layers.map((l) => [l.id, l.path, l.x, l.y]), [['5:2', 'A11Y-99 / Card', 24, 60], ['5:4', 'A11Y-99 / Card / Chip', 40, 110], ['5:5', 'A11Y-99 / Card / Promo', 90, 110]]);
+  const { text } = await scan('The text script', figma, '5:1');
+  assert.deepEqual(text.layers.map((l) => [l.id, l.path, l.x, l.y]), [['5:3', 'A11Y-99 / Card / Hello', 40, 76]]);
+  const inner = await scan('The text script', figma, '5:2');
+  assert.deepEqual(inner.text.layers.map((l) => [l.path, l.x, l.y]), [['A11Y-99 / Card / Hello', 40, 76]]);
+  const { annotations } = await scan('The annotations script', figma, '5:1');
+  assert.deepEqual(annotations.native.map((a) => a.node.path), ['A11Y-99 / Card']);
+  const { components } = await scan('The components script', figma, '5:1');
+  assert.deepEqual(components.components[0].nodes, [{ id: '5:5', path: 'A11Y-99 / Card / Promo' }]);
+  const { bindings } = await scan('The bindings script', figma, '5:1');
+  assert.deepEqual(bindings.raw.map((r) => r.node.path), ['A11Y-99 / Card / Hello', 'A11Y-99 / Card / Chip']);
+});
+
+test('a frame inside a Figma section: its background is the section\'s fill when the frame has none, and the frame is not measured against it', async () => {
+  const figma = fakeFigma(inSection(sectionCard));
+  const { colourPairs } = await scan('The colour pairs script', figma, '5:1');
+  assert.deepEqual(colourPairs.groups.map((g) => [g.background, g.count, g.nodes]), [
+    [{ hex: '#EEEEEE', source: { kind: 'raw' }, node: '4:1' }, 1, [{ id: '5:3', path: 'A11Y-99 / Card / Hello' }]],
+  ]);
+  assert.deepEqual(colourPairs.nonText.map((g) => [g.part, g.against.node, g.nodes[0].path]), [['fill', '4:1', 'A11Y-99 / Card / Chip']]);
+  assert.equal(colourPairs.nonTextLayers, 1, 'neither the section nor the frame is a non-text layer');
+  const filled = fakeFigma(inSection(sectionCard, { fills: [solid(white)] }));
+  const onFrame = await scan('The colour pairs script', filled, '5:1');
+  assert.equal(onFrame.colourPairs.groups[0].background.node, '5:1', 'the frame\'s own fill is nearer than the section\'s');
+});
+
+test('a frame nested in a frame inside a section climbs to the section\'s frame, not the section', async () => {
+  const deep = [{ type: 'FRAME', id: '5:6', name: 'Outer', x: 110, y: 210, width: 300, height: 200, children: [
+    { type: 'FRAME', id: '5:7', name: 'Inner', x: 120, y: 220, width: 200, height: 100, children: [
+      { type: 'TEXT', id: '5:8', name: 'Deep', x: 130, y: 230, width: 50, height: 20, characters: 'Deep' },
+    ] },
+  ] }];
+  const figma = fakeFigma(inSection(deep));
+  const result = await scan('The text script', figma, '5:7');
+  assert.deepEqual(result.scope.topLevelFrame, { id: '5:1', name: 'A11Y-99' });
+  assert.deepEqual(result.text.layers.map((l) => [l.path, l.x, l.y]), [['A11Y-99 / Outer / Inner / Deep', 30, 30]]);
+});
+
+test('a hidden scanned layer, or one under a hidden layer, gives an unread entry and no facts, in every script', async () => {
+  const page = frameWith([
+    { type: 'FRAME', id: '5:2', name: 'Hidden card', x: 124, y: 260, width: 312, height: 120, visible: false, children: [
+      { type: 'TEXT', id: '5:3', name: 'Under hidden', x: 140, y: 276, characters: 'Hidden too', fills: [solid(rgb(GREY))] },
+    ] },
+    { type: 'FRAME', id: '5:4', name: 'Clear card', x: 124, y: 260, width: 312, height: 120, opacity: 0 },
+    { type: 'FRAME', id: '5:5', name: 'Shown card', x: 124, y: 260, width: 312, height: 120 },
+  ]);
+  const figma = fakeFigma(page, { categories });
+  for (const heading of SIX) {
+    for (const id of ['5:2', '5:3', '5:4']) {
+      const result = await scan(heading, figma, id);
+      assert.equal(result[FIELD[heading]], null, `${heading} on ${id}`);
+      assert.deepEqual(result.groups, [], `${heading} on ${id}`);
+      assert.equal(result.unread.length, 1, `${heading} on ${id}`);
+      assert.equal(result.unread[0].what, id, `${heading} on ${id}`);
+      assert.match(result.unread[0].reason, /hidden/, `${heading} on ${id}`);
+      assert.equal(result.scope.id, id, 'the scope still says what was scanned');
+    }
+    const shown = await scan(heading, figma, '5:5');
+    assert.deepEqual([shown.unread, shown.groups], [[], [FIELD[heading]]], `${heading} on a shown layer`);
+  }
+  const inside = await scan('The text script', figma, '5:3');
+  assert.match(inside.unread[0].reason, /"Hidden card"/);
+});
+
+test('an unknown id gives no groups and one unread entry, the same in every script', async () => {
+  const figma = fakeFigma(frameWith([]), { categories });
+  for (const heading of SIX) {
+    const result = await scan(heading, figma, '9:9');
+    assert.deepEqual([result[FIELD[heading]], result.groups, result.scope], [null, [], null], heading);
+    assert.deepEqual(result.unread, [{ what: '9:9', reason: 'no node with this id' }], heading);
+  }
+});
+
+test('annotations: text cut at 500 characters is marked truncated on its entry, and the result says so', async () => {
+  const long = 'y'.repeat(700);
+  const figma = fakeFigma(canvas([
+    { type: 'RECTANGLE', id: '5:2', name: 'Photo', x: 124, y: 224, annotations: [{ labelMarkdown: `Alt: ${long}`, categoryId: 'c:a11y' }, { labelMarkdown: 'Alt: short', categoryId: 'c:a11y' }] },
+    { type: 'INSTANCE', id: '5:3', name: 'Marker', main: 'alt', x: 124, y: 300, width: 80, height: 20, children: [{ type: 'TEXT', id: '5:4', name: 'Label', characters: long }] },
+  ], [{ type: 'TEXT', id: '6:1', name: 'Note', x: 100, y: 460, width: 100, height: 20, characters: long }]),
+  { categories, components: { alt: { name: 'Alt text', parent: { type: 'PAGE' } } } });
+  const { annotations, unread } = await scan('The annotations script', figma, '5:1', ['alt text']);
+  const cut = `${'y'.repeat(500)}…`;
+  assert.deepEqual(annotations.native.map((a) => [a.text.length, a.truncated]), [[501, true], [10, undefined]]);
+  assert.equal(annotations.kits[0].text, cut);
+  assert.equal(annotations.kits[0].truncated, true);
+  assert.equal(annotations.notes[0].text, cut);
+  assert.equal(annotations.notes[0].truncated, true);
+  assert.deepEqual(unread, [{ what: 'annotation text', reason: 'text longer than 500 characters was cut' }]);
 });
 
 test('the scanner skills each hold the script of every fact group they name, and no group is in both', () => {
@@ -961,4 +1088,12 @@ test('the scanner skills each hold the script of every fact group they name, and
     assert.deepEqual(headings.sort(), groups.map((g) => g.heading).sort(), `${skill} holds a script for a group it doesn't name`);
   }
   assert.deepEqual([...all].sort(), ['annotations', 'bindings', 'colourPairs', 'components', 'structure', 'text']);
+});
+
+test('every scanner script states the same factsVersion, 0.5', async () => {
+  const headings = ['The colour pairs script', 'The text script', 'The structure script', 'The annotations script', 'The bindings script', 'The components script'];
+  for (const heading of headings) {
+    const result = await scan(heading, fakeFigma(dsFrame([])), '5:1');
+    assert.equal(result.factsVersion, '0.5', heading);
+  }
 });

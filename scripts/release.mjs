@@ -15,13 +15,13 @@ const USAGE = `Usage:
   node scripts/release.mjs install-check <source>
 Add --root <folder> to work on another repo root.`;
 
-const SEMVER = /^\d+\.\d+\.\d+(-(alpha|beta|rc)\.\d+|-dev)?$/;
+const SEMVER = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(-(alpha|beta|rc)\.(0|[1-9]\d*)|-dev)?$/;
 const META_VERSION = /^(  version: ")([^"\n]*)(")$/m;
 const BODY_VERSION = /^(Version )(\S+)( of the design review skills\.)$/m;
 // Figma rejects a skill longer than this many characters (not bytes). Counted as JavaScript counts, so an emoji is two: the safe side.
 const MAX_SKILL_CHARS = 65536;
 const thousands = (n) => n.toLocaleString('en-US');
-const REF_LINK = /(https:\/\/raw\.githubusercontent\.com\/Blind3y3Design\/design-review-skills\/)([^/\s`]+)(\/reference-documents\/[^\s`)]*)/g;
+const REF_LINK = /(https:\/\/raw\.githubusercontent\.com\/Blind3y3Design\/design-review-skills\/)([^\s`]+?)(\/reference-documents\/[^\s`)]*)/g;
 
 // A -dev version reads Reference Documents from main, a release from its own tag.
 const refFor = (version) => (version.endsWith('-dev') ? 'main' : `v${version}`);
@@ -62,7 +62,7 @@ function checkRelease(root, { release = false, version = null } = {}) {
       problems.push(`${folder}: has no SKILL.md`);
       continue;
     }
-    const extras = readdirSync(join(root, 'skills', folder)).filter((f) => f !== 'SKILL.md');
+    const extras = readdirSync(join(root, 'skills', folder)).filter((f) => f !== 'SKILL.md' && !f.startsWith('.'));
     if (extras.length) problems.push(`${folder}: holds ${extras.join(', ')} besides SKILL.md`);
     const text = readFileSync(file, 'utf8');
     if (text.length > MAX_SKILL_CHARS) problems.push(`${folder}: ${thousands(text.length)} characters, over the ${thousands(MAX_SKILL_CHARS)} Figma allows in a skill`);

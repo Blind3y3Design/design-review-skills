@@ -29,7 +29,7 @@ The skill that finds the team's Review Profile and hands back its text, or says 
 _Avoid_: Profile loader, config reader
 
 **Figma Writer**:
-The skill that writes into the reviewed Figma file, exactly as its caller hands it over: a report frame or annotations on layers for the Report Writer, and a Review Profile page for the Orchestrator. The caller decides what to write and where.
+The skill that writes into the reviewed Figma file: report frames, layer annotations and the Review Profile page, exactly as its caller hands them over. The caller decides what to write and where.
 _Avoid_: Annotator, exporter
 
 **Design Facts**:
@@ -51,6 +51,10 @@ _Avoid_: Confidence, accuracy
 **Root Cause**:
 The single thing to fix behind a Finding, such as a shared text style. Each Finding has one Root Cause but may list many locations.
 _Avoid_: Occurrence, instance
+
+**Property**:
+The part of a Root Cause that a Finding's evidence is about, such as a layer's fill or its reading order.
+_Avoid_: Aspect, attribute, field
 
 **Coverage**:
 The record of what a Review Skill did and did not assess in a review, and why each unassessed standard was left out. An empty set of Findings is not a pass unless Coverage shows the standards were judged.

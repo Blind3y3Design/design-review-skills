@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -103,3 +103,26 @@ test('on the command line it prints PASS or FAIL with one line per difference, a
   assert.equal(run([expected]).status, 2);
   assert.equal(run([expected, '/no/such/file.md']).status, 2);
 });
+
+// The expected profiles the first-run cases (RUN-10, RUN-12) compare a saved page with.
+for (const id of ['RUN-10', 'RUN-12']) {
+  const text = readFileSync(new URL(`../smoke/expected-profiles/${id}.md`, import.meta.url), 'utf8');
+
+  test(`${id}: the expected profile matches itself, with one sentence under each section, and any date in Last updated`, () => {
+    assert.deepEqual(compareProfiles(text, text), { pass: true, differences: [] });
+    assert.deepEqual(compareProfiles(text, text.replace(/(- Last updated: )\d{4}-\d{2}-\d{2}/, (_, key) => `${key}2031-01-01`)), { pass: true, differences: [] });
+    assert.deepEqual(compareProfiles(text, text.replace(/(- Last updated: )\d{4}-\d{2}-\d{2}/, (_, key) => `${key}today`)).differences.length, 1);
+  });
+
+  test(`${id}: a missing section, a changed setting or an extra sentence fails`, () => {
+    const sections = [...text.matchAll(/^## (.+)$/gm)].map((m) => m[1]);
+    assert.ok(sections.includes('Identity') && sections.includes('Accessibility'), `${id} lists its sections`);
+    for (const name of sections) {
+      const without = text.replace(new RegExp(`^## ${name}$[\\s\\S]*?(?=^## |(?![\\s\\S]))`, 'm'), '');
+      assert.ok(compareProfiles(text, without).differences.includes(`Missing heading: ## ${name}`), `${id} without ${name}`);
+    }
+    assert.equal(compareProfiles(text, text.replace('- Level: AA', '- Level: AAA')).pass, false);
+    assert.equal(compareProfiles(text, text.replace('- Target platforms: Web', '- Target platforms: iOS')).pass, false);
+    assert.equal(compareProfiles(text, text.replace('## Identity\n\n', '## Identity\n\nAnother sentence.\n\n')).pass, false);
+  });
+}

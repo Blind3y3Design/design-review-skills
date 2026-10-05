@@ -1,15 +1,15 @@
 ---
 name: design-review-figma-writer
-description: Writes a design review's output into the reviewed Figma file, as a report frame or as annotations on layers, and a team's Review Profile as a page, for the Report Writer and the Orchestrator, which invoke it. To start a review, use /design-review or a single review such as /design-review-accessibility.
+description: Writes into the reviewed Figma file: report frames, layer annotations and the Review Profile page, for the Report Writer and the Orchestrator, which invoke it. To start a review, use /design-review or a single review such as /design-review-accessibility.
 metadata:
-  version: "0.1.0-dev"
+  version: "0.1.0-alpha.2"
 ---
 
 # Figma Writer
 
-Version 0.1.0-dev of the design review skills.
+Version 0.1.0-alpha.2 of the design review skills.
 
-Writes what the Report Writer or the Orchestrator hands over into the reviewed Figma file, exactly as given. It decides nothing about the content: the caller chooses what to write and where. Every write goes through a **fixed script**, tested as written, where you change only the input lines at the top. Each script puts the file back as it was when a write fails, so a retry never writes twice.
+Writes into the reviewed Figma file: report frames, layer annotations and the Review Profile page, exactly as the Report Writer or the Orchestrator hands them over. It decides nothing about the content: the caller chooses what to write and where. Every write goes through a **fixed script**, tested as written, where you change only the input lines at the top. When a write fails, each script puts the file back as it was, except that an annotation category the layer annotations script added stays, since scripts can't delete one. A retry never writes twice.
 
 The Report Writer asks for a report frame (Writing a report frame) or layer annotations (Writing annotations). The Orchestrator asks for a Review Profile page (Writing a Review Profile page).
 

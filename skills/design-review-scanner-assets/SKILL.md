@@ -2,12 +2,12 @@
 name: design-review-scanner-assets
 description: Reads Figma frames and returns two groups of Design Facts, bindings (the variables, styles and raw values layers use) and components (instances, detached frames and overrides), with each asset's library, for the other design review skills, which invoke it. Colour pairs, text, structure and annotations come from design-review-scanner. To start a review, use /design-review or a single review such as /design-review-library.
 metadata:
-  version: "0.1.0-dev"
+  version: "0.1.0-alpha.2"
 ---
 
 # Design Scanner: assets
 
-Version 0.1.0-dev of the design review skills.
+Version 0.1.0-alpha.2 of the design review skills.
 
 Reads a design and returns its Design Facts about the assets it uses, variables, styles and components: what was read or measured, never a judgement. The scanner holds no thresholds and no criteria. The Review Skill that asked for the facts judges them.
 
@@ -43,16 +43,16 @@ Return the Design Facts to the calling skill: a JSON array holding one result pe
 
 ## Design Facts format
 
-`factsVersion` 0.4. Each result holds:
+`factsVersion` 0.5. Each result holds:
 
 - `factsVersion`, and `runtime` (added by you).
 - `fileKey`: the file's key, or null when the runtime doesn't give it.
-- `scope`: the node scanned: `id`, `name`, `type`, `page`, and `topLevelFrame` when the node sits inside a top-level frame.
-- `groups`: the fact groups read.
-- `unread[]`: what couldn't be read, each `{ what, reason }`, with `scanInstead` ids when the answer is to scan those instead.
+- `scope`: the node scanned: `id`, `name`, `type`, `page`, and `topLevelFrame` when the node sits inside a top-level frame, which is a frame on the page or directly in a Figma section. A frame in a section is its own top-level frame, and the section is not one. Null for an id with no node.
+- `groups`: the fact groups read. It is empty when the node couldn't be read at all.
+- `unread[]`: what couldn't be read, each `{ what, reason }`, with `scanInstead` ids when the answer is to scan those instead. A node that isn't there, or is hidden or at zero opacity, or sits under a layer that is, gives no facts: `groups` is empty and `unread` holds one entry whose `what` is its id.
 - `bindings` and `components`: each group's facts, or null when it wasn't read. The other four fields are the other scanner's: the caller joins the two results.
 
-Positions and sizes are in Figma px. `x` and `y` are measured from the top-level frame's top-left corner.
+Positions and sizes are in Figma px. `x` and `y` are measured from the top-level frame's top-left corner, and every `path` starts at the top-level frame.
 
 ### Bindings
 
@@ -86,7 +86,7 @@ Each visible instance in the scope, grouped by its main component, the frames de
   - `nodes[]`: up to 10 of its instances, each `{ id, path }`, plus `inside`, the id of the outermost instance a nested one sits in.
 - An instance whose main component can't be read counts in `instances`, and `unread` says so.
 - `detached[]`: each frame outside any instance whose `detachedInfo` says it was detached from an instance, in the scope or holding the scanned node: `{ node: { id, path }, source }`.
-  - `source`: the component it came from, as `detachedInfo` names it: `{ type, key, name, set, remote, library }`, with `type` `library` or `local`, and `id` for a local one. The scanner only reads, so it names the component only when an instance in the scope uses it, and gives `name`, `set` and `remote` as read from that instance's main component, with `library` as for `components`. Otherwise `name`, `set` and `remote` are null, and `key` is the library component's key from `detachedInfo`, or null for a local one. With a null `name`, `unread` stays empty: the frame is detached from a component the scope doesn't show.
+  - `source`: the component it came from, as `detachedInfo` names it: `{ type, key, name, set, remote, library }`, with `type` `library` or `local`, and `id` for a local one. The scanner only reads: it names a local component by reading it by `id`, and a library component only when an instance in the scope uses it, since naming any other would mean loading it into the file. A named source gives `key`, `name`, `set` and `remote` as read from its main component, with `library` as for `components`. Otherwise `name`, `set` and `remote` are null, and `key` is the library component's key from `detachedInfo`, or null for a local one. With a null `name`, `unread` stays empty: the frame is detached from a library component the scope doesn't show, or from a local component that no longer exists.
 - `overrides[]`: each layer that an instance changes from its main component, as the outermost instance's `overrides` list it, plus each nested instance swapped for another component: `{ node: { id, path }, instance, detached, changes }`. A scanned node inside an instance also gets the changes on the layers holding it.
   - `instance`: `{ id, name, component }` of the outermost instance, which holds the change, with its main component's key. `detached`: the id of the detached frame the instance sits in, when there is one.
   - `changes[]`: one per property changed, each `{ property, fields, through, carried, uncertain, values }`, the last four only when they apply.
@@ -102,14 +102,14 @@ Each visible instance in the scope, grouped by its main component, the frames de
 ```js
 const NODE_ID = 'NODE_ID';
 
-const FACTS_VERSION = '0.4';
+const FACTS_VERSION = '0.5';
 const LIMIT = 18000;
 const SAMPLES = 10;
 const out = { factsVersion: FACTS_VERSION, fileKey: figma.fileKey || null, scope: null, groups: ['bindings'], unread: [], bindings: null };
 const childIds = (n) => ('children' in n ? n.children.map(c => c.id) : []);
 
 const node = await figma.getNodeByIdAsync(NODE_ID);
-if (!node) { out.unread.push({ what: NODE_ID, reason: 'no node with this id' }); return out; }
+if (!node) { out.groups = []; out.unread.push({ what: NODE_ID, reason: 'no node with this id' }); return out; }
 let page = node;
 while (page.parent && page.type !== 'PAGE') page = page.parent;
 if (page.type === 'PAGE') await page.loadAsync();
@@ -118,9 +118,18 @@ if (node.type === 'PAGE' || node.type === 'DOCUMENT') {
   out.unread.push({ what: NODE_ID, reason: 'a page, not a layer: scan each id in scanInstead', scanInstead: childIds(node) });
   return out;
 }
+// The top-level frame: the frame on the page or directly in a Figma section that holds the node.
 let topFrame = node;
-while (topFrame.parent && topFrame.parent.type !== 'PAGE') topFrame = topFrame.parent;
+while (topFrame.parent && topFrame.parent.type !== 'PAGE' && topFrame.parent.type !== 'SECTION') topFrame = topFrame.parent;
 out.scope = { id: node.id, name: node.name, type: node.type, page: page.name, topLevelFrame: topFrame.id === node.id ? null : { id: topFrame.id, name: topFrame.name } };
+// A hidden layer, or one under a hidden layer, has nothing to read: say so.
+for (let a = node; a && a.type !== 'PAGE'; a = a.parent) {
+  if (a.visible === false || ('opacity' in a && a.opacity === 0)) {
+    out.groups = [];
+    out.unread.push({ what: NODE_ID, reason: a === node ? 'this layer is hidden or at zero opacity' : `it sits inside "${a.name}", which is hidden or at zero opacity` });
+    return out;
+  }
+}
 
 // Library names by variable collection key, never by collection name.
 const libraries = new Map();
@@ -316,11 +325,10 @@ const walk = async (n, outerInstance, nearestInstance, parentPath) => {
   if ('children' in n) for (const c of n.children) await walk(c, outerInstance, nearestInstance, path);
 };
 // A scanned node inside an instance starts with the instances above it.
+// Paths run from the top-level frame.
 let outerAbove = null, nearestAbove = null, parentPath = '';
-for (let x = node.parent; x && x.type !== 'PAGE'; x = x.parent) {
-  if (x.type === 'INSTANCE') { outerAbove = x; if (!nearestAbove) nearestAbove = x; }
-  parentPath = parentPath ? `${x.name} / ${parentPath}` : x.name;
-}
+for (let x = node.parent; x && x.type !== 'PAGE'; x = x.parent) if (x.type === 'INSTANCE') { outerAbove = x; if (!nearestAbove) nearestAbove = x; }
+for (let x = node !== topFrame ? node.parent : null; x; x = x === topFrame ? null : x.parent) parentPath = parentPath ? `${x.name} / ${parentPath}` : x.name;
 if (outerAbove) noteOverrides(outerAbove);
 await walk(node, outerAbove, nearestAbove, parentPath);
 
@@ -355,14 +363,14 @@ return out;
 ```js
 const NODE_ID = 'NODE_ID';
 
-const FACTS_VERSION = '0.4';
+const FACTS_VERSION = '0.5';
 const LIMIT = 18000;
 const SAMPLES = 10;
 const out = { factsVersion: FACTS_VERSION, fileKey: figma.fileKey || null, scope: null, groups: ['components'], unread: [], components: null };
 const childIds = (n) => ('children' in n ? n.children.map(c => c.id) : []);
 
 const node = await figma.getNodeByIdAsync(NODE_ID);
-if (!node) { out.unread.push({ what: NODE_ID, reason: 'no node with this id' }); return out; }
+if (!node) { out.groups = []; out.unread.push({ what: NODE_ID, reason: 'no node with this id' }); return out; }
 let page = node;
 while (page.parent && page.type !== 'PAGE') page = page.parent;
 if (page.type === 'PAGE') await page.loadAsync();
@@ -371,9 +379,18 @@ if (node.type === 'PAGE' || node.type === 'DOCUMENT') {
   out.unread.push({ what: NODE_ID, reason: 'a page, not a layer: scan each id in scanInstead', scanInstead: childIds(node) });
   return out;
 }
+// The top-level frame: the frame on the page or directly in a Figma section that holds the node.
 let topFrame = node;
-while (topFrame.parent && topFrame.parent.type !== 'PAGE') topFrame = topFrame.parent;
+while (topFrame.parent && topFrame.parent.type !== 'PAGE' && topFrame.parent.type !== 'SECTION') topFrame = topFrame.parent;
 out.scope = { id: node.id, name: node.name, type: node.type, page: page.name, topLevelFrame: topFrame.id === node.id ? null : { id: topFrame.id, name: topFrame.name } };
+// A hidden layer, or one under a hidden layer, has nothing to read: say so.
+for (let a = node; a && a.type !== 'PAGE'; a = a.parent) {
+  if (a.visible === false || ('opacity' in a && a.opacity === 0)) {
+    out.groups = [];
+    out.unread.push({ what: NODE_ID, reason: a === node ? 'this layer is hidden or at zero opacity' : `it sits inside "${a.name}", which is hidden or at zero opacity` });
+    return out;
+  }
+}
 
 // An instance's layers are matched to its main component's by their positions, so the layers it hides have to be there too.
 // Figma leaves them out while figma.skipInvisibleInstanceChildren is on, as it is through use_figma, so it's off until the script ends.
@@ -395,7 +412,8 @@ try {
     return readMains.get(main.id);
   };
   const hidden = (n) => n.visible === false || ('opacity' in n && n.opacity === 0);
-  const pathOf = (n) => { const names = []; for (let x = n; x && x.type !== 'PAGE'; x = x.parent) names.unshift(x.name); return names.join(' / '); };
+  // Layer names from the top-level frame down to a layer, or from the page's child for a layer above the frame.
+  const pathOf = (n) => { const names = []; for (let x = n; x && x.type !== 'PAGE'; x = x === topFrame ? null : x.parent) names.unshift(x.name); return names.join(' / '); };
 
   // Each visible instance, in layer order, and each frame detached from an instance. An instance inside another instance is nested:
   // it comes with the outer one's component. `detachedIn` is the detached frame an instance sits in, if any.
@@ -411,10 +429,8 @@ try {
   // A scanned node inside an instance starts with the outermost instance above it, and one inside a detached frame with that frame,
   // which is listed too: when a large frame is scanned child by child, each child's result names it.
   let outerAbove = null, detachedAbove = null, parentPath = '';
-  for (let x = node.parent; x && x.type !== 'PAGE'; x = x.parent) {
-    if (x.type === 'INSTANCE') outerAbove = x;
-    parentPath = parentPath ? `${x.name} / ${parentPath}` : x.name;
-  }
+  for (let x = node.parent; x && x.type !== 'PAGE'; x = x.parent) if (x.type === 'INSTANCE') outerAbove = x;
+  for (let x = node !== topFrame ? node.parent : null; x; x = x === topFrame ? null : x.parent) parentPath = parentPath ? `${x.name} / ${parentPath}` : x.name;
   if (!outerAbove) for (let x = node.parent; x && x.type !== 'PAGE' && !detachedAbove; x = x.parent) if (x.type === 'FRAME' && x.detachedInfo) detachedAbove = x;
   if (detachedAbove) detachedFrames.push({ n: detachedAbove, path: pathOf(detachedAbove) });
   walk(node, outerAbove, detachedAbove, parentPath);
@@ -434,12 +450,13 @@ try {
   const instances = found.length;
   if (missing.length) out.unread.push({ what: 'main components', reason: `${missing.length} instances' main components couldn't be read, such as ${missing[0]}` });
 
-  // The component each detached frame came from. detachedInfo names it by key (a library's) or id (a local one). It is named here only
-  // when an instance in the scope already uses it: the scanner only reads, so it loads no other component into the file.
+  // The component each detached frame came from. detachedInfo names it by key (a library's) or id (a local one). A local one is read by id.
+  // A library's is named only when an instance in the scope already uses it, so no other component is loaded into the file.
   const detached = [];
   for (const { n, path } of detachedFrames) {
     const info = n.detachedInfo, local = info.type === 'local';
-    const main = local ? mainsById.get(info.componentId) : mainsByKey.get(info.componentKey);
+    let main = local ? mainsById.get(info.componentId) : mainsByKey.get(info.componentKey);
+    if (!main && local) main = await figma.getNodeByIdAsync(info.componentId).then(c => c && c.type === 'COMPONENT' ? c : null).catch(() => null);
     const read = main ? readMain(main) : { key: local ? null : info.componentKey, name: null, set: null, remote: null };
     detached.push({ node: { id: n.id, path }, source: { type: info.type, ...(local ? { id: info.componentId } : {}), key: read.key, name: read.name, set: read.set, remote: read.remote, library: null } });
   }
