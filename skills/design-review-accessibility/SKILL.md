@@ -40,7 +40,7 @@ Its location is the first of: given at run time or in answer to a question, the 
 
 From the document's header, note its name, version and location for the report, and its `Covers` line. Its "How an entry reads" section says which criteria apply to the target.
 
-**A named standard,** a target that isn't WCAG, such as Section 508, resolves through the reference's "Named standards" section. A standard listed there is judged as the WCAG target its entry gives, in every step after this one, exactly as that target is. Add the one Coverage entry its entry gives, with the note it gives for a stated `Version` or `Level` that differs from the WCAG target.
+**A named standard,** a target that isn't WCAG, such as Section 508, resolves through the reference's "Named standards" section. A standard listed there is judged as the WCAG target its entry gives, in every step after this one, exactly as that target is. Add the one Coverage entry its entry gives, with the note that "Named standards" gives for a stated `Version` or `Level` that differs from the WCAG target.
 
 **A target the reference doesn't cover** gets only its additional requirements judged in step 4. It is a version or level missing from the `Covers` line, or a standard that "Named standards" doesn't list (a reference without that section lists none). Give the target one Coverage entry in their place: `{ "axis": "accessibility", "ref": "<the target as stated>", "status": "not-readable", "note": "The criteria reference covers <its Covers line>, not <the target as stated>. Only additional requirements were judged." }`, with the target written as `WCAG <version> <level>` for a WCAG target and as the standard's name otherwise.
 
