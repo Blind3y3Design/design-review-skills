@@ -2,12 +2,12 @@
 name: design-review
 description: Reviews Figma frames along every Review Axis the team has set up, such as design system adherence and accessibility, and merges their Findings into one report. With no Review Profile, creates one with the designer first. Use when the user asks for a design review, or for several kinds of review of a Figma design at once, or asks which versions of the review skills are installed.
 metadata:
-  version: "0.1.0-dev"
+  version: "0.1.0-alpha.1"
 ---
 
 # Design review
 
-Version 0.1.0-dev of the design review skills.
+Version 0.1.0-alpha.1 of the design review skills.
 
 The Orchestrator: it runs the Review Skills a team's Review Profile covers, on one scope and from one scan, and merges their Findings into one report. With no Review Profile, it creates one with the designer first (First run). It judges nothing itself. Each Review Skill judges its own axis, and asks its own set-up questions, the Profile Finder finds the Review Profile, the two Design Scanner skills read the design, the Figma Writer saves a profile as a page, and the Report Writer writes and delivers the report.
 

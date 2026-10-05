@@ -55,6 +55,14 @@ test('set with a -dev version points the default links back at main', () => {
   assert.equal(read(root, 'a'), skillText({ name: 'a', version: '0.3.0-dev', link: 'main' }));
 });
 
+test('set takes an alpha, beta or rc version, pins its links to the tag, and check --release accepts it', () => {
+  const root = makeRoot([{ name: 'a', link: 'main' }]);
+  assert.equal(run(root, ['set', '0.1.0-alpha.1']).status, 0);
+  assert.equal(read(root, 'a'), skillText({ name: 'a', version: '0.1.0-alpha.1', link: 'v0.1.0-alpha.1' }));
+  const result = run(root, ['check', '--release', '0.1.0-alpha.1']);
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+});
+
 test('set refuses a version that is not semantic and changes nothing', () => {
   const root = makeRoot([{ name: 'a', link: 'main' }]);
   const result = run(root, ['set', 'v1']);

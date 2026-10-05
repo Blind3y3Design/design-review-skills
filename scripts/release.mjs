@@ -15,7 +15,7 @@ const USAGE = `Usage:
   node scripts/release.mjs install-check <source>
 Add --root <folder> to work on another repo root.`;
 
-const SEMVER = /^\d+\.\d+\.\d+(-dev)?$/;
+const SEMVER = /^\d+\.\d+\.\d+(-(alpha|beta|rc)\.\d+|-dev)?$/;
 const META_VERSION = /^(  version: ")([^"\n]*)(")$/m;
 const BODY_VERSION = /^(Version )(\S+)( of the design review skills\.)$/m;
 // Figma rejects a skill longer than this many characters (not bytes). Counted as JavaScript counts, so an emoji is two: the safe side.
@@ -33,7 +33,7 @@ const skillFolders = (root) => {
 const skillPath = (root, folder) => join(root, 'skills', folder, 'SKILL.md');
 
 function setVersion(root, version) {
-  if (!SEMVER.test(version)) return { errors: [`${version} is not a semantic version: write it as 1.2.3, or 1.2.3-dev for a version in development`] };
+  if (!SEMVER.test(version)) return { errors: [`${version} is not a semantic version: write it as 1.2.3, 1.2.3-alpha.1 (or beta, rc) for a pre-release, or 1.2.3-dev for a version in development`] };
   const updates = [];
   const errors = [];
   for (const folder of skillFolders(root)) {
