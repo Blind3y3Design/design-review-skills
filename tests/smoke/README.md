@@ -170,11 +170,11 @@ Checked by hand in an external agent, on A11Y-01 unless the check names another 
 
 | Check | Set-up | Expected |
 |---|---|---|
-| Given at run time | The page's link, or a file in `profiles/`, in the prompt, as in A11Y-01 and CLEAN-01 runs | No question. The report's `profile` and header name the profile |
+| Given at run time | The page's link, or a file in `profiles/`, in the prompt, as in A11Y-01 and CLEAN-01 runs | No question. The report's `profile` and header name the profile, and `run.settings` records the settings the run used, defaults included, with `from: "profile"` for the target or layers the profile gave |
 | The file's page | No profile in the prompt | Asks whether to use the page's Accessibility section. On yes, `profile` names the page |
 | A pointer in `AGENTS.md` | Page off. The project's `AGENTS.md` has `Review Profile: <path to profiles/smoke-test-profile.md>` | Asks whether to use it. On yes, `profile` names the file |
-| No profile | Page off, and no pointer | Says why it's asking and asks what to check against. The header lists the answers under "Settings for this run", `profile` is null, and no profile is saved |
-| No profile, design system adherence | DS-01 with `design-review-library`, page off, and no pointer | Runs the scan, then says why it's asking and asks which libraries make up the design system, most general first. The header lists the answers under "Settings for this run", `profile` is null, and the file has no "Review Profile" page afterwards |
+| No profile | Page off, and no pointer | Says why it's asking and asks what to check against. The header lists the settings the run used under "Settings for this run", with `from: "asked"` for the target, `profile` is null, and no profile is saved |
+| No profile, design system adherence | DS-01 with `design-review-library`, page off, and no pointer | Runs the scan, then says why it's asking and asks which libraries make up the design system, most general first. The header lists the settings the run used under "Settings for this run", with `from: "asked"`, `profile` is null, and the file has no "Review Profile" page afterwards |
 | An unreadable pointer | Page off. `AGENTS.md` points to a file that doesn't exist | Stops with the location and the reason, and writes no report |
 | An unreadable pointer on the page | Page off. A temporary page named `Review Profile` holds only `Review Profile: <link to a file with no Review Profile page>`, such as [DRS Test Unlisted](https://www.figma.com/design/8DhePf1jHSsrvwFxpiYoQf/DRS-Test-Unlisted). Delete it afterwards | Stops with the location and the reason, and writes no report |
 | A critical override without a core task | [`profiles/override-critical.md`](profiles/override-critical.md) given at run time | Passes `A11Y-01`, and the header's Notes say the override wasn't applied |

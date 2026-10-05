@@ -75,7 +75,7 @@ Judging is done when every check in the baseline has one Coverage entry, and eve
 Use the skill `design-review-report-writer`, handing over:
 
 - `mode`: `json only` when the skill running this review asked for it, otherwise `full report`.
-- `run`: today's `date`, the `scope` (`fileKey`, and `nodes` as `{ id, name }`, the name null when nothing was scanned), the `runtime`, `setVersion` from this skill's Version line, `factsVersion` and `factGroups` from the Design Facts (null with no scan), and `settings`. `settings` is null when a profile's Design System Layers section gave the layers, whatever the baseline's location. Otherwise it's `{ "designSystem": { "from": "run time" or "asked", "layers": ["1. <layer>: <library>, <library>", …] } }`.
+- `run`: today's `date`, the `scope` (`fileKey`, and `nodes` as `{ id, name }`, the name null when nothing was scanned), the `runtime`, `setVersion` from this skill's Version line, `factsVersion` and `factGroups` from the Design Facts (null with no scan), and `settings`: always the layers the run used, so that a reader sees what it judged by, wherever they came from: `{ "designSystem": { "from": "profile", "run time" or "asked", "layers": ["1. <layer>: <library>, <library>", …] } }`, where `from` is "profile" for layers a profile's section gave, even a profile given at run time, "run time" for layers the user named, and "asked" for those your question settled.
 - `profile`: the `profile` `design-review-profile` handed back, when you used its section, otherwise null.
 - `references`: the baseline's name, version and location, when it was read.
 - `findings`, each with its `rootCause`, and `coverage`.
