@@ -79,21 +79,21 @@ The Markdown shows a **short id**: the axis's short name, the ref, and the Root 
 
 ## Linking Findings
 
-Findings are **joined** when one fix clears them. That takes a shared Root Cause **and** the same **property** of it. A frame's raw fill and its missing reading-order annotation share the frame but need two fixes, so they stay apart.
+Findings are **joined** when one fix clears them. That takes a shared Root Cause **and** the same **Property** of it. A frame's raw fill and its missing reading-order annotation share the frame but need two fixes, so they stay apart.
 
-A Finding's **properties** are the parts of its Root Cause that its evidence is about, read from its title, evidence and standard:
+A Finding's **Properties** are the parts of its Root Cause that its evidence is about, read from its title, evidence and standard:
 
-- **A visual property:** `fill`, `stroke`, `effect`, `radius`, `spacing`, `text` (typeface, size, weight, line height) or `size`. A raw value written as `fill #8A8A8A` is about `fill`, and a Finding with several raw values is about each. An override is about the property it overrides, and a resize about `size`. A contrast Finding is about the colour it measures: the `fill` of a text layer, or the `fill` or `stroke` the evidence names for a control or graphic.
+- **A visual Property:** `fill`, `stroke`, `effect`, `radius`, `spacing`, `text` (typeface, size, weight, line height) or `size`. A raw value written as `fill #8A8A8A` is about `fill`, and a Finding with several raw values is about each. An override is about the property it overrides, and a resize about `size`. A contrast Finding is about the colour it measures: the `fill` of a text layer, or the `fill` or `stroke` the evidence names for a control or graphic.
 - **The asset itself:** `asset`, for which library a component, style or variable comes from, or whether an instance is detached.
-- **Any other property the evidence names,** such as reading order, a text alternative or a layer's name, under its plain name.
+- **Any other Property the evidence names,** such as reading order, a text alternative or a layer's name, under its plain name.
 
-Two Findings with the same Root Cause are joined when they have a property in common. A Finding whose evidence names no property is joined to none. Joins carry across: Findings joined through a third are in one group.
+Two Findings with the same Root Cause are joined when they have a Property in common. A Finding whose evidence names no Property is joined to none. Joins carry across: Findings joined through a third are in one group.
 
 For example, the body text's raw `fill #8A8A8A` and its 1.4.3 contrast failure measured on that fill are both about `fill`, so they are joined. The frame's raw `fill` and its 1.3.2 reading-order Finding are about `fill` and reading order, so they are not.
 
 A Finding's `relatedFindings` holds the ids of the Findings joined to it on other axes, and each of those lists it back. Fixes by Root Cause also groups Findings joined on one axis.
 
-Linking is done when every pair of Findings with the same Root Cause has been checked for a common property, and every pair on different axes that has one lists the other both ways.
+Linking is done when every pair of Findings with the same Root Cause has been checked for a common Property, and every pair on different axes that has one lists the other both ways.
 
 ## Report JSON
 
@@ -159,7 +159,7 @@ In this order. Leave out a section that has nothing in it, except Coverage.
 4. **Findings, one `##` section per axis,** headed with the axis's name in the report. List its Findings from the most severe down, `confirmed` before `likely` before `needs-review`. Each is a `###` heading with its short id and title, then:
    - Severity and Certainty
    - Where: each location as a link, `[<layerPath>](<url>)`
-   - Standard: the source and ref as one link to the standard's `url`, `[<source> <ref>](<url>)`, such as `[WCAG 2.2 1.4.3](https://www.w3.org/TR/WCAG22/#contrast-minimum)`. With no `url`, the source and ref as plain text. The URL is written once, inside the link
+   - Standard, when the Finding has one: the source and ref as one link to the standard's `url`, `[<source> <ref>](<url>)`, such as `[WCAG 2.2 1.4.3](https://www.w3.org/TR/WCAG22/#contrast-minimum)`. With no `url`, the source and ref as plain text.
    - Evidence
    - Fix
    With no Findings, write "No Findings." under the axis heading.

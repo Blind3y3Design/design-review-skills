@@ -53,7 +53,7 @@ The skills are published and versioned together. Install all of them: a review s
 | `design-review-scanner` | Reads the design and returns Design Facts: colour pairs, text, structure and annotations (used by the Review Skills) |
 | `design-review-scanner-assets` | Reads the design and returns Design Facts: bindings and components (used by the Review Skills) |
 | `design-review-profile` | Finds the team's Review Profile (used by the other skills) |
-| `design-review-figma-writer` | Writes into the Figma file: report frames, layer annotations and the Review Profile page (used by the Report Writer and the Orchestrator) |
+| `design-review-figma-writer` | Writes into the reviewed Figma file: report frames, layer annotations and the Review Profile page (used by the Report Writer and the Orchestrator) |
 
 - **Figma Design:** an organisation's skill owners publish all eight to the organisation, in the order in [docs/publishing.md](docs/publishing.md).
 - **Claude Code, Codex or Cursor:** in your project, run `npx skills add Blind3y3Design/design-review-skills --all`. It installs the eight skills into `.agents/skills/`, and links them for agents that read another folder, such as `.claude/skills/`. `npx skills update` brings in a new release. Copying the `skills/` folder works too. The repo's location will change once it moves into Cat's systems.

@@ -29,7 +29,7 @@ The skill that finds the team's Review Profile and hands back its text, or says 
 _Avoid_: Profile loader, config reader
 
 **Figma Writer**:
-The skill that writes into the reviewed Figma file: report frames, layer annotations and the Review Profile page, exactly as its caller hands them over. The Report Writer asks for frames and annotations, the Orchestrator for the profile page. The caller decides what to write and where.
+The skill that writes into the reviewed Figma file: report frames, layer annotations and the Review Profile page, exactly as its caller hands them over. The caller decides what to write and where.
 _Avoid_: Annotator, exporter
 
 **Design Facts**:
@@ -53,7 +53,7 @@ The single thing to fix behind a Finding, such as a shared text style. Each Find
 _Avoid_: Occurrence, instance
 
 **Property**:
-The part of a Root Cause that a Finding's evidence is about, such as a layer's fill or its reading order. Findings are joined only when they share a Root Cause and a Property, because one fix then clears them.
+The part of a Root Cause that a Finding's evidence is about, such as a layer's fill or its reading order.
 _Avoid_: Aspect, attribute, field
 
 **Coverage**:
