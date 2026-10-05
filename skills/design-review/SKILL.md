@@ -91,7 +91,7 @@ This step is done when every runnable axis has handed back its report JSON or be
 Use the skill `design-review-report-writer` in `full report` mode, handing over the merged review:
 
 - `run`: today's `date`, the `scope` (`fileKey`, and `nodes` as `{ id, name }`), the `runtime`, `setVersion` from this skill's Version line, `factsVersion` and `factGroups` from the scan, and `settings`: every report's `run.settings` joined into one object, or null when each is null.
-- `profile`: the found result's `profile`, or for a first run the `profile` you built (question 8).
+- `profile`: the found result's `profile`, or for a first run the `profile` you built (question 7).
 - `references`: every report's references, each once.
 - `findings`: every report's Findings, each as it came, keeping its axis and id. The Report Writer links those on different axes that share a Root Cause and a Property.
 - `coverage`: every report's Coverage entries, and the entry for each skipped axis, whether step 3 or step 5 skipped it.
@@ -104,7 +104,7 @@ Only this call delivers a report, even when every runnable axis was skipped as f
 
 ## First run
 
-With no Review Profile, you build one with the designer, then run the review against it. You ask seven questions, numbered 1 to 5, 7 and 8, one in each message, each pre-filled from the file where you can. A question is done when the user has answered it, and the next waits for that. Every question comes before the review runs. The Review Skills ask 4 and 5 in their `set up` mode, and you ask the rest.
+With no Review Profile, you build one with the designer, then run the review against it. You ask seven questions, numbered 1 to 7, one in each message, each pre-filled from the file where you can. A question is done when the user has answered it, and the next waits for that. Every question comes before the review runs. The Review Skills ask 4 and 5 in their `set up` mode, and you ask the rest.
 
 **Two things come before question 1.** Take the scope from the user's request, asking for it when the request names no frames (that isn't one of the seven). Then load the Review Skills as step 2 describes, so that a run with none of them stops before it asks anything.
 
@@ -116,8 +116,8 @@ With no Review Profile, you build one with the designer, then run the review aga
 3. **Name and owner.** Ask what the profile is called and who owns it, a person or a team its readers can ask, such as "Checkout team profile", owned by the Checkout design team. Take no owner as `not named`.
 4. **Design System Layers,** when design system adherence is chosen. Use the skill `design-review-library` in `set up` mode. Give it the scope, the runtime and the Design Facts.
 5. **Accessibility target,** when accessibility is chosen. Use the skill `design-review-accessibility` in `set up` mode. Give it the scope and the runtime.
-7. **Product context.** Ask where the product runs, pre-filled with `Target platforms: Web` and, as `Supported viewport widths`, the distinct widths of the scope's top-level frames (the structure facts' `frame.width`, or for a scope that is a Figma section, the width of each `FRAME` layer directly inside it), smallest first, such as `360px, 1440px`.
-8. **Review and save.** Write the profile as Profile layout describes, and show all of it in the chat. Ask whether to save it, and where (Saving a profile). On a change to an answer, go back to the question that asked it. Saving ends the first run. When the user won't save it, or no place takes the save, stop as question 1 does when the user wants neither, saying what happened and, for a failed save, that the profile in the chat can be saved by hand as a page named "Review Profile".
+6. **Product context.** Ask where the product runs, pre-filled with `Target platforms: Web` and, as `Supported viewport widths`, the distinct widths of the scope's top-level frames (the structure facts' `frame.width`, or for a scope that is a Figma section, the width of each `FRAME` layer directly inside it), smallest first, such as `360px, 1440px`.
+7. **Review and save.** Write the profile as Profile layout describes, and show all of it in the chat. Ask whether to save it, and where (Saving a profile). On a change to an answer, go back to the question that asked it. Saving ends the first run. When the user won't save it, or no place takes the save, stop as question 1 does when the user wants neither, saying what happened and, for a failed save, that the profile in the chat can be saved by hand as a page named "Review Profile".
 
 A Review Skill's `set up` mode hands back its section and notes, or says it can't set the axis up, such as design system adherence with no library in the design. Leave that axis out of the profile, say why, and go on with the others. When none is left, stop.
 
@@ -176,5 +176,7 @@ Every skill in the set opens with a Version line: "Version <version> of the desi
 |---|---|---|---|
 | Design system adherence | `design-system` | `design-review-library` | a Design System Layers section |
 | Accessibility | `accessibility` | `design-review-accessibility` | always: without an Accessibility section, the skill uses its default target |
+
+The key is the `axis` value the Report Writer accepts in Findings and Coverage entries.
 
 Research alignment has no row until its Review Skill `design-review-research` exists, so it is not one of the set. A profile with a Research Sources section covers it, and step 3 skips it, with the key `research`, as an axis whose Review Skill is not loaded. When the user names it and the profile has no such section, leave it out, saying it isn't available in this release.

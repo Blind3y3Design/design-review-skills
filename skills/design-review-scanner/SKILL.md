@@ -163,9 +163,9 @@ const strokesOf = (n) => ('strokes' in n && (n.strokeWeight === figma.mixed || n
 const texts = [], painted = [], candidates = [];
 let order = 0;
 // The Figma sections holding the top-level frame are painted beneath it: their fills count as background, but they aren't scanned.
-const held = [];
-for (let a = topFrame.parent; a && a.type !== 'PAGE'; a = a.parent) held.unshift(a);
-for (const s of held) if (s.visible !== false && s.absoluteBoundingBox && shown(s.fills).length) painted.push({ n: s, order: order++, translucent: false, blended: false, clip: null, path: s.name, box: s.absoluteBoundingBox });
+const sectionsAbove = [];
+for (let a = topFrame.parent; a && a.type !== 'PAGE'; a = a.parent) sectionsAbove.unshift(a);
+for (const s of sectionsAbove) if (s.visible !== false && s.absoluteBoundingBox && shown(s.fills).length) painted.push({ n: s, order: order++, translucent: false, blended: false, clip: null, path: s.name, box: s.absoluteBoundingBox });
 const walk = (n, inScope, parentTranslucent, parentBlended, clip, parentPath) => {
   if (n.visible === false || ('opacity' in n && n.opacity === 0)) return;
   const layer = {
@@ -709,17 +709,17 @@ for (const c of canvasItems) {
 out.annotations = { native, kits, notes, excluded };
 const size = () => JSON.stringify(out).length;
 const located = () => [...native, ...kits].map(a => a.node);
-const texts = () => [...native, ...kits, ...notes];
+const entries = () => [...native, ...kits, ...notes];
 // `unread` says how far text was cut. Its entry is in the output before the limit is checked.
 let cutNote = null;
 const noteCut = (limit, why) => {
-  if (!texts().some(a => a.truncated)) return;
+  if (!entries().some(a => a.truncated)) return;
   if (!cutNote) out.unread.push(cutNote = { what: 'annotation text', reason: '' });
   cutNote.reason = `${why}text longer than ${limit} characters was cut`;
 };
 noteCut(LONG, '');
 if (size() > LIMIT) for (const x of located()) x.path = x.path.split(' / ').slice(-3).join(' / ');
-if (size() > LIMIT) { for (const a of texts()) Object.assign(a, clipped(a.text, SHORT)); noteCut(SHORT, 'output limit: '); }
+if (size() > LIMIT) { for (const a of entries()) Object.assign(a, clipped(a.text, SHORT)); noteCut(SHORT, 'output limit: '); }
 if (size() > LIMIT) {
   out.annotations = null;
   out.groups = [];
