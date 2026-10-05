@@ -13,10 +13,10 @@ A review of Figma frames along one Review Axis, `design-system`, which reports c
 
 ## Required skills
 
-This review MUST use three other skills: `design-review-profile` finds the Review Profile, `design-review-scanner` reads the design, and `design-review-report-writer` writes the report. Before anything else, check that all three are available to you. If any isn't, reply with only the line that fits, and stop:
+This review MUST use three other skills: `design-review-profile` finds the Review Profile, `design-review-scanner-assets` reads the design, and `design-review-report-writer` writes the report. Before anything else, check that all three are available to you. If any isn't, reply with only the line that fits, and stop:
 
 - One missing: "This review can't run: the skill `<name>` isn't installed. Install it, then run the review again."
-- More than one missing, naming each, such as: "This review can't run: the skills `design-review-scanner` and `design-review-report-writer` aren't installed. Install them, then run the review again."
+- More than one missing, naming each, such as: "This review can't run: the skills `design-review-scanner-assets` and `design-review-report-writer` aren't installed. Install them, then run the review again."
 
 These three skills are the review's only way to find the profile, read the design and write a report.
 
@@ -42,7 +42,7 @@ From the document's header, note its name, version and location for the report.
 
 ## 3. Scan
 
-Use the skill `design-review-scanner`. Give it the scope's node ids, the runtime, and the fact groups on the `Facts` lines of the baseline's checks. Judge from the Design Facts it hands back.
+Use the skill `design-review-scanner-assets`, which reads `bindings` and `components`. Give it the scope's node ids, the runtime, and the fact groups on the `Facts` lines of the baseline's checks. Judge from the Design Facts it hands back.
 
 When another skill handed over Design Facts, the design is already scanned: judge from those, as Run by another skill describes.
 
@@ -90,7 +90,7 @@ The review is done when the Report Writer has delivered the report. In `json onl
 
 Another skill, such as `design-review`, can run this review as one part of a larger one. It loads this skill first, for three lines:
 
-- **Fact groups:** `bindings`, `components`: the groups the baseline's checks are judged from. The caller scans for them once, for every review in the run.
+- **Fact groups:** `bindings`, `components` (both read by `design-review-scanner-assets`): the groups the baseline's checks are judged from. The caller scans for them once, for every review in the run.
 - **For the caller to ask:** nothing. Without Design System Layers, there's nothing to check against.
 - **Set up:** `Design System Layers`: the section this skill writes in `set up` mode (Set up mode).
 

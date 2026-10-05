@@ -1,4 +1,4 @@
-// Release tooling for the design review skills (docs/publishing.md): sets and checks the set's version, and checks an install.
+// Release tooling for the design review skills (docs/publishing.md): sets and checks the set's version, checks each skill's size, and checks an install.
 //   node scripts/release.mjs set <version>
 //   node scripts/release.mjs check [--release] [<version>]
 //   node scripts/release.mjs install-check <source>
@@ -18,6 +18,9 @@ Add --root <folder> to work on another repo root.`;
 const SEMVER = /^\d+\.\d+\.\d+(-dev)?$/;
 const META_VERSION = /^(  version: ")([^"\n]*)(")$/m;
 const BODY_VERSION = /^(Version )(\S+)( of the design review skills\.)$/m;
+// Figma rejects a skill longer than this many characters (not bytes). Counted as JavaScript counts, so an emoji is two: the safe side.
+const MAX_SKILL_CHARS = 65536;
+const thousands = (n) => n.toLocaleString('en-US');
 const REF_LINK = /(https:\/\/raw\.githubusercontent\.com\/Blind3y3Design\/design-review-skills\/)([^/\s`]+)(\/reference-documents\/[^\s`)]*)/g;
 
 // A -dev version reads Reference Documents from main, a release from its own tag.
@@ -62,6 +65,7 @@ function checkRelease(root, { release = false, version = null } = {}) {
     const extras = readdirSync(join(root, 'skills', folder)).filter((f) => f !== 'SKILL.md');
     if (extras.length) problems.push(`${folder}: holds ${extras.join(', ')} besides SKILL.md`);
     const text = readFileSync(file, 'utf8');
+    if (text.length > MAX_SKILL_CHARS) problems.push(`${folder}: ${thousands(text.length)} characters, over the ${thousands(MAX_SKILL_CHARS)} Figma allows in a skill`);
     const name = (text.match(/^name: (.*)$/m) || [])[1];
     if (name !== folder) problems.push(`${folder}: name is "${name}", not the folder's`);
     const meta = (text.match(META_VERSION) || [])[2];
