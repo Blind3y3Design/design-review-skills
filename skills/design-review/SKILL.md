@@ -90,7 +90,7 @@ This step is done when every runnable axis has handed back its report JSON or be
 
 Use the skill `design-review-report-writer` in `full report` mode, handing over the merged review:
 
-- `run`: today's `date`, the `scope` (`fileKey`, and `nodes` as `{ id, name }`), the `runtime`, `setVersion` from this skill's Version line, `factsVersion` and `factGroups` from the scan, and `settings`: every report's `run.settings` joined into one object, or null when each is null.
+- `run`: today's `date`, the `scope` (`fileKey`, and `nodes` as `{ id, name }`), the `runtime`, `setVersion` from this skill's Version line, `factsVersion` and `factGroups` from the scan, and `settings`: every report's `run.settings` joined into one object, or null when no report gave any, such as when every axis was skipped.
 - `profile`: the found result's `profile`, or for a first run the `profile` you built (question 7).
 - `references`: every report's references, each once.
 - `findings`: every report's Findings, each as it came, keeping its axis and id. The Report Writer links those on different axes that share a Root Cause and a Property.
