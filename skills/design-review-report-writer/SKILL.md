@@ -2,12 +2,12 @@
 name: design-review-report-writer
 description: Writes and delivers the report for the other design review skills, which hand it their Findings and Coverage. To start a review, use /design-review or a single review such as /design-review-accessibility.
 metadata:
-  version: "0.1.0-alpha.3"
+  version: "0.1.0-dev"
 ---
 
 # Report Writer
 
-Version 0.1.0-alpha.3 of the design review skills.
+Version 0.1.0-dev of the design review skills.
 
 Turns a review's Findings and Coverage into its report: Markdown for people, then one JSON block for tools. This skill owns the report format, the Severity and Certainty scales and the Finding ids, and it delivers the report. It judges nothing. Every Finding, Severity, Certainty and Coverage status is written as the calling skill gave it, and only its prose is reworded, as Writing rules describes.
 
