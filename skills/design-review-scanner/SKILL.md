@@ -43,12 +43,12 @@ Return the Design Facts to the calling skill: a JSON array holding one result pe
 
 - `factsVersion`, and `runtime` (added by you).
 - `fileKey`: the file's key, or null when the runtime doesn't give it.
-- `scope`: the node scanned: `id`, `name`, `type`, `page`, and `topLevelFrame` when the node sits inside a top-level frame.
-- `groups`: the fact groups read.
-- `unread[]`: what couldn't be read, each `{ what, reason }`, with `scanInstead` ids when the answer is to scan those instead.
+- `scope`: the node scanned: `id`, `name`, `type`, `page`, and `topLevelFrame` when the node sits inside a top-level frame, which is a frame on the page or directly in a Figma section. A frame in a section is its own top-level frame, and the section is not one. Null for an id with no node.
+- `groups`: the fact groups read. It is empty when the node couldn't be read at all.
+- `unread[]`: what couldn't be read, each `{ what, reason }`, with `scanInstead` ids when the answer is to scan those instead. A node that isn't there, or is hidden or at zero opacity, or sits under a layer that is, gives no facts: `groups` is empty and `unread` holds one entry whose `what` is its id.
 - `colourPairs`, `text`, `structure` and `annotations`: each group's facts, or null when it wasn't read. The `bindings` and `components` fields are the other scanner's: the caller joins the two results.
 
-Positions and sizes are in Figma px. `x` and `y` are measured from the top-level frame's top-left corner.
+Positions and sizes are in Figma px. `x` and `y` are measured from the top-level frame's top-left corner, and every `path` starts at the top-level frame.
 
 ### Colour pairs
 
@@ -57,7 +57,7 @@ Each visible, non-empty text layer in the scope, and each other layer with a fil
 - `textLayers`: how many text layers were measured.
 - `groups[]`: pairs grouped by Root Cause. Pairs share a group when they have the same text colour source, background, font size, weight and flags. A raw text colour's source is its own layer, so each raw-coloured text layer is its own group, while text bound to one variable or style on one background shares a group. Each group has:
   - `text`: `{ hex, source }`. `source.kind` is `variable` or `style`, with its `key`, `name` and `remote`, when the text colour is bound to one. Otherwise it's `raw`, with the text layer's id as `node`.
-  - `background`: `{ hex, source, node }`: the colour behind the text, its source, and the layer it comes from. Null when it couldn't be computed.
+  - `background`: `{ hex, source, node }`: the colour behind the text, its source, and the layer it comes from. Null when it couldn't be computed. A Figma section holding the top-level frame is painted beneath it, so its fill is the background when nothing nearer is opaque.
   - `fontSize` in px, and `fontWeight`.
   - `ratio`: the contrast ratio, rounded down to 2 decimal places. Null when it couldn't be computed.
   - `flags[]`: `opacity` when translucency is involved (on the text, its background or a parent layer), and `blend-mode` when a blend mode is. With a flag, the colours and ratio are an estimate.
@@ -86,7 +86,7 @@ Each visible, non-empty text layer in the scope, in layer order.
 
 The top-level frame and every other visible layer in the scope, other than text.
 
-- `frame`: `{ id, name, width, height }` of the top-level frame.
+- `frame`: `{ id, name, width, height }` of the top-level frame: the frame itself for a frame in a Figma section.
 - `sections[]`: the Figma sections holding the scanned node, innermost first, each `{ id, name }`.
 - `layers[]`: each `{ id, path, type, x, y, width, height }`, in layer order, plus:
   - `reactions`: the prototype triggers set on the layer, such as `ON_CLICK`.
@@ -105,6 +105,8 @@ What might annotate the scanned node, read as it is, without deciding what any o
 - `notes[]`: free-text notes on the canvas: text layers outside every frame, nearest to this node's frame and within 200 px of it. Each has `node`, `text` and `gap` in px.
 - `excluded`: how many annotations in the review's own categories were left out. The review's categories are named `Design review: <axis>`, such as `Design review: Accessibility`.
 
+A `text` is cut to 500 characters, or to 150 over the output limit, and its entry then has `truncated: true` and `unread` says so.
+
 Comments aren't read. When the runtime can't read annotations, `unread` says why, and `annotations` is null.
 
 ## The colour pairs script
@@ -119,7 +121,7 @@ const out = { factsVersion: FACTS_VERSION, fileKey: figma.fileKey || null, scope
 const childIds = (n) => ('children' in n ? n.children.map(c => c.id) : []);
 
 const node = await figma.getNodeByIdAsync(NODE_ID);
-if (!node) { out.unread.push({ what: NODE_ID, reason: 'no node with this id' }); return out; }
+if (!node) { out.groups = []; out.unread.push({ what: NODE_ID, reason: 'no node with this id' }); return out; }
 let page = node;
 while (page.parent && page.type !== 'PAGE') page = page.parent;
 if (page.type === 'PAGE') await page.loadAsync();
@@ -128,9 +130,18 @@ if (node.type === 'PAGE' || node.type === 'DOCUMENT') {
   out.unread.push({ what: NODE_ID, reason: 'a page, not a layer: scan each id in scanInstead', scanInstead: childIds(node) });
   return out;
 }
+// The top-level frame: the frame on the page or directly in a Figma section that holds the node.
 let topFrame = node;
-while (topFrame.parent && topFrame.parent.type !== 'PAGE') topFrame = topFrame.parent;
+while (topFrame.parent && topFrame.parent.type !== 'PAGE' && topFrame.parent.type !== 'SECTION') topFrame = topFrame.parent;
 out.scope = { id: node.id, name: node.name, type: node.type, page: page.name, topLevelFrame: topFrame.id === node.id ? null : { id: topFrame.id, name: topFrame.name } };
+// A hidden layer, or one under a hidden layer, has nothing to read: say so.
+for (let a = node; a && a.type !== 'PAGE'; a = a.parent) {
+  if (a.visible === false || ('opacity' in a && a.opacity === 0)) {
+    out.groups = [];
+    out.unread.push({ what: NODE_ID, reason: a === node ? 'this layer is hidden or at zero opacity' : `it sits inside "${a.name}", which is hidden or at zero opacity` });
+    return out;
+  }
+}
 
 const intersect = (a, b) => {
   if (!a || !b) return a || b;
@@ -151,6 +162,10 @@ const strokesOf = (n) => ('strokes' in n && (n.strokeWeight === figma.mixed || n
 // `candidates` are the non-text layers in the scope with a fill or a stroke, measured by their rendered bounds.
 const texts = [], painted = [], candidates = [];
 let order = 0;
+// The Figma sections holding the top-level frame are painted beneath it: their fills count as background, but they aren't scanned.
+const sectionsAbove = [];
+for (let a = topFrame.parent; a && a.type !== 'PAGE'; a = a.parent) sectionsAbove.unshift(a);
+for (const s of sectionsAbove) if (s.visible !== false && s.absoluteBoundingBox && shown(s.fills).length) painted.push({ n: s, order: order++, translucent: false, blended: false, clip: null, path: s.name, box: s.absoluteBoundingBox });
 const walk = (n, inScope, parentTranslucent, parentBlended, clip, parentPath) => {
   if (n.visible === false || ('opacity' in n && n.opacity === 0)) return;
   const layer = {
@@ -348,7 +363,7 @@ const out = { factsVersion: FACTS_VERSION, fileKey: figma.fileKey || null, scope
 const childIds = (n) => ('children' in n ? n.children.map(c => c.id) : []);
 
 const node = await figma.getNodeByIdAsync(NODE_ID);
-if (!node) { out.unread.push({ what: NODE_ID, reason: 'no node with this id' }); return out; }
+if (!node) { out.groups = []; out.unread.push({ what: NODE_ID, reason: 'no node with this id' }); return out; }
 let page = node;
 while (page.parent && page.type !== 'PAGE') page = page.parent;
 if (page.type === 'PAGE') await page.loadAsync();
@@ -357,9 +372,18 @@ if (node.type === 'PAGE' || node.type === 'DOCUMENT') {
   out.unread.push({ what: NODE_ID, reason: 'a page, not a layer: scan each id in scanInstead', scanInstead: childIds(node) });
   return out;
 }
+// The top-level frame: the frame on the page or directly in a Figma section that holds the node.
 let topFrame = node;
-while (topFrame.parent && topFrame.parent.type !== 'PAGE') topFrame = topFrame.parent;
+while (topFrame.parent && topFrame.parent.type !== 'PAGE' && topFrame.parent.type !== 'SECTION') topFrame = topFrame.parent;
 out.scope = { id: node.id, name: node.name, type: node.type, page: page.name, topLevelFrame: topFrame.id === node.id ? null : { id: topFrame.id, name: topFrame.name } };
+// A hidden layer, or one under a hidden layer, has nothing to read: say so.
+for (let a = node; a && a.type !== 'PAGE'; a = a.parent) {
+  if (a.visible === false || ('opacity' in a && a.opacity === 0)) {
+    out.groups = [];
+    out.unread.push({ what: NODE_ID, reason: a === node ? 'this layer is hidden or at zero opacity' : `it sits inside "${a.name}", which is hidden or at zero opacity` });
+    return out;
+  }
+}
 
 const round = (v) => Math.round(v * 100) / 100;
 const origin = topFrame.absoluteBoundingBox || { x: 0, y: 0 };
@@ -398,8 +422,9 @@ const walk = async (n, parentPath) => {
   }
   if ('children' in n) for (const c of n.children) await walk(c, path);
 };
+// Paths run from the top-level frame.
 let parentPath = '';
-for (let x = node.parent; x && x.type !== 'PAGE'; x = x.parent) parentPath = parentPath ? `${x.name} / ${parentPath}` : x.name;
+for (let x = node !== topFrame ? node.parent : null; x; x = x === topFrame ? null : x.parent) parentPath = parentPath ? `${x.name} / ${parentPath}` : x.name;
 await walk(node, parentPath);
 
 // Keep the output under the smaller runtime limit (about 20 kB through use_figma).
@@ -436,7 +461,7 @@ const out = { factsVersion: FACTS_VERSION, fileKey: figma.fileKey || null, scope
 const childIds = (n) => ('children' in n ? n.children.map(c => c.id) : []);
 
 const node = await figma.getNodeByIdAsync(NODE_ID);
-if (!node) { out.unread.push({ what: NODE_ID, reason: 'no node with this id' }); return out; }
+if (!node) { out.groups = []; out.unread.push({ what: NODE_ID, reason: 'no node with this id' }); return out; }
 let page = node;
 while (page.parent && page.type !== 'PAGE') page = page.parent;
 if (page.type === 'PAGE') await page.loadAsync();
@@ -445,9 +470,18 @@ if (node.type === 'PAGE' || node.type === 'DOCUMENT') {
   out.unread.push({ what: NODE_ID, reason: 'a page, not a layer: scan each id in scanInstead', scanInstead: childIds(node) });
   return out;
 }
+// The top-level frame: the frame on the page or directly in a Figma section that holds the node.
 let topFrame = node;
-while (topFrame.parent && topFrame.parent.type !== 'PAGE') topFrame = topFrame.parent;
+while (topFrame.parent && topFrame.parent.type !== 'PAGE' && topFrame.parent.type !== 'SECTION') topFrame = topFrame.parent;
 out.scope = { id: node.id, name: node.name, type: node.type, page: page.name, topLevelFrame: topFrame.id === node.id ? null : { id: topFrame.id, name: topFrame.name } };
+// A hidden layer, or one under a hidden layer, has nothing to read: say so.
+for (let a = node; a && a.type !== 'PAGE'; a = a.parent) {
+  if (a.visible === false || ('opacity' in a && a.opacity === 0)) {
+    out.groups = [];
+    out.unread.push({ what: NODE_ID, reason: a === node ? 'this layer is hidden or at zero opacity' : `it sits inside "${a.name}", which is hidden or at zero opacity` });
+    return out;
+  }
+}
 
 const round = (v) => Math.round(v * 100) / 100;
 const origin = topFrame.absoluteBoundingBox || { x: 0, y: 0 };
@@ -497,11 +531,10 @@ const walk = async (n, inInstance, parentPath) => {
   }
   if ('children' in n && n.type !== 'BOOLEAN_OPERATION') for (const c of n.children) await walk(c, inInstance || n.type === 'INSTANCE', path);
 };
+// Paths run from the top-level frame.
 let parentPath = '', aboveInstance = false;
-for (let x = node.parent; x && x.type !== 'PAGE'; x = x.parent) {
-  parentPath = parentPath ? `${x.name} / ${parentPath}` : x.name;
-  if (x.type === 'INSTANCE') aboveInstance = true;
-}
+for (let x = node !== topFrame ? node.parent : null; x; x = x === topFrame ? null : x.parent) parentPath = parentPath ? `${x.name} / ${parentPath}` : x.name;
+for (let x = node.parent; x && x.type !== 'PAGE'; x = x.parent) if (x.type === 'INSTANCE') aboveInstance = true;
 await walk(node, aboveInstance, parentPath);
 // The Figma sections holding the scanned node, innermost first. A section's name can mark it for a criterion.
 const sections = [];
@@ -530,6 +563,8 @@ const KITS = [];
 const FACTS_VERSION = '0.5';
 const LIMIT = 18000;
 const NEAR = 200;
+const LONG = 500;
+const SHORT = 150;
 const out = { factsVersion: FACTS_VERSION, fileKey: figma.fileKey || null, scope: null, groups: ['annotations'], unread: [], annotations: null };
 const childIds = (n) => ('children' in n ? n.children.map(c => c.id) : []);
 
@@ -543,15 +578,27 @@ if (node.type === 'PAGE' || node.type === 'DOCUMENT') {
   out.unread.push({ what: NODE_ID, reason: 'a page, not a layer: scan each id in scanInstead', scanInstead: childIds(node) });
   return out;
 }
+// The top-level frame: the frame on the page or directly in a Figma section that holds the node.
 let topFrame = node;
-while (topFrame.parent && topFrame.parent.type !== 'PAGE') topFrame = topFrame.parent;
+while (topFrame.parent && topFrame.parent.type !== 'PAGE' && topFrame.parent.type !== 'SECTION') topFrame = topFrame.parent;
 out.scope = { id: node.id, name: node.name, type: node.type, page: page.name, topLevelFrame: topFrame.id === node.id ? null : { id: topFrame.id, name: topFrame.name } };
+// A hidden layer, or one under a hidden layer, has nothing to read: say so.
+for (let a = node; a && a.type !== 'PAGE'; a = a.parent) {
+  if (a.visible === false || ('opacity' in a && a.opacity === 0)) {
+    out.groups = [];
+    out.unread.push({ what: NODE_ID, reason: a === node ? 'this layer is hidden or at zero opacity' : `it sits inside "${a.name}", which is hidden or at zero opacity` });
+    return out;
+  }
+}
 
 const hidden = (n) => n.visible === false || ('opacity' in n && n.opacity === 0);
 const cut = (s, n) => (s.length > n ? `${s.slice(0, n)}…` : s);
+// An entry's text, cut to n characters, with `truncated: true` when it was.
+const clipped = (s, n) => (s.length > n ? { text: cut(s, n), truncated: true } : { text: s });
+// Layer names from the top-level frame down to a layer, or from the page's child for a layer above the frame.
 const pathOf = (n) => {
   const names = [];
-  for (let a = n; a && a.type !== 'PAGE'; a = a.parent) names.unshift(a.name);
+  for (let a = n; a && a.type !== 'PAGE'; a = a === topFrame ? null : a.parent) names.unshift(a.name);
   return names.join(' / ');
 };
 // The visible text inside a layer, such as a kit instance's note.
@@ -563,7 +610,7 @@ const textIn = (n) => {
     else if ('children' in x) x.children.forEach(visit);
   };
   visit(n);
-  return cut(parts.join(' / '), 500);
+  return parts.join(' / ');
 };
 
 let categories;
@@ -593,7 +640,7 @@ const readAnnotations = (n, path) => {
   for (const a of n.annotations) {
     const category = a.categoryId ? categories.get(a.categoryId) || null : null;
     if (reviewCategory(category)) { excluded++; continue; }
-    const entry = { node: { id: n.id, path, type: n.type }, category, text: cut(a.labelMarkdown || a.label || '', 500) };
+    const entry = { node: { id: n.id, path, type: n.type }, category, ...clipped(a.labelMarkdown || a.label || '', LONG) };
     if (a.properties && a.properties.length) entry.properties = a.properties.map(p => p.type);
     native.push(entry);
   }
@@ -603,7 +650,7 @@ const walk = async (n, path) => {
   readAnnotations(n, path);
   if (n.type === 'INSTANCE' && n.id !== node.id && KITS.length) {
     const c = await componentOf(n);
-    if (c.kit) { kits.push({ kit: c.kit, component: c.label, node: { id: n.id, path }, text: textIn(n), where: 'in scope' }); return; }
+    if (c.kit) { kits.push({ kit: c.kit, component: c.label, node: { id: n.id, path }, ...clipped(textIn(n), LONG), where: 'in scope' }); return; }
   }
   if ('children' in n) for (const c of n.children) await walk(c, `${path} / ${c.name}`);
 };
@@ -654,16 +701,25 @@ for (const c of canvasItems) {
     if (d < best) { best = d; nearest = f; }
   }
   if (!nearest || nearest.id !== frameOnCanvas.id || best > NEAR) continue;
-  if (component) kits.push({ kit: component.kit, component: component.label, node: { id: c.id, path: c.name }, text: textIn(c), where: `on the canvas, ${Math.round(best)} px away` });
-  else if (c.characters.trim()) notes.push({ node: { id: c.id }, text: cut(c.characters.trim(), 500), gap: Math.round(best) });
+  if (component) kits.push({ kit: component.kit, component: component.label, node: { id: c.id, path: c.name }, ...clipped(textIn(c), LONG), where: `on the canvas, ${Math.round(best)} px away` });
+  else if (c.characters.trim()) notes.push({ node: { id: c.id }, ...clipped(c.characters.trim(), LONG), gap: Math.round(best) });
 }
 
 // Keep the output under the smaller runtime limit (about 20 kB through use_figma).
 out.annotations = { native, kits, notes, excluded };
 const size = () => JSON.stringify(out).length;
 const located = () => [...native, ...kits].map(a => a.node);
+const entries = () => [...native, ...kits, ...notes];
+// `unread` says how far text was cut. Its entry is in the output before the limit is checked.
+let cutNote = null;
+const noteCut = (limit, why) => {
+  if (!entries().some(a => a.truncated)) return;
+  if (!cutNote) out.unread.push(cutNote = { what: 'annotation text', reason: '' });
+  cutNote.reason = `${why}text longer than ${limit} characters was cut`;
+};
+noteCut(LONG, '');
 if (size() > LIMIT) for (const x of located()) x.path = x.path.split(' / ').slice(-3).join(' / ');
-if (size() > LIMIT) for (const a of [...native, ...kits, ...notes]) a.text = cut(a.text, 150);
+if (size() > LIMIT) { for (const a of entries()) Object.assign(a, clipped(a.text, SHORT)); noteCut(SHORT, 'output limit: '); }
 if (size() > LIMIT) {
   out.annotations = null;
   out.groups = [];

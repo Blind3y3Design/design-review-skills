@@ -52,7 +52,7 @@ If the Design System Layers are still to be asked, ask now, as What to check aga
 
 Judge every check in the baseline, and give each exactly one Coverage entry, `{ "axis": "design-system", "ref": "<check id>", "status": "<status>" }`. The status is the first that fits:
 
-1. `not-readable` when a fact group it needs is in the facts' `unread`. Add a `note` with the scanner's reason.
+1. `not-readable` when a fact group it needs is in the facts' `unread`, by its name or through the id of a node that couldn't be read (a node that isn't there, is hidden or sits under a hidden layer has no `groups`). Add a `note` with the scanner's reason.
 2. `not-applicable` when its trigger isn't in the scope. Add a `note` saying so.
 3. `judged` otherwise, following its How to judge. When `unread` lists part of a group it needs, such as gradient paints, add a `note` saying what wasn't read.
 
