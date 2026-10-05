@@ -16,7 +16,7 @@ Turns a review's Findings and Coverage into its report: Markdown for people, the
 The calling skill hands over:
 
 - `mode`: `full report`, the default, or `json only`, for a review whose JSON another skill merges into its own full report.
-- `run`: `date`, `scope` (`fileKey`, and `nodes` as `{ id, name }`), `runtime`, `setVersion`, `factsVersion`, `factGroups`, and `settings` (the settings this run used, defaults included, or null for a run that used none).
+- `run`: `date`, `scope` (`fileKey`, and `nodes` as `{ id, name }`), `runtime`, `setVersion`, `factsVersion`, `factGroups`, and `settings` (the settings this run used, defaults included, or null when no Review Skill gave any, as when every axis was skipped).
 - `profile`: `{ name, location, lastUpdated }` of the Review Profile the run used, or null.
 - `references[]`: `{ name, version, location }` for each Reference Document used.
 - `findings[]`: each Finding's fields from the table below, with a `rootCause` in place of `id`, and each location without its `url`. A Finding merged from a `json only` report comes with its `id` and urls instead: keep them.
