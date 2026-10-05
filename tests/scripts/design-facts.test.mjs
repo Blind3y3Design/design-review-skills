@@ -499,7 +499,7 @@ test('components: each main component is read once, however many instances use i
   assert.deepEqual(figma.lookups.keyReads, { 'c:primary': 1, 'c:button': 1, 'c:check': 1 });
 });
 
-test('components: a detached frame says it is detached, and names its source only when an instance in the scope already uses that component', async () => {
+test('components: a detached frame says it is detached, and names its source when it is a local component or a library component an instance in the scope uses', async () => {
   const mains = [
     ...libraryMains(),
     { type: 'COMPONENT', id: 'c:card', name: 'Card', key: 'k-card-local', remote: false },
@@ -515,6 +515,7 @@ test('components: a detached frame says it is detached, and names its source onl
     { type: 'FRAME', id: '6:6', name: 'Hidden', visible: false, detachedInfo: { type: 'library', componentKey: 'k-tag' } },
     { type: 'FRAME', id: '6:7', name: 'Plain frame', detachedInfo: null },
     { type: 'FRAME', id: '6:9', name: 'Other', detachedInfo: { type: 'local', componentId: 'c:other' } },
+    { type: 'FRAME', id: '6:10', name: 'Deleted', detachedInfo: { type: 'local', componentId: 'c:deleted' } },
   ]), { mains });
   const { components, unread } = await scan('The components script', figma, '5:1');
   const at = (id, name) => ({ id, path: `DS-99 / ${name}` });
@@ -523,7 +524,8 @@ test('components: a detached frame says it is detached, and names its source onl
     { node: at('6:3', 'Card'), source: { type: 'local', id: 'c:card', key: 'k-card-local', name: 'Card', set: null, remote: false, library: null } },
     { node: at('6:4', 'Tile'), source: { type: 'library', key: 'k-tag', name: null, set: null, remote: null, library: null } },
     { node: at('6:5', 'Gone'), source: { type: 'library', key: 'k-gone', name: null, set: null, remote: null, library: null } },
-    { node: at('6:9', 'Other'), source: { type: 'local', id: 'c:other', key: null, name: null, set: null, remote: null, library: null } },
+    { node: at('6:9', 'Other'), source: { type: 'local', id: 'c:other', key: 'k-other-local', name: 'Other', set: null, remote: false, library: null } },
+    { node: at('6:10', 'Deleted'), source: { type: 'local', id: 'c:deleted', key: null, name: null, set: null, remote: null, library: null } },
   ]);
   assert.deepEqual(unread, []);
 });
@@ -961,4 +963,12 @@ test('the scanner skills each hold the script of every fact group they name, and
     assert.deepEqual(headings.sort(), groups.map((g) => g.heading).sort(), `${skill} holds a script for a group it doesn't name`);
   }
   assert.deepEqual([...all].sort(), ['annotations', 'bindings', 'colourPairs', 'components', 'structure', 'text']);
+});
+
+test('every scanner script states the same factsVersion, 0.5', async () => {
+  const headings = ['The colour pairs script', 'The text script', 'The structure script', 'The annotations script', 'The bindings script', 'The components script'];
+  for (const heading of headings) {
+    const result = await scan(heading, fakeFigma(dsFrame([])), '5:1');
+    assert.equal(result.factsVersion, '0.5', heading);
+  }
 });

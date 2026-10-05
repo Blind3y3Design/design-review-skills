@@ -39,7 +39,7 @@ Return the Design Facts to the calling skill: a JSON array holding one result pe
 
 ## Design Facts format
 
-`factsVersion` 0.4. Each result holds:
+`factsVersion` 0.5. Each result holds:
 
 - `factsVersion`, and `runtime` (added by you).
 - `fileKey`: the file's key, or null when the runtime doesn't give it.
@@ -112,7 +112,7 @@ Comments aren't read. When the runtime can't read annotations, `unread` says why
 ```js
 const NODE_ID = 'NODE_ID';
 
-const FACTS_VERSION = '0.4';
+const FACTS_VERSION = '0.5';
 const LIMIT = 18000;
 const SAMPLES = 10;
 const out = { factsVersion: FACTS_VERSION, fileKey: figma.fileKey || null, scope: null, groups: ['colourPairs'], unread: [], colourPairs: null };
@@ -342,7 +342,7 @@ return out;
 ```js
 const NODE_ID = 'NODE_ID';
 
-const FACTS_VERSION = '0.4';
+const FACTS_VERSION = '0.5';
 const LIMIT = 18000;
 const out = { factsVersion: FACTS_VERSION, fileKey: figma.fileKey || null, scope: null, groups: ['text'], unread: [], text: null };
 const childIds = (n) => ('children' in n ? n.children.map(c => c.id) : []);
@@ -430,7 +430,7 @@ return out;
 ```js
 const NODE_ID = 'NODE_ID';
 
-const FACTS_VERSION = '0.4';
+const FACTS_VERSION = '0.5';
 const LIMIT = 18000;
 const out = { factsVersion: FACTS_VERSION, fileKey: figma.fileKey || null, scope: null, groups: ['structure'], unread: [], structure: null };
 const childIds = (n) => ('children' in n ? n.children.map(c => c.id) : []);
@@ -527,7 +527,7 @@ return out;
 const NODE_ID = 'NODE_ID';
 const KITS = [];
 
-const FACTS_VERSION = '0.4';
+const FACTS_VERSION = '0.5';
 const LIMIT = 18000;
 const NEAR = 200;
 const out = { factsVersion: FACTS_VERSION, fileKey: figma.fileKey || null, scope: null, groups: ['annotations'], unread: [], annotations: null };
