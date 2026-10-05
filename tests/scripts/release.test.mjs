@@ -123,6 +123,32 @@ test('check fails a SKILL.md whose name differs from its folder', () => {
   assert.match(run(root, ['check']).stdout, /a: name is "other", not the folder's/);
 });
 
+// Figma rejects a skill over 65,536 characters. `size` is the SKILL.md's length in characters, padded with a three-byte character
+// so that a count of bytes would disagree with it.
+const LIMIT = 65536;
+const sized = (name, size) => {
+  const base = skillText({ name });
+  return base + '…'.repeat(size - base.length);
+};
+
+test('check passes a SKILL.md of exactly 65,536 characters, even when it is over that in bytes', () => {
+  const root = makeRoot([{ name: 'a' }]);
+  writeFileSync(join(root, 'skills', 'a', 'SKILL.md'), sized('a', LIMIT));
+  assert.ok(Buffer.byteLength(read(root, 'a')) > LIMIT);
+  const result = run(root, ['check']);
+  assert.equal(result.status, 0, result.stdout);
+});
+
+test('check fails a SKILL.md one character over the limit, naming the skill and its size, and still checks the others', () => {
+  const root = makeRoot([{ name: 'a' }, { name: 'big' }, { name: 'c', version: '0.2.0' }]);
+  writeFileSync(join(root, 'skills', 'big', 'SKILL.md'), sized('big', LIMIT + 1));
+  const result = run(root, ['check']);
+  assert.equal(result.status, 1);
+  assert.match(result.stdout, /big: 65,537 characters, over the 65,536 Figma allows in a skill/);
+  assert.match(result.stdout, /c: version 0.2.0/);
+  assert.doesNotMatch(result.stdout, /a: .*characters/);
+});
+
 // A stand-in for `npx skills`, which installs the skills named in STUB_INSTALLS into .agents/skills of the current folder.
 const stubCli = () => {
   const path = join(mkdtempSync(join(tmpdir(), 'stub-')), 'skills-stub.sh');

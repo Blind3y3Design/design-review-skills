@@ -23,7 +23,7 @@ A release sets the version in three places in every skill. `scripts/release.mjs`
    node scripts/release.mjs set <version>
    node scripts/release.mjs check --release <version>
    ```
-   `set` takes a semantic version such as `0.1.0` and changes nothing if any skill lacks one of the places above. `check --release` must print `PASS`. Commit with the message "Release <version>", and open a pull request. When it's merged, tag the commit on `main` that carries it, and run `check --release <version>` once more on that commit:
+   `set` takes a semantic version such as `0.1.0` and changes nothing if any skill lacks one of the places above. `check --release` must print `PASS`. It also fails any `SKILL.md` over 65,536 characters (not bytes), the most Figma accepts in a skill. Commit with the message "Release <version>", and open a pull request. When it's merged, tag the commit on `main` that carries it, and run `check --release <version>` once more on that commit:
    ```
    git tag v<version> <commit>
    git push origin v<version>
