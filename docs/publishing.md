@@ -28,7 +28,7 @@ A release sets the version in two places in every skill, and pins a third in the
    git tag v<version> <commit>
    git push origin v<version>
    ```
-   `schemaVersion` and `factsVersion` change only with their formats, never with a release.
+   `schemaVersion` and `factsVersion` change when a field's format or meaning changes, never with a release.
    A pre-release takes a version such as `0.1.0-alpha.1` (`alpha`, `beta` or `rc`, then a number). It is pinned to its tag like any release, and `gh release create` gets `--prerelease`. A pre-release may go out with parts of step 1 not yet run, as long as its notes list what wasn't run under known gaps.
 3. **Write the release notes.** `gh release create v<version> --title "<version>" --notes-file <file>`, or write them in the GitHub UI. State what changed since the last release in the user's terms, the skills in the set, any change to `schemaVersion` or `factsVersion`, and known gaps.
 4. **Check the tag.**
