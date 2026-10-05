@@ -1,0 +1,20 @@
+{
+  "case": "DS-07",
+  "findings": [
+    {
+      "id": "design-system/outside-stack/component:4bf5425db9d53db51af6a3e411b0b4c24d0fdc89",
+      "axis": "design-system",
+      "severity": "moderate",
+      "certainty": "confirmed",
+      "relatedFindings": []
+    }
+  ],
+  "coverage": [
+    { "axis": "design-system", "ref": "raw-value", "status": "judged" },
+    { "axis": "design-system", "ref": "outside-stack", "status": "judged" },
+    { "axis": "design-system", "ref": "unattributed", "status": "judged" },
+    { "axis": "design-system", "ref": "detached-instance", "status": "judged" },
+    { "axis": "design-system", "ref": "override", "status": "judged" },
+    { "axis": "design-system", "ref": "resize", "status": "judged" }
+  ]
+}

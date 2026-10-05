@@ -1,0 +1,12 @@
+{
+  "case": "DS-01-no-baseline",
+  "findings": [],
+  "coverage": [
+    {
+      "axis": "design-system",
+      "status": "skipped",
+      "reasonCode": "reference-unreadable",
+      "reason": "no Design system baseline: the default link couldn't be read"
+    }
+  ]
+}

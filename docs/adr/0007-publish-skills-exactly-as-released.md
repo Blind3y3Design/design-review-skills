@@ -7,11 +7,11 @@ A published skill is the repo's `SKILL.md` exactly as it stands in a release: no
 - This fully supersedes ADR 0002 and removes ADR 0003's inlining fallback.
 - **Reference Documents.** Each skill's default Reference Document link points to the public repo, pinned to that release's tag, so a skill reads the version of the document it was released with. A team's own documents, such as a layer's rules document, are pointed to from its Review Profile, never by editing a skill. If `curl` stops working (it's undocumented, ADR 0005), a team copies the document onto a page in a shared Figma file and points to it from the profile.
 - **No default Review Profile** in a published copy: #7's lookup step 4 is removed. In Figma the profile is a page in the file (#12).
-- **One version for the whole set,** following semantic versioning, recorded in each skill's `metadata`. Each release is a git tag. `schemaVersion` and `factsVersion` change only with their formats. Each report records the set's version, and the Orchestrator warns in its report when a skill it invokes is at a different version.
+- **One version for the whole set,** following semantic versioning, recorded in each skill's `metadata` and in a `Version … of the design review skills` line in its body, because an agent strips the frontmatter when it loads a skill. Each release is a git tag. `schemaVersion` and `factsVersion` change only with their formats. Each report records the set's version, and the Orchestrator warns in its report when a skill it invokes is at a different version.
 - **A release:**
   1. The smoke test passes in Figma Design's agent and in an external agent.
-  2. The version and the pinned Reference Document links are set in all six skills, committed and tagged.
-  3. The six skills are published by hand in Figma, from one file in the owning team, to the organisation, in dependency order: the Report Writer and Design Scanner, then the Review Skills, then the Orchestrator.
+  2. The version and the pinned Reference Document links are set in every skill in the set, committed and tagged.
+  3. The skills are published by hand in Figma, from one file in the owning team, to the organisation, in dependency order: the Figma Writer, Profile Finder and the two Design Scanner skills, then the Report Writer, then the Review Skills, then the Orchestrator.
   4. `/design-review` confirms every skill's version.
 
   Setting the tag in the links is an edit to the source at release time, not a build step.
