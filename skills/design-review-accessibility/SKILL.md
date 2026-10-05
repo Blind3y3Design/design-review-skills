@@ -26,7 +26,7 @@ Settle everything before the review starts, asking for what's missing in as few 
 
 - **Scope:** the node ids of the frames to review, from the user's selection, the frames they name, or the `node-id` in a Figma link. For a page, use its top-level frames. In an external agent, the file key comes from the file's link.
 - **Runtime:** `figma-agent` inside Figma Design's agent, `external-agent` anywhere else.
-- **Given at run time,** when the user names them: a Review Profile (its text, a local file, or a link to a Figma file or a GitHub file), and any of the Accessibility settings under What to check against, such as a WCAG target ("WCAG 2.2 AA"), `Report above target: yes`, an additional requirement, or a criteria reference location (a URL or a local file), and the Product context's settings. A setting given at run time takes the place of the profile's for this run. Also where to save this run's report, if the user says: "don't save", or "save to <location>", and whether to mark its Findings on their layers: "annotate", or "don't annotate".
+- **Given at run time,** when the user names them: a Review Profile (its text, a local file, or a link to a Figma file or a GitHub file), and any of the Accessibility settings under What to check against, such as a target ("WCAG 2.2 AA", or a standard the criteria reference names, such as "Section 508"), `Report above target: yes`, an additional requirement, or a criteria reference location (a URL or a local file), and the Product context's settings. A setting given at run time takes the place of the profile's for this run. Also where to save this run's report, if the user says: "don't save", or "save to <location>", and whether to mark its Findings on their layers: "annotate", or "don't annotate".
 - **What to check against:** find the Review Profile, then settle the Accessibility and Product context settings from it or by asking, as Review Profile below describes.
 
 The inputs are settled when the scope, runtime and settings are known, or the run has stopped.
@@ -40,7 +40,9 @@ Its location is the first of: given at run time or in answer to a question, the 
 
 From the document's header, note its name, version and location for the report, and its `Covers` line. Its "How an entry reads" section says which criteria apply to the target.
 
-**A target the reference doesn't cover,** a version or level missing from its `Covers` line, gets only its additional requirements judged in step 4. Give the target one Coverage entry in their place: `{ "axis": "accessibility", "ref": "WCAG <version> <level>", "status": "not-readable", "note": "The criteria reference covers <its Covers line>, not WCAG <version> <level>. Only additional requirements were judged." }`.
+**A named standard,** a target whose `Standard` isn't WCAG, such as Section 508, resolves through the reference's "Named standards" section. A standard listed there is judged as the WCAG version and level it gives, in every step after this one, exactly as that WCAG target is: the same criteria, Findings and Coverage entries, whatever `Version` or `Level` go with the name. Add the one Coverage entry its section gives. It isn't one of the criteria, so leave it out of your count against the header's.
+
+**A target the reference doesn't cover,** one that is a version or level missing from its `Covers` line, or a standard its "Named standards" section doesn't list (or a reference with no such section), gets only its additional requirements judged in step 4. Give the target one Coverage entry in their place: `{ "axis": "accessibility", "ref": "<the target as stated>", "status": "not-readable", "note": "The criteria reference covers <its Covers line>, not <the target as stated>. Only additional requirements were judged." }`, with the target written as `WCAG <version> <level>` for a WCAG target and as the standard's name otherwise.
 
 ## 3. Scan
 
@@ -79,7 +81,7 @@ Each failure becomes part of a Finding:
 - **Title:** one line naming the layer and what fails.
 - **Evidence** and **fix,** as the criterion's How to judge says.
 - **Locations:** `{ "kind": "node", "fileKey", "nodeId", "layerPath" }` for each layer in the facts, after the library component's `{ "kind": "component", "key", "name", "library" }` when the failure is the design system's. When a facts group's `count` is more than its sample `nodes`, the evidence says how many more layers share it.
-- **Standard:** `{ "source": "WCAG <version>", "ref": "<number>", "url": "<its W3C line>" }`, with the url the reference gives for the target's version. For an additional requirement, `{ "source": "Additional requirement", "ref": "<id>" }`.
+- **Standard:** `{ "source": "WCAG <version>", "ref": "<number>", "url": "<its W3C line>" }`, with the url the reference gives for the target's version. A named standard's Findings take the WCAG version it was judged as. For an additional requirement, `{ "source": "Additional requirement", "ref": "<id>" }`.
 
 Judging is done when every criterion that applies to the target (or an uncovered target itself), every above-target check that's on, and every additional requirement has one Coverage entry, and every failure, measurement that couldn't be made, and missing annotation (unless `coverage only`) is in a Finding, with every measured failure given its owner by Whose failure it is. The reference's header says how many criteria apply at each target it covers: check your Coverage against it.
 
@@ -89,7 +91,7 @@ Use the skill `design-review-report-writer`, handing over:
 
 - `mode`: `json only` when the skill running this review asked for it, otherwise `full report`.
 - `run`: today's `date`, the `scope` (`fileKey`, and `nodes` as `{ id, name }`), the `runtime`, `setVersion` from this skill's Version line, `factsVersion` and `factGroups` from the Design Facts, and `settings`. `settings` is null when a profile gave the target, `Report above target`, the additional requirements, `Missing annotations`, `Annotation kits`, `Marker words` and the Product context, whatever the criteria reference's location. Otherwise it holds what no profile gave:
-  - `accessibility`, unless a profile's Accessibility section gave the target, `Report above target`, the additional requirements, `Missing annotations`, `Annotation kits` and `Marker words`: `{ "standard": "WCAG", "version": "<version>", "level": "<level>", "from": "profile", "run time", "asked" or "default", "criteriaReference": "<location>", "reportAboveTarget": "yes" or "no", "additionalRequirements": ["<id> (<Severity>): <statement>", …], "missingAnnotations": "findings" or "coverage only", "annotationKits": ["<kit>", …], "markerWords": ["<word> (<criteria>)", …] }`, where `from` says where the target came from.
+  - `accessibility`, unless a profile's Accessibility section gave the target, `Report above target`, the additional requirements, `Missing annotations`, `Annotation kits` and `Marker words`: `{ "standard": "WCAG" or the standard as named, such as "Section 508", "version": "<version>", "level": "<level>" (the version and level it was judged as), "from": "profile", "run time", "asked" or "default", "criteriaReference": "<location>", "reportAboveTarget": "yes" or "no", "additionalRequirements": ["<id> (<Severity>): <statement>", …], "missingAnnotations": "findings" or "coverage only", "annotationKits": ["<kit>", …], "markerWords": ["<word> (<criteria>)", …] }`, where `from` says where the target came from.
   - `productContext`, unless a profile's Product context section gave it: `{ "targetPlatforms": ["<platform>", …], "supportedViewportWidths": ["<width>", …], "from": "run time", "asked" or "default" }`.
 - `profile`: `{ name, location, lastUpdated }` for the profile whose section you used, otherwise null.
 - `references`: the criteria reference's name, version and location.
@@ -172,7 +174,7 @@ A criterion with markers (a Markers line other than `none`) is judged only insid
 
 The Orchestrator uses this skill in `set up` mode, in a first run or to add this axis to a profile, to settle the **Accessibility** section. Judge nothing, scan nothing and write no report. Ask the one question below, and hand back the section.
 
-1. **Ask the target,** pre-filled with the default: "Judge against WCAG 2.2 level AA, using the default criteria reference? Name another version or level to change it." Take the standard, version and level from the answer. Add nothing the user didn't name: the other settings below stay at their defaults.
+1. **Ask the target,** pre-filled with the default: "Judge against WCAG 2.2 level AA, using the default criteria reference? Name another version or level to change it." Take the standard, version and level from the answer; a standard such as Section 508 is written as named, with no Version or Level. Add nothing the user didn't name: the other settings below stay at their defaults.
 2. **Hand back** the section, in this format:
 
    ```markdown
@@ -206,7 +208,7 @@ The Accessibility section holds this skill's settings, one `Key: value` per line
 
 | Setting | Default |
 |---|---|
-| `Standard`, `Version`, `Level`: the target, such as WCAG, 2.2 and AA. `Standard: WCAG 2.2` gives the version too | WCAG 2.2 AA |
+| `Standard`, `Version`, `Level`: the target, such as WCAG, 2.2 and AA. `Standard: WCAG 2.2` gives the version too. `Standard: Section 508` names a standard the criteria reference resolves, and needs no `Version` or `Level` | WCAG 2.2 AA |
 | `Criteria reference`: the criteria reference's location | the skill's default (step 2) |
 | `Report above target`: `yes` adds the above-target checks in step 4, as advisory Findings | `no` |
 | `Additional requirement`: one of the team's own requirements, one line each, `Additional requirement: <id> (<Severity>): <statement>`, such as `Additional requirement: AR-1 (minor): Body text is at least 16 px.` The Severity is critical, serious, moderate or minor. A line with no id takes the first `AR-<n>` not already used | none |
