@@ -421,6 +421,12 @@ test('each expected case passes against itself and fails when any compared field
       (r) => { r.findings.push({ id: 'design-system/override/node:I119:72;4:3', axis: 'design-system', severity: 'moderate', certainty: 'confirmed' }); },
       (r) => { entry(r, 'detached-instance').status = 'not-readable'; },
     ],
+    'DS-04-named': [
+      (r) => { r.findings[0].id = 'design-system/detached-instance/component:33732a6d19dcd570f49c6dae49e669c160b91c27'; },
+      (r) => { r.findings[0].certainty = 'likely'; },
+      (r) => { r.findings.push({ id: 'design-system/override/node:I204:36;4:3', axis: 'design-system', severity: 'moderate', certainty: 'confirmed' }); },
+      (r) => { entry(r, 'detached-instance').status = 'not-readable'; },
+    ],
     'DS-05': [
       (r) => { r.findings[0].id = 'design-system/raw-value/node:119:75'; },
       (r) => { r.findings[0].certainty = 'likely'; },

@@ -1,0 +1,20 @@
+{
+  "case": "DS-04-named",
+  "findings": [
+    {
+      "id": "design-system/detached-instance/node:204:35",
+      "axis": "design-system",
+      "severity": "moderate",
+      "certainty": "confirmed",
+      "relatedFindings": []
+    }
+  ],
+  "coverage": [
+    { "axis": "design-system", "ref": "raw-value", "status": "judged" },
+    { "axis": "design-system", "ref": "outside-stack", "status": "judged" },
+    { "axis": "design-system", "ref": "unattributed", "status": "judged" },
+    { "axis": "design-system", "ref": "detached-instance", "status": "judged" },
+    { "axis": "design-system", "ref": "override", "status": "judged" },
+    { "axis": "design-system", "ref": "resize", "status": "judged" }
+  ]
+}
