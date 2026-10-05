@@ -434,8 +434,8 @@ try {
   const instances = found.length;
   if (missing.length) out.unread.push({ what: 'main components', reason: `${missing.length} instances' main components couldn't be read, such as ${missing[0]}` });
 
-  // The component each detached frame came from. detachedInfo names it by key (a library's) or id (a local one). A local one is read by id,
-  // which only reads. A library's is named only when an instance in the scope already uses it: the scanner only reads, so it loads no other component into the file.
+  // The component each detached frame came from. detachedInfo names it by key (a library's) or id (a local one). A local one is read by id.
+  // A library's is named only when an instance in the scope already uses it, so no other component is loaded into the file.
   const detached = [];
   for (const { n, path } of detachedFrames) {
     const info = n.detachedInfo, local = info.type === 'local';

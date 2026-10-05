@@ -965,7 +965,7 @@ test('the scanner skills each hold the script of every fact group they name, and
   assert.deepEqual([...all].sort(), ['annotations', 'bindings', 'colourPairs', 'components', 'structure', 'text']);
 });
 
-test('every scanner script states factsVersion 0.5, the version in which a local detached source is named again', async () => {
+test('every scanner script states the same factsVersion, 0.5', async () => {
   const headings = ['The colour pairs script', 'The text script', 'The structure script', 'The annotations script', 'The bindings script', 'The components script'];
   for (const heading of headings) {
     const result = await scan(heading, fakeFigma(dsFrame([])), '5:1');
