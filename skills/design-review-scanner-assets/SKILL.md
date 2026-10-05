@@ -2,12 +2,12 @@
 name: design-review-scanner-assets
 description: Reads Figma frames and returns two groups of Design Facts, bindings (the variables, styles and raw values layers use) and components (instances, detached frames and overrides), with each asset's library, for the other design review skills, which invoke it. Colour pairs, text, structure and annotations come from design-review-scanner. To start a review, use /design-review or a single review such as /design-review-library.
 metadata:
-  version: "0.1.0-alpha.2"
+  version: "0.1.0-alpha.3"
 ---
 
 # Design Scanner: assets
 
-Version 0.1.0-alpha.2 of the design review skills.
+Version 0.1.0-alpha.3 of the design review skills.
 
 Reads a design and returns its Design Facts about the assets it uses, variables, styles and components: what was read or measured, never a judgement. The scanner holds no thresholds and no criteria. The Review Skill that asked for the facts judges them.
 

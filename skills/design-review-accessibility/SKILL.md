@@ -2,12 +2,12 @@
 name: design-review-accessibility
 description: Accessibility review of Figma frames at the design stage. Judges WCAG criteria, such as text contrast, from measured Design Facts, and reports Findings and Coverage. Use when the user asks for an accessibility, WCAG or contrast review of a Figma design.
 metadata:
-  version: "0.1.0-alpha.2"
+  version: "0.1.0-alpha.3"
 ---
 
 # Accessibility review
 
-Version 0.1.0-alpha.2 of the design review skills.
+Version 0.1.0-alpha.3 of the design review skills.
 
 A design-stage review of Figma frames along one Review Axis, `accessibility`. This skill holds only the procedure. Everything about a criterion, such as its trigger, thresholds and default Severity, comes from the WCAG criteria Reference Document. Judge from that document and the Design Facts alone, never from what you know of WCAG.
 
@@ -33,7 +33,7 @@ The inputs are settled when the scope, runtime and settings are known, or the ru
 
 ## 2. Read the criteria reference
 
-Its location is the first of: given at run time or in answer to a question, the profile section's `Criteria reference` unless that's the skill's default, then the skill's default, `https://raw.githubusercontent.com/Blind3y3Design/design-review-skills/v0.1.0-alpha.2/reference-documents/wcag-2.2-criteria.md`. Read the whole document, as Reading a location describes.
+Its location is the first of: given at run time or in answer to a question, the profile section's `Criteria reference` unless that's the skill's default, then the skill's default, `https://raw.githubusercontent.com/Blind3y3Design/design-review-skills/v0.1.0-alpha.3/reference-documents/wcag-2.2-criteria.md`. Read the whole document, as Reading a location describes.
 
 - If a location the user or the profile gave can't be read, and nothing is running this review for another skill, stop. Tell the user the location and the error, and write no report.
 - Any other unreadable criteria reference, the default link or a given location when another skill runs this review, skips the axis. Hand the Report Writer no Findings and one Coverage entry, `{ "axis": "accessibility", "status": "skipped", "reasonCode": "reference-unreadable", "reason": "the criteria reference couldn't be read: <location>: <error>" }`, and go to step 5.

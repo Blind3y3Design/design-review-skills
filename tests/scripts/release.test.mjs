@@ -261,3 +261,16 @@ test('install-check passes a source with a space or a dollar sign to the CLI as 
   assert.equal(run(root, ['install-check', 'my dir/$HOME'], { SKILLS_CLI: cli }).status, 0);
   assert.equal(readFileSync(log, 'utf8').trim(), 'my dir/$HOME');
 });
+
+// `npx skills add` skips a skill whose frontmatter isn't valid YAML. An unquoted description with ": " is a nested mapping.
+test('check fails a description that is not valid YAML, and passes the same text quoted', () => {
+  const bad = makeRoot([{ name: 'a' }, { name: 'b' }]);
+  const file = join(bad, 'skills', 'b', 'SKILL.md');
+  writeFileSync(file, readFileSync(file, 'utf8').replace('description: A skill.', 'description: Writes the file: frames and notes.'));
+  const result = run(bad, ['check']);
+  assert.equal(result.status, 1);
+  assert.match(result.stdout, /b: the description has ": " or " #" in an unquoted value/);
+  assert.doesNotMatch(result.stdout, /a: the description/);
+  writeFileSync(file, readFileSync(file, 'utf8').replace('description: Writes the file: frames and notes.', 'description: "Writes the file: frames and notes."'));
+  assert.equal(run(bad, ['check']).status, 0);
+});
