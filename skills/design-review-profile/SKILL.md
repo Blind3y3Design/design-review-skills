@@ -2,12 +2,12 @@
 name: design-review-profile
 description: Finds and reads a team's Review Profile for the other design review skills, which invoke it. To start a review, use /design-review or a single review such as /design-review-accessibility.
 metadata:
-  version: "0.1.0-alpha.3"
+  version: "0.1.0-dev"
 ---
 
 # Profile Finder
 
-Version 0.1.0-alpha.3 of the design review skills.
+Version 0.1.0-dev of the design review skills.
 
 Finds the team's Review Profile and hands back its text, or says there's none, or that it can't be read. The skill that asked decides what to use from the profile and does its own asking. Interpret only what it takes to follow a pointer and to name the profile.
 
