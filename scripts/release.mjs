@@ -67,6 +67,8 @@ function checkRelease(root, { release = false, version = null } = {}) {
     const text = readFileSync(file, 'utf8');
     if (text.length > MAX_SKILL_CHARS) problems.push(`${folder}: ${thousands(text.length)} characters, over the ${thousands(MAX_SKILL_CHARS)} Figma allows in a skill`);
     const name = (text.match(/^name: (.*)$/m) || [])[1];
+    const description = (text.match(/^description: (.*)$/m) || [])[1] ?? '';
+    if (!/^["']/.test(description) && /: | #/.test(description)) problems.push(`${folder}: the description has ": " or " #" in an unquoted value, which isn't valid YAML and keeps \`npx skills add\` from installing the skill: reword it or quote it`);
     if (name !== folder) problems.push(`${folder}: name is "${name}", not the folder's`);
     const meta = (text.match(META_VERSION) || [])[2];
     const body = (text.match(BODY_VERSION) || [])[2];
