@@ -1,7 +1,7 @@
 # WCAG 2.2 criteria reference
 
 - Name: WCAG 2.2 criteria reference
-- Version: 0.4
+- Version: 0.5
 - Covers: WCAG 2.2 and WCAG 2.1, Levels A and AA
 
 A Reference Document for `design-review-accessibility`. For each WCAG success criterion it gives what a design-stage review needs: whether the criterion can be judged from a design, what triggers it, how to judge it with its thresholds, and its default Severity. The review skill holds only the procedure. Everything specific to a criterion lives here.
@@ -13,6 +13,7 @@ It holds:
 - **Every WCAG 2.2 criterion at Levels A and AA,** 55 in all. A WCAG 2.2 AA review gives all 55 a Coverage entry, and a WCAG 2.2 A review the 31 at Level A.
 - **The WCAG 2.1 changes.** A WCAG 2.1 AA review gives 50 criteria a Coverage entry, and a WCAG 2.1 A review 30.
 - **Four AAA criteria that can be judged from a design,** used only as above-target checks.
+- **Named standards that resolve to one of those targets,** so a team can name its standard rather than a WCAG version.
 
 A criterion that isn't listed here isn't judged.
 
@@ -32,6 +33,19 @@ Each criterion is a `###` heading with its number and name, then these lines:
 - **W3C:** the criterion in the WCAG 2.2 Recommendation, used as a Finding's `standard.url` at a WCAG 2.2 target. "WCAG 2.1 changes" gives the links for a WCAG 2.1 target.
 
 Under the lines, **How to judge** gives the test and its thresholds, what fails, the exceptions, what the evidence and fix say, and the Root Cause when it's a source other than the failing layer.
+
+## Named standards
+
+A target that names a standard other than WCAG, in a profile's `Standard` or given at run time, resolves to the WCAG version and level given here, and is judged against it exactly as a WCAG target is: the same criteria, thresholds, Findings and Coverage entries. A target matches when its whole `Standard` value equals one of the entry's names, ignoring case. A `Version` or `Level` that goes with it doesn't change the result. A standard that isn't listed here, and isn't a WCAG version and level this document covers, is a target the document doesn't cover.
+
+Each entry gives its names, the WCAG target it is judged as, and one extra Coverage entry that says how the target resolved. That entry isn't one of the criteria, so it isn't counted in the totals above.
+
+### Section 508
+
+- Names: Section 508, Revised Section 508, 508
+- Judged as: WCAG 2.2 AA
+- Coverage entry: `{ "axis": "accessibility", "ref": "Section 508", "status": "judged", "note": "Section 508 judged as WCAG 2.2 AA." }`. The reader sees the standard by its name.
+- Why: the Revised Section 508 standards require WCAG 2.0 Levels A and AA ([Access Board](https://www.access-board.gov/ict/)). W3C states that content conforming to WCAG 2.2 also conforms to WCAG 2.0 and WCAG 2.1 ([WCAG 2.2](https://www.w3.org/TR/WCAG22/)), so a 2.2 AA review judges everything 508 requires and adds to it. Judging 508 as 2.0 would leave out the 2.1 and 2.2 criteria, so the review never does. The one 2.0 criterion 2.2 dropped, 4.1.1 Parsing, is a `code` criterion that no design-stage review judges.
 
 ## Target sizes in CSS px
 

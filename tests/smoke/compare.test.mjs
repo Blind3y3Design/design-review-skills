@@ -258,6 +258,13 @@ test('each expected case passes against itself and fails when any compared field
       (r) => { r.findings[0].certainty = 'likely'; },
       (r) => { entry(r, '1.4.3').status = 'not-readable'; },
     ],
+    'A11Y-01-508': [
+      (r) => { r.findings[0].severity = 'serious'; },
+      (r) => { r.findings = []; },
+      (r) => { entry(r, '1.4.3').status = 'not-readable'; },
+      (r) => { entry(r, 'Section 508').status = 'not-readable'; },
+      (r) => { r.coverage = r.coverage.filter((c) => c.ref !== 'Section 508'); },
+    ],
     'CLEAN-01': [
       (r) => { r.findings.push({ id: 'accessibility/1.4.3/node:5:8', axis: 'accessibility', severity: 'moderate', certainty: 'confirmed' }); },
       (r) => { entry(r, '1.4.3').status = 'not-applicable'; },
