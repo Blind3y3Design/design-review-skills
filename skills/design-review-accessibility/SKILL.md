@@ -40,9 +40,9 @@ Its location is the first of: given at run time or in answer to a question, the 
 
 From the document's header, note its name, version and location for the report, and its `Covers` line. Its "How an entry reads" section says which criteria apply to the target.
 
-**A named standard,** a target whose `Standard` isn't WCAG, such as Section 508, resolves through the reference's "Named standards" section. A standard listed there is judged as the WCAG version and level it gives, in every step after this one, exactly as that WCAG target is: the same criteria, Findings and Coverage entries, whatever `Version` or `Level` go with the name. Add the one Coverage entry its section gives. It isn't one of the criteria, so leave it out of your count against the header's.
+**A named standard,** a target that isn't WCAG, such as Section 508, resolves through the reference's "Named standards" section. A standard listed there is judged as the WCAG target its entry gives, in every step after this one, exactly as that target is. Add the one Coverage entry its entry gives.
 
-**A target the reference doesn't cover,** one that is a version or level missing from its `Covers` line, or a standard its "Named standards" section doesn't list (or a reference with no such section), gets only its additional requirements judged in step 4. Give the target one Coverage entry in their place: `{ "axis": "accessibility", "ref": "<the target as stated>", "status": "not-readable", "note": "The criteria reference covers <its Covers line>, not <the target as stated>. Only additional requirements were judged." }`, with the target written as `WCAG <version> <level>` for a WCAG target and as the standard's name otherwise.
+**A target the reference doesn't cover** gets only its additional requirements judged in step 4. It is a version or level missing from the `Covers` line, or a standard that "Named standards" doesn't list (a reference without that section lists none). Give the target one Coverage entry in their place: `{ "axis": "accessibility", "ref": "<the target as stated>", "status": "not-readable", "note": "The criteria reference covers <its Covers line>, not <the target as stated>. Only additional requirements were judged." }`, with the target written as `WCAG <version> <level>` for a WCAG target and as the standard's name otherwise.
 
 ## 3. Scan
 
@@ -83,7 +83,7 @@ Each failure becomes part of a Finding:
 - **Locations:** `{ "kind": "node", "fileKey", "nodeId", "layerPath" }` for each layer in the facts, after the library component's `{ "kind": "component", "key", "name", "library" }` when the failure is the design system's. When a facts group's `count` is more than its sample `nodes`, the evidence says how many more layers share it.
 - **Standard:** `{ "source": "WCAG <version>", "ref": "<number>", "url": "<its W3C line>" }`, with the url the reference gives for the target's version. A named standard's Findings take the WCAG version it was judged as. For an additional requirement, `{ "source": "Additional requirement", "ref": "<id>" }`.
 
-Judging is done when every criterion that applies to the target (or an uncovered target itself), every above-target check that's on, and every additional requirement has one Coverage entry, and every failure, measurement that couldn't be made, and missing annotation (unless `coverage only`) is in a Finding, with every measured failure given its owner by Whose failure it is. The reference's header says how many criteria apply at each target it covers: check your Coverage against it.
+Judging is done when every criterion that applies to the target (or an uncovered target itself, or a named standard's own entry), every above-target check that's on, and every additional requirement has one Coverage entry, and every failure, measurement that couldn't be made, and missing annotation (unless `coverage only`) is in a Finding, with every measured failure given its owner by Whose failure it is. The reference's header says how many criteria apply at each target it covers: check your criteria's Coverage entries against it.
 
 ## 5. Report
 
