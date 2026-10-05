@@ -43,7 +43,7 @@ Return the Design Facts to the calling skill: a JSON array holding one result pe
 
 ## Design Facts format
 
-`factsVersion` 0.4. Each result holds:
+`factsVersion` 0.5. Each result holds:
 
 - `factsVersion`, and `runtime` (added by you).
 - `fileKey`: the file's key, or null when the runtime doesn't give it.
@@ -86,7 +86,7 @@ Each visible instance in the scope, grouped by its main component, the frames de
   - `nodes[]`: up to 10 of its instances, each `{ id, path }`, plus `inside`, the id of the outermost instance a nested one sits in.
 - An instance whose main component can't be read counts in `instances`, and `unread` says so.
 - `detached[]`: each frame outside any instance whose `detachedInfo` says it was detached from an instance, in the scope or holding the scanned node: `{ node: { id, path }, source }`.
-  - `source`: the component it came from, as `detachedInfo` names it: `{ type, key, name, set, remote, library }`, with `type` `library` or `local`, and `id` for a local one. The scanner only reads, so it names the component only when an instance in the scope uses it, and gives `name`, `set` and `remote` as read from that instance's main component, with `library` as for `components`. Otherwise `name`, `set` and `remote` are null, and `key` is the library component's key from `detachedInfo`, or null for a local one. With a null `name`, `unread` stays empty: the frame is detached from a component the scope doesn't show.
+  - `source`: the component it came from, as `detachedInfo` names it: `{ type, key, name, set, remote, library }`, with `type` `library` or `local`, and `id` for a local one. The scanner only reads: it names a local component by reading it by `id`, and a library component only when an instance in the scope uses it, since naming any other would mean loading it into the file. A named source gives `key`, `name`, `set` and `remote` as read from its main component, with `library` as for `components`. Otherwise `name`, `set` and `remote` are null, and `key` is the library component's key from `detachedInfo`, or null for a local one. With a null `name`, `unread` stays empty: the frame is detached from a library component the scope doesn't show, or from a local component that no longer exists.
 - `overrides[]`: each layer that an instance changes from its main component, as the outermost instance's `overrides` list it, plus each nested instance swapped for another component: `{ node: { id, path }, instance, detached, changes }`. A scanned node inside an instance also gets the changes on the layers holding it.
   - `instance`: `{ id, name, component }` of the outermost instance, which holds the change, with its main component's key. `detached`: the id of the detached frame the instance sits in, when there is one.
   - `changes[]`: one per property changed, each `{ property, fields, through, carried, uncertain, values }`, the last four only when they apply.
@@ -102,7 +102,7 @@ Each visible instance in the scope, grouped by its main component, the frames de
 ```js
 const NODE_ID = 'NODE_ID';
 
-const FACTS_VERSION = '0.4';
+const FACTS_VERSION = '0.5';
 const LIMIT = 18000;
 const SAMPLES = 10;
 const out = { factsVersion: FACTS_VERSION, fileKey: figma.fileKey || null, scope: null, groups: ['bindings'], unread: [], bindings: null };
@@ -355,7 +355,7 @@ return out;
 ```js
 const NODE_ID = 'NODE_ID';
 
-const FACTS_VERSION = '0.4';
+const FACTS_VERSION = '0.5';
 const LIMIT = 18000;
 const SAMPLES = 10;
 const out = { factsVersion: FACTS_VERSION, fileKey: figma.fileKey || null, scope: null, groups: ['components'], unread: [], components: null };
@@ -434,12 +434,13 @@ try {
   const instances = found.length;
   if (missing.length) out.unread.push({ what: 'main components', reason: `${missing.length} instances' main components couldn't be read, such as ${missing[0]}` });
 
-  // The component each detached frame came from. detachedInfo names it by key (a library's) or id (a local one). It is named here only
-  // when an instance in the scope already uses it: the scanner only reads, so it loads no other component into the file.
+  // The component each detached frame came from. detachedInfo names it by key (a library's) or id (a local one). A local one is read by id.
+  // A library's is named only when an instance in the scope already uses it, so no other component is loaded into the file.
   const detached = [];
   for (const { n, path } of detachedFrames) {
     const info = n.detachedInfo, local = info.type === 'local';
-    const main = local ? mainsById.get(info.componentId) : mainsByKey.get(info.componentKey);
+    let main = local ? mainsById.get(info.componentId) : mainsByKey.get(info.componentKey);
+    if (!main && local) main = await figma.getNodeByIdAsync(info.componentId).then(c => c && c.type === 'COMPONENT' ? c : null).catch(() => null);
     const read = main ? readMain(main) : { key: local ? null : info.componentKey, name: null, set: null, remote: null };
     detached.push({ node: { id: n.id, path }, source: { type: info.type, ...(local ? { id: info.componentId } : {}), key: read.key, name: read.name, set: read.set, remote: read.remote, library: null } });
   }
