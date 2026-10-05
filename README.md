@@ -28,7 +28,7 @@ The other skills do one job each for the skills above. They are installed and pu
 - **Report Writer** (`design-review-report-writer`): writes every report, so output is the same shape whether a Review Skill runs on its own or through the Orchestrator. A Markdown report, then a JSON block of Findings and Coverage. It delivers the report to the chat and saves it, and can mark Findings on their layers as annotations.
 - **Design Scanner** (`design-review-scanner` and `design-review-scanner-assets`): two skills that read the design once and return Design Facts for the Review Skills to judge. `design-review-scanner` returns colour pairs, text, structure and annotations, and `design-review-scanner-assets` returns bindings and components. They are two because Figma limits a skill to 65,536 characters. Their fixed scripts read the file the same way in every review, and they only read. Design review isn't delivered as a Figma plugin; see [ADR 0006](docs/adr/0006-design-facts-from-a-scanning-skill-not-a-plugin.md).
 - **Profile Finder** (`design-review-profile`): finds the team's Review Profile and hands back its text.
-- **Figma Writer** (`design-review-figma-writer`): writes report frames and layer annotations into the reviewed Figma file, for the Report Writer.
+- **Figma Writer** (`design-review-figma-writer`): writes into the reviewed Figma file: report frames and layer annotations for the Report Writer, and the Review Profile page for the Orchestrator.
 
 ### Review Profile
 
@@ -53,7 +53,7 @@ The skills are published and versioned together. Install all of them: a review s
 | `design-review-scanner` | Reads the design and returns Design Facts: colour pairs, text, structure and annotations (used by the Review Skills) |
 | `design-review-scanner-assets` | Reads the design and returns Design Facts: bindings and components (used by the Review Skills) |
 | `design-review-profile` | Finds the team's Review Profile (used by the other skills) |
-| `design-review-figma-writer` | Writes report frames and layer annotations into the Figma file (used by the Report Writer) |
+| `design-review-figma-writer` | Writes into the Figma file: report frames, layer annotations and the Review Profile page (used by the Report Writer and the Orchestrator) |
 
 - **Figma Design:** an organisation's skill owners publish all eight to the organisation, in the order in [docs/publishing.md](docs/publishing.md).
 - **Claude Code, Codex or Cursor:** in your project, run `npx skills add Blind3y3Design/design-review-skills --all`. It installs the eight skills into `.agents/skills/`, and links them for agents that read another folder, such as `.claude/skills/`. `npx skills update` brings in a new release. Copying the `skills/` folder works too. The repo's location will change once it moves into Cat's systems.
