@@ -90,7 +90,7 @@ The review is done when the Report Writer has delivered the report. In `json onl
 
 Another skill, such as `design-review`, can run this review as one part of a larger one. It loads this skill first, for three lines:
 
-- **Fact groups:** `bindings`, `components`: the groups the baseline's checks are judged from. The caller scans for them once, for every review in the run.
+- **Fact groups:** `bindings`, `components` (both read by `design-review-scanner-assets`): the groups the baseline's checks are judged from. The caller scans for them once, for every review in the run.
 - **For the caller to ask:** nothing. Without Design System Layers, there's nothing to check against.
 - **Set up:** `Design System Layers`: the section this skill writes in `set up` mode (Set up mode).
 

@@ -1,8 +1,7 @@
 // Tests the Design Scanner's fact group scripts (held by two skills), run as the skill gives them, against a small fake of the Figma Plugin API.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { AsyncFunction, SCANNER_SKILLS, scriptUnder } from './skill-script.mjs';
+import { AsyncFunction, SCANNER_SKILLS, read, scriptUnder } from './skill-script.mjs';
 
 // Sets NODE_ID on the script's first line, and the annotation kits on KITS's line when it has one, as the skill says, then runs it.
 const scan = (heading, figma, id, kits = []) => {
@@ -947,8 +946,7 @@ test('annotations: over the output limit, paths are shortened and long text is c
 
 test('the scanner skills each hold the script of every fact group they name, and no group is in both', () => {
   const groupsOf = (skill) => {
-    const text = readFileSync(new URL(`../../skills/${skill}/SKILL.md`, import.meta.url), 'utf8');
-    const line = text.split('\n').find((l) => l.startsWith('- **Fact groups:**'));
+    const line = read(skill).split('\n').find((l) => l.startsWith('- **Fact groups:**'));
     return [...line.matchAll(/`(\w+)`, with The ([a-z ]+) script/g)].map(([, group, name]) => ({ group, heading: `The ${name} script` }));
   };
   const all = [];
@@ -959,7 +957,7 @@ test('the scanner skills each hold the script of every fact group they name, and
       assert.ok(scriptUnder(heading, skill), `${skill} names ${group} but holds no "${heading}"`);
       all.push(group);
     }
-    const headings = [...readFileSync(new URL(`../../skills/${skill}/SKILL.md`, import.meta.url), 'utf8').matchAll(/^## (The [a-z ]+ script)$/gm)].map((m) => m[1]);
+    const headings = [...read(skill).matchAll(/^## (The [a-z ]+ script)$/gm)].map((m) => m[1]);
     assert.deepEqual(headings.sort(), groups.map((g) => g.heading).sort(), `${skill} holds a script for a group it doesn't name`);
   }
   assert.deepEqual([...all].sort(), ['annotations', 'bindings', 'colourPairs', 'components', 'structure', 'text']);

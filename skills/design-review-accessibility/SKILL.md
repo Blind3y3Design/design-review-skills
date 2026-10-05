@@ -128,7 +128,7 @@ Only the sampled `nodes` of a group are checked. One Finding per owner: a group 
 
 Another skill, such as `design-review`, can run this review as one part of a larger one. It loads this skill first, for three lines:
 
-- **Fact groups:** `colourPairs`, `text`, `structure`, `components`, `annotations`: every group a criteria reference's `Facts` lines can name. The caller scans for them once, for every review in the run, giving `design-review-scanner` the `Annotation kits` from the Accessibility section, or from the run-time settings.
+- **Fact groups:** `colourPairs`, `text`, `structure` and `annotations` (read by `design-review-scanner`), and `components` (read by `design-review-scanner-assets`): every group a criteria reference's `Facts` lines can name. The caller scans for them once, for every review in the run, giving `design-review-scanner` the `Annotation kits` from the Accessibility section, or from the run-time settings.
 - **For the caller to ask:** nothing. With no Accessibility section, this review uses its default target, WCAG 2.2 AA, and with no Product context, `Target platforms: Web`, and says so.
 - **Set up:** `Accessibility`: the section this skill writes in `set up` mode (Set up mode).
 

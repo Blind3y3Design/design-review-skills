@@ -243,7 +243,7 @@ const AXES = ['AXES'];
 const MARKS = ['MARKS'];
 if (SCOPE[0] === 'SCOPE' || AXES[0] === 'AXES' || MARKS[0] === 'MARKS') return { error: 'set SCOPE, AXES and MARKS on the first three lines' };
 
-// The review's own annotation categories, one per axis. `design-review-scanner`'s annotations script leaves out every category named "Design review: <axis>".
+// The review's own annotation categories, one per axis. The Design Scanner's annotations script leaves out every category named "Design review: <axis>".
 const CATEGORIES = {
   'design-system': { label: 'Design review: Design system adherence', color: 'teal' },
   'accessibility': { label: 'Design review: Accessibility', color: 'violet' },

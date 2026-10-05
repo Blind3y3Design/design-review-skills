@@ -2,7 +2,7 @@
 import { readFileSync } from 'node:fs';
 
 const skills = new Map();
-const read = (name) => {
+export const read = (name) => {
   if (!skills.has(name)) skills.set(name, readFileSync(new URL(`../../skills/${name}/SKILL.md`, import.meta.url), 'utf8'));
   return skills.get(name);
 };

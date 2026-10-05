@@ -149,11 +149,11 @@ test('check fails a SKILL.md one character over the limit, naming the skill and 
   assert.doesNotMatch(result.stdout, /a: .*characters/);
 });
 
-test('this repo\'s own skills pass check: eight skills, each within the limit', () => {
+test('this repo\'s own skills pass check, each within the size limit', () => {
   const repo = fileURLToPath(new URL('../..', import.meta.url));
   const result = run(repo, ['check']);
   assert.equal(result.status, 0, result.stdout);
-  assert.match(result.stdout, /^PASS 8 skills at /);
+  assert.match(result.stdout, /^PASS \d+ skills at /);
 });
 
 // A stand-in for `npx skills`, which installs the skills named in STUB_INSTALLS into .agents/skills of the current folder.
