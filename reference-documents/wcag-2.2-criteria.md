@@ -1,7 +1,7 @@
 # WCAG 2.2 criteria reference
 
 - Name: WCAG 2.2 criteria reference
-- Version: 0.5
+- Version: 0.6
 - Covers: WCAG 2.2 and WCAG 2.1, Levels A and AA
 
 A Reference Document for `design-review-accessibility`. For each WCAG success criterion it gives what a design-stage review needs: whether the criterion can be judged from a design, what triggers it, how to judge it with its thresholds, and its default Severity. The review skill holds only the procedure. Everything specific to a criterion lives here.
@@ -36,7 +36,7 @@ Under the lines, **How to judge** gives the test and its thresholds, what fails,
 
 ## Named standards
 
-A target that names a standard other than WCAG, in a profile's `Standard` or given at run time, resolves to the WCAG version and level given here, and is judged against it exactly as a WCAG target is: the same criteria, thresholds, Findings and Coverage entries. A target matches when its whole `Standard` value equals one of the entry's names, ignoring case. A `Version` or `Level` that goes with it doesn't change the result. A standard that isn't listed here, and isn't a WCAG version and level this document covers, is a target the document doesn't cover.
+A target that names a standard other than WCAG, in a profile's `Standard` or given at run time, resolves to the WCAG version and level given here, and is judged against it exactly as a WCAG target is: the same criteria, thresholds, Findings and Coverage entries. A target matches when its whole `Standard` value equals one of the entry's names, ignoring case. A `Version` or `Level` that goes with it doesn't change the result. One that differs from the WCAG target the entry gives is ignored, and the entry's note says so, such as "The stated Level AAA was ignored." after the usual note. A standard that isn't listed here, and isn't a WCAG version and level this document covers, is a target the document doesn't cover.
 
 Each entry gives its names, the WCAG target it is judged as, and one extra Coverage entry that says how the target resolved. That entry isn't one of the criteria, so it isn't counted in the totals above.
 

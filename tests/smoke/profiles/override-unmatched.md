@@ -1,4 +1,4 @@
-# Review Profile: Smoke test, Section 508
+# Review Profile: Smoke test, unmatched override
 
 Profile version: 0.1
 
@@ -6,7 +6,7 @@ Profile version: 0.1
 
 What this profile is called and who maintains it.
 
-- Name: Smoke test, Section 508
+- Name: Smoke test, unmatched override
 - Owner: Design review skills maintainers
 - Last updated: 2026-09-30
 
@@ -32,8 +32,9 @@ The design systems this work is checked against, most general first. A more spec
 
 The accessibility standard designs are judged against.
 
-- Standard: Section 508
-- Level: AAA
+- Standard: WCAG
+- Version: 2.2
+- Level: AA
 - Criteria reference: the skill's default
 
 ## Product context
@@ -42,3 +43,9 @@ Where the product runs, used by checks that depend on screen size.
 
 - Target platforms: Web
 - Supported viewport widths: 360px, 1440px
+
+## Severity Overrides
+
+The starting Severity this team sets for a type of rule, in place of the review's default. No override lowers a Locked Rule breach below serious, and one that sets critical names the core task it's tied to.
+
+- Detatched instance: serious
