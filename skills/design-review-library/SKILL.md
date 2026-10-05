@@ -13,10 +13,10 @@ A review of Figma frames along one Review Axis, `design-system`, which reports c
 
 ## Required skills
 
-This review MUST use three other skills: `design-review-profile` finds the Review Profile, `design-review-scanner` reads the design, and `design-review-report-writer` writes the report. Before anything else, check that all three are available to you. If any isn't, reply with only the line that fits, and stop:
+This review MUST use three other skills: `design-review-profile` finds the Review Profile, `design-review-scanner-assets` reads the design, and `design-review-report-writer` writes the report. Before anything else, check that all three are available to you. If any isn't, reply with only the line that fits, and stop:
 
 - One missing: "This review can't run: the skill `<name>` isn't installed. Install it, then run the review again."
-- More than one missing, naming each, such as: "This review can't run: the skills `design-review-scanner` and `design-review-report-writer` aren't installed. Install them, then run the review again."
+- More than one missing, naming each, such as: "This review can't run: the skills `design-review-scanner-assets` and `design-review-report-writer` aren't installed. Install them, then run the review again."
 
 These three skills are the review's only way to find the profile, read the design and write a report.
 
@@ -42,7 +42,7 @@ From the document's header, note its name, version and location for the report.
 
 ## 3. Scan
 
-Use the skill `design-review-scanner`. Give it the scope's node ids, the runtime, and the fact groups on the `Facts` lines of the baseline's checks. Judge from the Design Facts it hands back.
+Use the skill `design-review-scanner-assets`, which reads `bindings` and `components`. Give it the scope's node ids, the runtime, and the fact groups on the `Facts` lines of the baseline's checks. Judge from the Design Facts it hands back.
 
 When another skill handed over Design Facts, the design is already scanned: judge from those, as Run by another skill describes.
 

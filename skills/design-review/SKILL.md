@@ -9,14 +9,14 @@ metadata:
 
 Version 0.1.0-dev of the design review skills.
 
-The Orchestrator: it runs the Review Skills a team's Review Profile covers, on one scope and from one scan, and merges their Findings into one report. With no Review Profile, it creates one with the designer first (First run). It judges nothing itself. Each Review Skill judges its own axis, and asks its own set-up questions, the Profile Finder finds the Review Profile, the Design Scanner reads the design, the Figma Writer saves a profile as a page, and the Report Writer writes and delivers the report.
+The Orchestrator: it runs the Review Skills a team's Review Profile covers, on one scope and from one scan, and merges their Findings into one report. With no Review Profile, it creates one with the designer first (First run). It judges nothing itself. Each Review Skill judges its own axis, and asks its own set-up questions, the Profile Finder finds the Review Profile, the two Design Scanner skills read the design, the Figma Writer saves a profile as a page, and the Report Writer writes and delivers the report.
 
 ## Required skills
 
-When the user only asks for the skills' versions, go to Versions below. Otherwise this review MUST use three other skills: `design-review-profile` finds the Review Profile, `design-review-scanner` reads the design, and `design-review-report-writer` writes the report. Before anything else, check that all three are available to you. If any isn't, reply with only the line that fits, and stop:
+When the user only asks for the skills' versions, go to Versions below. Otherwise this review MUST use four other skills: `design-review-profile` finds the Review Profile, `design-review-scanner` and `design-review-scanner-assets` read the design, and `design-review-report-writer` writes the report. Before anything else, check that all four are available to you. If any isn't, reply with only the line that fits, and stop:
 
 - One missing: "This review can't run: the skill `<name>` isn't installed. Install it, then run the review again."
-- More than one missing, naming each, such as: "This review can't run: the skills `design-review-scanner` and `design-review-report-writer` aren't installed. Install them, then run the review again."
+- More than one missing, naming each, such as: "This review can't run: the skills `design-review-scanner-assets` and `design-review-report-writer` aren't installed. Install them, then run the review again."
 
 ## 1. Find the Review Profile
 
@@ -72,7 +72,7 @@ The run is settled when the chosen axes, the scope and the runtime are known, ev
 
 ## 4. Scan once
 
-Use the skill `design-review-scanner` once for the whole run. Give it the scope's node ids, the runtime, every fact group the runnable Review Skills' `Fact groups` lines name, and whatever else those lines say to give it. Every Review Skill judges from these Design Facts, so the design is read once. First run and Setting up an axis scan at this step's inputs as soon as the chosen axes are known, because a set-up mode reads the Design Facts, and add the `structure` group in a first run; step 4 then keeps that scan and skips itself. The scan is done when the scanner has handed back the Design Facts for every node in the scope.
+Use the skills `design-review-scanner` and `design-review-scanner-assets`, each once for the whole run, so the design is read once. Each reads its own fact groups: `colourPairs`, `text`, `structure` and `annotations` from `design-review-scanner`, and `bindings` and `components` from `design-review-scanner-assets`. Give each the scope's node ids, the runtime, and the fact groups it reads among those the runnable Review Skills' `Fact groups` lines name, and give `design-review-scanner` whatever else those lines say to give a scanner, such as the `Annotation kits`. Skip a scanner when none of its groups is named. Join the two results for each node: `groups` and `unread` joined, and each group's field from the scanner that read it. Every Review Skill judges from these joined Design Facts. First run and Setting up an axis scan at this step's inputs as soon as the chosen axes are known, because a set-up mode reads the Design Facts, and add the `structure` group in a first run; step 4 then keeps that scan and skips itself. The scan is done when each scanner you asked has handed back the Design Facts for every node in the scope.
 
 ## 5. Run the Review Skills
 
@@ -167,8 +167,8 @@ The text opens with `# Review Profile: <name>`, a blank line, `Profile version: 
 
 Every skill in the set opens with a Version line: "Version <version> of the design review skills." The set shares one version.
 
-- **Warn on a mismatch.** Note the Version line of each skill you load for a run: the Profile Finder in step 1, each Review Skill in step 2, the scanner in step 4, the Report Writer in step 6 and the Figma Writer when you save a profile. When any differs from this skill's, hand over one note: "Version warning: `<skill>` is at <version> and `<skill>` at <version>, but `design-review` is at <this version>. Install one version of every skill in the set." naming each such skill. With none, no note.
-- **Report the versions,** when the user asks for them. Load every skill in the set that is installed, and read only its Version line: do only that. Reply with one line per skill, `<skill>: <version>`, or `<skill>: not installed`, then, judging only the installed skills, "All installed skills are at <version>." when they share one version, or "The installed skills are at different versions: install one version of every skill in the set." when they don't. A skill that isn't installed doesn't count as a different version. The set is `design-review`, the Review Skills in the Axes table, `design-review-profile`, `design-review-scanner`, `design-review-report-writer` and `design-review-figma-writer`.
+- **Warn on a mismatch.** Note the Version line of each skill you load for a run: the Profile Finder in step 1, each Review Skill in step 2, each scanner in step 4, the Report Writer in step 6 and the Figma Writer when you save a profile. When any differs from this skill's, hand over one note: "Version warning: `<skill>` is at <version> and `<skill>` at <version>, but `design-review` is at <this version>. Install one version of every skill in the set." naming each such skill. With none, no note.
+- **Report the versions,** when the user asks for them. Load every skill in the set that is installed, and read only its Version line: do only that. Reply with one line per skill, `<skill>: <version>`, or `<skill>: not installed`, then, judging only the installed skills, "All installed skills are at <version>." when they share one version, or "The installed skills are at different versions: install one version of every skill in the set." when they don't. A skill that isn't installed doesn't count as a different version. The set is `design-review`, the Review Skills in the Axes table, `design-review-profile`, `design-review-scanner`, `design-review-scanner-assets`, `design-review-report-writer` and `design-review-figma-writer`.
 
 ## Axes
 
