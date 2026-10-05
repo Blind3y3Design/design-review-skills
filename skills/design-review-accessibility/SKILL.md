@@ -61,7 +61,7 @@ Judge these three sets. At a target the reference doesn't cover, judge only the 
 Give each exactly one Coverage entry, `{ "axis": "accessibility", "ref": "<criterion number, or requirement id>", "status": "<status>" }`. Add a `note` to any status but `judged`, and to every above-target entry ("above target"). The status is the first that fits:
 
 1. `needs-code` when its group is `code`. It's never a Finding.
-2. `not-readable` when a fact group it needs is in the facts' `unread`, or none of its measurements could be made. The note gives the scanner's reason.
+2. `not-readable` when a fact group it needs is in the facts' `unread`, by its name or through the id of a node that couldn't be read (a node that isn't there, is hidden or sits under a hidden layer has no `groups`), or none of its measurements could be made. The note gives the scanner's reason.
 3. `not-applicable` when its trigger isn't in the scope. The facts show what a layer is by its name, its type, its prototype `reactions`, and the text in and beside it. The trigger alone decides this: an annotation never brings a criterion in.
 4. `needs-section` when it has markers and no marked section lets it be judged, as Marked sections describes.
 5. `needs-annotation` or `needs-state` when the annotation or state its Needs line names is missing for one of its triggers, as Annotations and states describes.

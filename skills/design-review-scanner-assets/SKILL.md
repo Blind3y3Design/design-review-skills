@@ -47,12 +47,12 @@ Return the Design Facts to the calling skill: a JSON array holding one result pe
 
 - `factsVersion`, and `runtime` (added by you).
 - `fileKey`: the file's key, or null when the runtime doesn't give it.
-- `scope`: the node scanned: `id`, `name`, `type`, `page`, and `topLevelFrame` when the node sits inside a top-level frame.
-- `groups`: the fact groups read.
-- `unread[]`: what couldn't be read, each `{ what, reason }`, with `scanInstead` ids when the answer is to scan those instead.
+- `scope`: the node scanned: `id`, `name`, `type`, `page`, and `topLevelFrame` when the node sits inside a top-level frame, which is a frame on the page or directly in a Figma section. A frame in a section is its own top-level frame, and the section is not one. Null for an id with no node.
+- `groups`: the fact groups read. It is empty when the node couldn't be read at all.
+- `unread[]`: what couldn't be read, each `{ what, reason }`, with `scanInstead` ids when the answer is to scan those instead. A node that isn't there, or is hidden or at zero opacity, or sits under a layer that is, gives no facts: `groups` is empty and `unread` holds one entry whose `what` is its id.
 - `bindings` and `components`: each group's facts, or null when it wasn't read. The other four fields are the other scanner's: the caller joins the two results.
 
-Positions and sizes are in Figma px. `x` and `y` are measured from the top-level frame's top-left corner.
+Positions and sizes are in Figma px. `x` and `y` are measured from the top-level frame's top-left corner, and every `path` starts at the top-level frame.
 
 ### Bindings
 
@@ -109,7 +109,7 @@ const out = { factsVersion: FACTS_VERSION, fileKey: figma.fileKey || null, scope
 const childIds = (n) => ('children' in n ? n.children.map(c => c.id) : []);
 
 const node = await figma.getNodeByIdAsync(NODE_ID);
-if (!node) { out.unread.push({ what: NODE_ID, reason: 'no node with this id' }); return out; }
+if (!node) { out.groups = []; out.unread.push({ what: NODE_ID, reason: 'no node with this id' }); return out; }
 let page = node;
 while (page.parent && page.type !== 'PAGE') page = page.parent;
 if (page.type === 'PAGE') await page.loadAsync();
@@ -118,9 +118,18 @@ if (node.type === 'PAGE' || node.type === 'DOCUMENT') {
   out.unread.push({ what: NODE_ID, reason: 'a page, not a layer: scan each id in scanInstead', scanInstead: childIds(node) });
   return out;
 }
+// The top-level frame: the frame on the page or directly in a Figma section that holds the node.
 let topFrame = node;
-while (topFrame.parent && topFrame.parent.type !== 'PAGE') topFrame = topFrame.parent;
+while (topFrame.parent && topFrame.parent.type !== 'PAGE' && topFrame.parent.type !== 'SECTION') topFrame = topFrame.parent;
 out.scope = { id: node.id, name: node.name, type: node.type, page: page.name, topLevelFrame: topFrame.id === node.id ? null : { id: topFrame.id, name: topFrame.name } };
+// A hidden layer, or one under a hidden layer, has nothing to read: say so.
+for (let a = node; a && a.type !== 'PAGE'; a = a.parent) {
+  if (a.visible === false || ('opacity' in a && a.opacity === 0)) {
+    out.groups = [];
+    out.unread.push({ what: NODE_ID, reason: a === node ? 'this layer is hidden or at zero opacity' : `it sits inside "${a.name}", which is hidden or at zero opacity` });
+    return out;
+  }
+}
 
 // Library names by variable collection key, never by collection name.
 const libraries = new Map();
@@ -316,11 +325,10 @@ const walk = async (n, outerInstance, nearestInstance, parentPath) => {
   if ('children' in n) for (const c of n.children) await walk(c, outerInstance, nearestInstance, path);
 };
 // A scanned node inside an instance starts with the instances above it.
+// Paths run from the top-level frame.
 let outerAbove = null, nearestAbove = null, parentPath = '';
-for (let x = node.parent; x && x.type !== 'PAGE'; x = x.parent) {
-  if (x.type === 'INSTANCE') { outerAbove = x; if (!nearestAbove) nearestAbove = x; }
-  parentPath = parentPath ? `${x.name} / ${parentPath}` : x.name;
-}
+for (let x = node.parent; x && x.type !== 'PAGE'; x = x.parent) if (x.type === 'INSTANCE') { outerAbove = x; if (!nearestAbove) nearestAbove = x; }
+for (let x = node !== topFrame ? node.parent : null; x; x = x === topFrame ? null : x.parent) parentPath = parentPath ? `${x.name} / ${parentPath}` : x.name;
 if (outerAbove) noteOverrides(outerAbove);
 await walk(node, outerAbove, nearestAbove, parentPath);
 
@@ -362,7 +370,7 @@ const out = { factsVersion: FACTS_VERSION, fileKey: figma.fileKey || null, scope
 const childIds = (n) => ('children' in n ? n.children.map(c => c.id) : []);
 
 const node = await figma.getNodeByIdAsync(NODE_ID);
-if (!node) { out.unread.push({ what: NODE_ID, reason: 'no node with this id' }); return out; }
+if (!node) { out.groups = []; out.unread.push({ what: NODE_ID, reason: 'no node with this id' }); return out; }
 let page = node;
 while (page.parent && page.type !== 'PAGE') page = page.parent;
 if (page.type === 'PAGE') await page.loadAsync();
@@ -371,9 +379,18 @@ if (node.type === 'PAGE' || node.type === 'DOCUMENT') {
   out.unread.push({ what: NODE_ID, reason: 'a page, not a layer: scan each id in scanInstead', scanInstead: childIds(node) });
   return out;
 }
+// The top-level frame: the frame on the page or directly in a Figma section that holds the node.
 let topFrame = node;
-while (topFrame.parent && topFrame.parent.type !== 'PAGE') topFrame = topFrame.parent;
+while (topFrame.parent && topFrame.parent.type !== 'PAGE' && topFrame.parent.type !== 'SECTION') topFrame = topFrame.parent;
 out.scope = { id: node.id, name: node.name, type: node.type, page: page.name, topLevelFrame: topFrame.id === node.id ? null : { id: topFrame.id, name: topFrame.name } };
+// A hidden layer, or one under a hidden layer, has nothing to read: say so.
+for (let a = node; a && a.type !== 'PAGE'; a = a.parent) {
+  if (a.visible === false || ('opacity' in a && a.opacity === 0)) {
+    out.groups = [];
+    out.unread.push({ what: NODE_ID, reason: a === node ? 'this layer is hidden or at zero opacity' : `it sits inside "${a.name}", which is hidden or at zero opacity` });
+    return out;
+  }
+}
 
 // An instance's layers are matched to its main component's by their positions, so the layers it hides have to be there too.
 // Figma leaves them out while figma.skipInvisibleInstanceChildren is on, as it is through use_figma, so it's off until the script ends.
@@ -395,7 +412,8 @@ try {
     return readMains.get(main.id);
   };
   const hidden = (n) => n.visible === false || ('opacity' in n && n.opacity === 0);
-  const pathOf = (n) => { const names = []; for (let x = n; x && x.type !== 'PAGE'; x = x.parent) names.unshift(x.name); return names.join(' / '); };
+  // Layer names from the top-level frame down to a layer, or from the page's child for a layer above the frame.
+  const pathOf = (n) => { const names = []; for (let x = n; x && x.type !== 'PAGE'; x = x === topFrame ? null : x.parent) names.unshift(x.name); return names.join(' / '); };
 
   // Each visible instance, in layer order, and each frame detached from an instance. An instance inside another instance is nested:
   // it comes with the outer one's component. `detachedIn` is the detached frame an instance sits in, if any.
@@ -411,10 +429,8 @@ try {
   // A scanned node inside an instance starts with the outermost instance above it, and one inside a detached frame with that frame,
   // which is listed too: when a large frame is scanned child by child, each child's result names it.
   let outerAbove = null, detachedAbove = null, parentPath = '';
-  for (let x = node.parent; x && x.type !== 'PAGE'; x = x.parent) {
-    if (x.type === 'INSTANCE') outerAbove = x;
-    parentPath = parentPath ? `${x.name} / ${parentPath}` : x.name;
-  }
+  for (let x = node.parent; x && x.type !== 'PAGE'; x = x.parent) if (x.type === 'INSTANCE') outerAbove = x;
+  for (let x = node !== topFrame ? node.parent : null; x; x = x === topFrame ? null : x.parent) parentPath = parentPath ? `${x.name} / ${parentPath}` : x.name;
   if (!outerAbove) for (let x = node.parent; x && x.type !== 'PAGE' && !detachedAbove; x = x.parent) if (x.type === 'FRAME' && x.detachedInfo) detachedAbove = x;
   if (detachedAbove) detachedFrames.push({ n: detachedAbove, path: pathOf(detachedAbove) });
   walk(node, outerAbove, detachedAbove, parentPath);

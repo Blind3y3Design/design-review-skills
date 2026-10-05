@@ -56,7 +56,7 @@ Settle everything now, asking what's missing in one message. Nothing is asked on
 
 For example: "I'll use the Review Profile "Checkout team profile" from this file's "Review Profile" page. Which reviews should I run? [x] Design system adherence [x] Accessibility. And what should I review: your selection (Checkout, Payment), this page, or other frames?"
 
-A chosen axis whose Review Skill is not loaded is **skipped**, with one Coverage entry that step 6 keeps: `{ "axis": "<axis>", "status": "skipped", "reasonCode": "skill-not-installed", "reason": "the skill <exact name> isn't installed" }`.
+A chosen axis whose Review Skill is not loaded is **skipped**, with one Coverage entry that step 6 keeps, where `<key>` is the axis's key in the Axes table: `{ "axis": "<key>", "status": "skipped", "reasonCode": "skill-not-installed", "reason": "the skill <exact name> isn't installed" }`.
 
 The **runnable axes** are the chosen axes that aren't skipped. Go on by how many there are:
 
@@ -82,7 +82,7 @@ Where your runtime can run subagents, run each Review Skill in its own subagent,
 
 Each hands back its notes, if any, and a report JSON, which may hold no Findings and one `skipped` Coverage entry for its axis, such as when a Reference Document can't be read. Keep it as it came.
 
-A Review Skill **fails** when it ends without a report JSON: it errored, your runtime reports its subagent as timed out or stopped, or it replied with only a message. Keep the others running, and leave the failed skill's axis to its Coverage entry: you never run its review yourself. The axis is skipped, with the Coverage entry `{ "axis": "<axis>", "status": "skipped", "reasonCode": "skill-failed", "reason": "the skill <name> failed: <its error, or its reply>" }`, and a note: "<Review Skill's axis name> wasn't assessed. Run it on its own with `/<name>`."
+A Review Skill **fails** when it ends without a report JSON: it errored, your runtime reports its subagent as timed out or stopped, or it replied with only a message. Keep the others running, and leave the failed skill's axis to its Coverage entry: you never run its review yourself. The axis is skipped, with the Coverage entry `{ "axis": "<key>", "status": "skipped", "reasonCode": "skill-failed", "reason": "the skill <name> failed: <its error, or its reply>" }`, and a note: "<Review Skill's axis name> wasn't assessed. Run it on its own with `/<name>`."
 
 This step is done when every runnable axis has handed back its report JSON or been skipped as failed.
 
@@ -93,7 +93,7 @@ Use the skill `design-review-report-writer` in `full report` mode, handing over 
 - `run`: today's `date`, the `scope` (`fileKey`, and `nodes` as `{ id, name }`), the `runtime`, `setVersion` from this skill's Version line, `factsVersion` and `factGroups` from the scan, and `settings`: every report's `run.settings` joined into one object, or null when each is null.
 - `profile`: the found result's `profile`, or for a first run the `profile` you built (question 8).
 - `references`: every report's references, each once.
-- `findings`: every report's Findings, each as it came, keeping its axis and id. The Report Writer links those on different axes that share a Root Cause and a property.
+- `findings`: every report's Findings, each as it came, keeping its axis and id. The Report Writer links those on different axes that share a Root Cause and a Property.
 - `coverage`: every report's Coverage entries, and the entry for each skipped axis, whether step 3 or step 5 skipped it.
 - `notes`: every report's notes, and your own, such as an axis left out because it isn't set up, the note for a failed Review Skill, and the version warning, if Versions below gives one.
 - `reportSettings`: the profile's Report settings section, as `{ "<key>": "<value>" }`, or null.
@@ -104,7 +104,7 @@ Only this call delivers a report, even when every runnable axis was skipped as f
 
 ## First run
 
-With no Review Profile, you build one with the designer, then run the review against it. You ask seven questions, numbered 1 to 5, 7 and 8 (question 6, the research source, waits for research alignment), one in each message, each pre-filled from the file where you can. A question is done when the user has answered it, and the next waits for that. Every question comes before the review runs. The Review Skills ask 4 and 5 in their `set up` mode, and you ask the rest.
+With no Review Profile, you build one with the designer, then run the review against it. You ask seven questions, numbered 1 to 5, 7 and 8, one in each message, each pre-filled from the file where you can. A question is done when the user has answered it, and the next waits for that. Every question comes before the review runs. The Review Skills ask 4 and 5 in their `set up` mode, and you ask the rest.
 
 **Two things come before question 1.** Take the scope from the user's request, asking for it when the request names no frames (that isn't one of the seven). Then load the Review Skills as step 2 describes, so that a run with none of them stops before it asks anything.
 
@@ -112,11 +112,11 @@ With no Review Profile, you build one with the designer, then run the review aga
    - **A profile to use:** run the Profile Finder with it as the profile given at run time. `found` goes on to step 2 as a found profile, and step 3 also asks whether to save a pointer to it. `unreadable` stops the run as step 1 does, and adds that you won't create another profile, because two would then stand for the same work.
    - **Set one up:** go on to question 2.
    - **Neither:** stop. Reply that there is nothing to judge a full review against, that each review can run on its own without a profile, such as `/design-review-accessibility`, and that it asks what to check against each time. Write no report.
-2. **Which reviews.** List each axis whose Review Skill is loaded and has a `Set up` line, all ticked. List research alignment as "not available in this release", and any other axis whose skill isn't loaded as "not installed: install `<skill>` to set it up". The axes left ticked are the run's chosen axes, and the profile's. When no axis can be set up, stop as step 2 does. Then scan (step 4).
+2. **Which reviews.** List each axis whose Review Skill is loaded and has a `Set up` line, all ticked. List any axis whose skill isn't loaded as "not installed: install `<skill>` to set it up". The axes left ticked are the run's chosen axes, and the profile's. When no axis can be set up, stop as step 2 does. Then scan (step 4).
 3. **Name and owner.** Ask what the profile is called and who owns it, a person or a team its readers can ask, such as "Checkout team profile", owned by the Checkout design team. Take no owner as `not named`.
 4. **Design System Layers,** when design system adherence is chosen. Use the skill `design-review-library` in `set up` mode. Give it the scope, the runtime and the Design Facts.
 5. **Accessibility target,** when accessibility is chosen. Use the skill `design-review-accessibility` in `set up` mode. Give it the scope and the runtime.
-7. **Product context.** Ask where the product runs, pre-filled with `Target platforms: Web` and, as `Supported viewport widths`, the distinct widths of the scope's top-level frames (the structure facts' `frame.width`), smallest first, such as `360px, 1440px`.
+7. **Product context.** Ask where the product runs, pre-filled with `Target platforms: Web` and, as `Supported viewport widths`, the distinct widths of the scope's top-level frames (the structure facts' `frame.width`, or for a scope that is a Figma section, the width of each `FRAME` layer directly inside it), smallest first, such as `360px, 1440px`.
 8. **Review and save.** Write the profile as Profile layout describes, and show all of it in the chat. Ask whether to save it, and where (Saving a profile). On a change to an answer, go back to the question that asked it. Saving ends the first run. When the user won't save it, or no place takes the save, stop as question 1 does when the user wants neither, saying what happened and, for a failed save, that the profile in the chat can be saved by hand as a page named "Review Profile".
 
 A Review Skill's `set up` mode hands back its section and notes, or says it can't set the axis up, such as design system adherence with no library in the design. Leave that axis out of the profile, say why, and go on with the others. When none is left, stop.
@@ -172,9 +172,9 @@ Every skill in the set opens with a Version line: "Version <version> of the desi
 
 ## Axes
 
-| Axis | Review Skill | The profile covers it when it has |
-|---|---|---|
-| Design system adherence | `design-review-library` | a Design System Layers section |
-| Accessibility | `design-review-accessibility` | always: without an Accessibility section, the skill uses its default target |
+| Axis | Key | Review Skill | The profile covers it when it has |
+|---|---|---|---|
+| Design system adherence | `design-system` | `design-review-library` | a Design System Layers section |
+| Accessibility | `accessibility` | `design-review-accessibility` | always: without an Accessibility section, the skill uses its default target |
 
-Research alignment has no row until its Review Skill `design-review-research` exists, so it is not one of the set. A profile with a Research Sources section covers it, and step 3 skips it as an axis whose Review Skill is not loaded. When the user names it and the profile has no such section, leave it out, saying it isn't available in this release.
+Research alignment has no row until its Review Skill `design-review-research` exists, so it is not one of the set. A profile with a Research Sources section covers it, and step 3 skips it, with the key `research`, as an axis whose Review Skill is not loaded. When the user names it and the profile has no such section, leave it out, saying it isn't available in this release.
