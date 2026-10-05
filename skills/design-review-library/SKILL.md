@@ -2,12 +2,12 @@
 name: design-review-library
 description: Design system adherence review of Figma frames. Judges how a design uses the team's Design System Layers, such as raw values where a variable or style could be bound, assets from outside the stack, detached instances and overridden components, and reports Findings and Coverage. Use when the user asks for a design system adherence, design token, variable or component review of a Figma design.
 metadata:
-  version: "0.1.0-dev"
+  version: "0.1.0-alpha.2"
 ---
 
 # Design system adherence review
 
-Version 0.1.0-dev of the design review skills.
+Version 0.1.0-alpha.2 of the design review skills.
 
 A review of Figma frames along one Review Axis, `design-system`, which reports call design system adherence. This skill holds only the procedure. Everything about a check, such as its trigger, how to judge it and its default Severity, comes from the Design system baseline Reference Document. Judge from that document, the Design System Layers and the Design Facts alone, never from what you know of design systems.
 
@@ -33,7 +33,7 @@ The inputs are settled when the scope, runtime and anything given at run time ar
 
 ## 2. Read the baseline
 
-Its location is the first of: given at run time, the `Baseline` line of the section you use unless that's the skill's default, then the skill's default, `https://raw.githubusercontent.com/Blind3y3Design/design-review-skills/main/reference-documents/design-system-baseline.md`. Read the whole document, as Reading a location describes.
+Its location is the first of: given at run time, the `Baseline` line of the section you use unless that's the skill's default, then the skill's default, `https://raw.githubusercontent.com/Blind3y3Design/design-review-skills/v0.1.0-alpha.2/reference-documents/design-system-baseline.md`. Read the whole document, as Reading a location describes.
 
 - If a location the user or the profile gave can't be read, and nothing is running this review for another skill, stop. Tell the user the location and the error, and write no report.
 - Any other unreadable baseline, the default link or a given location when another skill runs this review, means there's no baseline, so the axis is skipped. Hand the Report Writer no Findings and one Coverage entry, `{ "axis": "design-system", "status": "skipped", "reasonCode": "reference-unreadable", "reason": "no Design system baseline: <location> couldn't be read: <error>" }`, and go to step 5.
