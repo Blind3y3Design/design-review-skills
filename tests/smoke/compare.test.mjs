@@ -241,6 +241,17 @@ test('the command lists each difference and exits with 1 when a report differs',
   assert.equal(result.stdout, 'FAIL A11Y-01\n- Finding accessibility/1.4.3/node:5:5: certainty is "likely", expected "confirmed"\n');
 });
 
+test('a whole-axis skipped entry for no Design System Layers is compared by its reasonCode', () => {
+  const skipped = (reasonCode) => ({
+    findings: [],
+    coverage: [{ axis: 'design-system', status: 'skipped', reasonCode, reason: 'no Design System Layers: the Review Profile has no Design System Layers section' }],
+  });
+  assert.deepEqual(compareReports(skipped('no-layers'), skipped('no-layers')), { pass: true, differences: [] });
+  const wrong = compareReports(skipped('no-layers'), skipped('reference-unreadable'));
+  assert.deepEqual(wrong.differences, ['Coverage design-system (whole axis): reasonCode is "reference-unreadable", expected "no-layers"']);
+  assert.equal(compareReports(skipped('no-layers'), { findings: [], coverage: [{ ...skipped('no-layers').coverage[0], status: 'judged' }] }).pass, false);
+});
+
 test('each expected case passes against itself and fails when any compared field changes', () => {
   const entry = (r, ref) => r.coverage.find((c) => c.ref === ref);
   const changes = {
@@ -364,6 +375,17 @@ test('each expected case passes against itself and fails when any compared field
       (r) => { r.coverage[0].ref = 'raw-value'; },
       (r) => { r.coverage = []; },
       (r) => { r.findings.push({ id: 'design-system/raw-value/node:45:18', axis: 'design-system', severity: 'moderate', certainty: 'confirmed' }); },
+      (r) => { r.coverage[0].reasonCode = 'skill-failed'; },
+      (r) => { delete r.coverage[0].reasonCode; },
+    ],
+    'A11Y-09': [
+      (r) => { r.findings[0].id = 'accessibility/1.1.1/node:109:4070'; },
+      (r) => { r.findings[0].severity = 'moderate'; },
+      (r) => { r.findings[0].certainty = 'confirmed'; },
+      (r) => { r.findings[1].certainty = 'likely'; },
+      (r) => { r.findings.pop(); },
+      (r) => { entry(r, '1.1.1').status = 'judged'; },
+      (r) => { entry(r, '1.4.3').status = 'not-readable'; },
     ],
     'X-01': [
       (r) => { r.findings[0].relatedFindings = []; },
@@ -439,11 +461,6 @@ test('each expected case passes against itself and fails when any compared field
       (r) => { r.findings[0].certainty = 'likely'; },
       (r) => { r.findings[0].severity = 'minor'; },
       (r) => { entry(r, 'override').status = 'not-applicable'; },
-    ],
-    'DS-01-no-baseline': [
-      (r) => { r.coverage[0].reasonCode = 'skill-failed'; },
-      (r) => { delete r.coverage[0].reasonCode; },
-      (r) => { r.coverage[0].status = 'judged'; },
     ],
     'RUN-03': [
       (r) => { r.coverage.find((c) => c.axis === 'research').reasonCode = 'no-topic'; },

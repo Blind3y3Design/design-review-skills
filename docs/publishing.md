@@ -6,11 +6,11 @@ The first release has eight skills: the Orchestrator `design-review`, the Review
 
 ## Where the version lives
 
-A release sets the version in three places in every skill. `scripts/release.mjs` writes and checks all three.
+A release sets the version in two places in every skill, and pins a third in the skills that have one. `scripts/release.mjs` writes and checks all of them.
 
 - **`metadata.version`** in the frontmatter.
 - **The `Version <version> of the design review skills.` line** under the title. Claude Code strips a skill's frontmatter when it loads it, so this line is what a skill reads at run time. Every report's `run.setVersion` comes from it, and so does the Orchestrator's warning that a skill it invokes is at a different version (ADR 0007).
-- **The default Reference Document links**, `https://raw.githubusercontent.com/Blind3y3Design/design-review-skills/<ref>/reference-documents/…`. A release pins `<ref>` to its tag, `v<version>`, so a published skill reads the documents it was released with. A version ending in `-dev` uses `main`.
+- **The default Reference Document links**, in the skills that have any (the Review Skills), `https://raw.githubusercontent.com/Blind3y3Design/design-review-skills/<ref>/reference-documents/…`. A release pins `<ref>` to its tag, `v<version>`, so a published skill reads the documents it was released with. A version ending in `-dev` uses `main`.
 
 ## Checklist
 
@@ -23,7 +23,7 @@ A release sets the version in three places in every skill. `scripts/release.mjs`
    node scripts/release.mjs set <version>
    node scripts/release.mjs check --release <version>
    ```
-   `set` takes a semantic version such as `0.1.0` and changes nothing if any skill lacks one of the places above. `check --release` must print `PASS`. `check` also fails any `SKILL.md` over 65,536 characters (not bytes), Figma's limit for a skill: cut that skill before releasing. Commit with the message "Release <version>", and open a pull request. When it's merged, tag the commit on `main` that carries it, and run `check --release <version>` once more on that commit:
+   `set` takes a semantic version such as `0.1.0` and changes nothing if any skill lacks its `metadata.version` or its Version line. A skill with no default link has nothing to pin, and `set` and `check` leave it at those two places. `check --release` must print `PASS`. `check` also fails any `SKILL.md` over 65,536 characters (not bytes), Figma's limit for a skill: cut that skill before releasing. Commit with the message "Release <version>", and open a pull request. When it's merged, tag the commit on `main` that carries it, and run `check --release <version>` once more on that commit:
    ```
    git tag v<version> <commit>
    git push origin v<version>
@@ -56,4 +56,4 @@ A release sets the version in three places in every skill. `scripts/release.mjs`
 
 ## Setting the version by hand
 
-If the script can't run, change the three places in each skill as above, then compare the result with `node scripts/release.mjs check --release <version>` run on another machine. The script lists every folder in `skills/`, so it covers a skill added later.
+If the script can't run, change the places above in each skill, then compare the result with `node scripts/release.mjs check --release <version>` run on another machine. The script lists every folder in `skills/`, so it covers a skill added later.
