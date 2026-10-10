@@ -1,0 +1,22 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - integration
+
+jobs:
+  # `test` is the required status check on main and integration. The workflow is
+  # kept path-unfiltered so this check never stays "pending" and blocks merges;
+  # any path filtering would live inside jobs (which report skipped as Success).
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: node --test tests/scripts/*.test.mjs tests/smoke/compare.test.mjs
+      - run: node scripts/release.mjs check

@@ -1,0 +1,12 @@
+# Code owners.
+#
+# "Require code-owner review" stays OFF while there is a single owner: GitHub
+# blocks self-approval, so a solo repo with it on would deadlock every PR.
+# These entries are for awareness only; lift the requirement once a second
+# maintainer exists.
+
+skills/            @Blind3y3Design
+docs/adr/          @Blind3y3Design
+docs/publishing.md @Blind3y3Design
+scripts/           @Blind3y3Design
+.github/           @Blind3y3Design
