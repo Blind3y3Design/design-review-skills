@@ -7,8 +7,15 @@ export const read = (name) => {
   return skills.get(name);
 };
 
-// The Design Scanner is two skills, each with the scripts for its own fact groups.
-export const SCANNER_SKILLS = ['design-review-scanner', 'design-review-scanner-assets'];
+// The Design Scanner is a scanner skill and six scanning skills, one per fact group, each with the script for its own group.
+export const SCANNER_SKILLS = [
+  'design-review-scanner-colour-pairs',
+  'design-review-scanner-text',
+  'design-review-scanner-structure',
+  'design-review-scanner-annotations',
+  'design-review-scanner-bindings',
+  'design-review-scanner-components',
+];
 
 // The first js block in the `## <heading>` section of a skill, or undefined when there's none. Without a skill, looks in the scanner skills
 // and throws when both hold the heading, so a script is never read from the wrong one.

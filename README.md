@@ -26,7 +26,7 @@ Visual hierarchy, content and UX writing, and interaction states are candidates 
 The other skills do one job each for the skills above. They are installed and published with them.
 
 - **Report Writer** (`design-review-report-writer`): writes every report, so output is the same shape whether a Review Skill runs on its own or through the Orchestrator. A Markdown report, then a JSON block of Findings and Coverage. It delivers the report to the chat and saves it, and can mark Findings on their layers as annotations.
-- **Design Scanner** (`design-review-scanner` and `design-review-scanner-assets`): two skills that read the design once and return Design Facts for the Review Skills to judge. The Orchestrator runs them too, once for a whole review, and hands the facts to its Review Skills. `design-review-scanner` returns colour pairs, text, structure and annotations, and `design-review-scanner-assets` returns bindings and components. They are two because Figma limits a skill to 65,536 characters. Their fixed scripts read the file the same way in every review, and they only read. Design review isn't delivered as a Figma plugin; see [ADR 0006](docs/adr/0006-design-facts-from-a-scanning-skill-not-a-plugin.md).
+- **Design Scanner** (`design-review-scanner`): one skill that reads the design once and returns Design Facts for the Review Skills to judge. It orchestrates six scanning skills, one per fact group, joining their results per node: `design-review-scanner-colour-pairs` (contrast ratios), `-text`, `-structure`, `-annotations`, `-bindings` and `-components`. Each scanning skill holds the fixed script that reads its group, so each group's script and shape stays a skill-sized document within Figma's 65,536-character skill limit. Their fixed scripts read the file the same way in every review, and they only read. Design review isn't delivered as a Figma plugin; see [ADR 0006](docs/adr/0006-design-facts-from-a-scanning-skill-not-a-plugin.md) and [ADR 0008](docs/adr/0008-scanner-orchestrator-calls-single-responsibility-scanners.md).
 - **Profile Finder** (`design-review-profile`): finds the team's Review Profile and hands back its text.
 - **Figma Writer** (`design-review-figma-writer`): writes into the reviewed Figma file: report frames and layer annotations for the Report Writer, and the Review Profile page for the Orchestrator.
 
@@ -42,7 +42,7 @@ A team's Review Profile names the standards a review is judged against: its Desi
 
 ## Installing
 
-The skills are published and versioned together. Install all of them: a review stops and names any skill it needs that isn't installed. The first release has eight; research alignment (`design-review-research`) joins in v0.2.
+The skills are published and versioned together. Install all of them: a review stops and names any skill it needs that isn't installed. The first release has thirteen; research alignment (`design-review-research`) joins in v0.2.
 
 | Skill | What it does |
 |---|---|
@@ -50,13 +50,18 @@ The skills are published and versioned together. Install all of them: a review s
 | `design-review-library` | Design system adherence: how a design uses its libraries |
 | `design-review-accessibility` | Accessibility: a design-stage WCAG review |
 | `design-review-report-writer` | Writes every report (used by the other skills) |
-| `design-review-scanner` | Reads the design and returns Design Facts: colour pairs, text, structure and annotations (used by the Orchestrator and the Review Skills) |
-| `design-review-scanner-assets` | Reads the design and returns Design Facts: bindings and components (used by the Orchestrator and the Review Skills) |
+| `design-review-scanner` | Reads the design and returns Design Facts, orchestrating the six scanning skills below and joining their results per node (used by the Orchestrator and the Review Skills) |
+| `design-review-scanner-colour-pairs` | Reads the colour pairs fact group (contrast ratios) for the Design Scanner |
+| `design-review-scanner-text` | Reads the text fact group for the Design Scanner |
+| `design-review-scanner-structure` | Reads the structure fact group for the Design Scanner |
+| `design-review-scanner-annotations` | Reads the annotations fact group for the Design Scanner |
+| `design-review-scanner-bindings` | Reads the bindings fact group (variables and styles) for the Design Scanner |
+| `design-review-scanner-components` | Reads the components fact group for the Design Scanner |
 | `design-review-profile` | Finds the team's Review Profile (used by the other skills) |
 | `design-review-figma-writer` | Writes into the reviewed Figma file: report frames, layer annotations and the Review Profile page (used by the Report Writer and the Orchestrator) |
 
-- **Figma Design:** an organisation's skill owners publish all eight to the organisation, in the order in [docs/publishing.md](docs/publishing.md).
-- **Claude Code, Codex or Cursor:** in your project, run `npx skills add Blind3y3Design/design-review-skills --all`. It installs the eight skills into `.agents/skills/`, and links them for agents that read another folder, such as `.claude/skills/`. `npx skills update` brings in a new release. Copying the `skills/` folder works too. The repo's location will change once it moves into Cat's systems.
+- **Figma Design:** an organisation's skill owners publish all thirteen to the organisation, in the order in [docs/publishing.md](docs/publishing.md).
+- **Claude Code, Codex or Cursor:** in your project, run `npx skills add Blind3y3Design/design-review-skills --all`. It installs the thirteen skills into `.agents/skills/`, and links them for agents that read another folder, such as `.claude/skills/`. `npx skills update` brings in a new release. Copying the `skills/` folder works too. The repo's location will change once it moves into Cat's systems.
 
 Nothing is built or edited before publishing: a published skill is the release file as it stands ([ADR 0007](docs/adr/0007-publish-skills-exactly-as-released.md)). To release the set, follow [docs/publishing.md](docs/publishing.md).
 
