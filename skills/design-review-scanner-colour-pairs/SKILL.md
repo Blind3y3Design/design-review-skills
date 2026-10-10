@@ -2,12 +2,12 @@
 name: design-review-scanner-colour-pairs
 description: Reads a Figma frame and returns one group of Design Facts, `colourPairs`, measured text contrast ratios and non-text colour pairs, grouped by root cause, for design-review-scanner, which invokes it and joins its result with the other groups. To read a design, use /design-review or a single review such as /design-review-accessibility.
 metadata:
-  version: "0.1.0-alpha.4"
+  version: "0.1.0-dev"
 ---
 
 # Design Scanner: Colour pairs
 
-Version 0.1.0-alpha.4 of the design review skills.
+Version 0.1.0-dev of the design review skills.
 
 Returns the `colourPairs` Design Facts group, measured text contrast ratios and non-text colour pairs, grouped by root cause: what was read or measured, never a judgement. This is one of six scanning skills, each of which reads one fact group. `design-review-scanner` invokes the ones for the groups a caller asks for and joins their results. This skill holds no thresholds and no criteria, and only reads.
 
