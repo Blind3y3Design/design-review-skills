@@ -2,12 +2,12 @@
 name: design-review-scanner-components
 description: Reads a Figma frame and returns one group of Design Facts, `components`, each visible instance grouped by its main component, detached frames and overrides, for design-review-scanner, which invokes it and joins its result with the other groups. To read a design, use /design-review or a single review such as /design-review-accessibility.
 metadata:
-  version: "0.1.0-dev"
+  version: "0.1.0-alpha.4"
 ---
 
 # Design Scanner: Components
 
-Version 0.1.0-dev of the design review skills.
+Version 0.1.0-alpha.4 of the design review skills.
 
 Returns the `components` Design Facts group, each visible instance grouped by its main component, detached frames and overrides: what was read or measured, never a judgement. This is one of six scanning skills, each of which reads one fact group. `design-review-scanner` invokes the ones for the groups a caller asks for and joins their results. This skill holds no thresholds and no criteria, and only reads.
 
