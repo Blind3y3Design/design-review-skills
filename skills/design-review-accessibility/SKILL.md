@@ -2,12 +2,12 @@
 name: design-review-accessibility
 description: Accessibility review of Figma frames at the design stage. Judges WCAG criteria, such as text contrast, from measured Design Facts, and reports Findings and Coverage. Use when the user asks for an accessibility, WCAG or contrast review of a Figma design.
 metadata:
-  version: "0.1.0-alpha.4" # x-release-please-version
+  version: "0.1.0" # x-release-please-version
 ---
 
 # Accessibility review
 
-Version 0.1.0-alpha.4 of the design review skills. <!-- x-release-please-version -->
+Version 0.1.0 of the design review skills. <!-- x-release-please-version -->
 
 A design-stage review of Figma frames along one Review Axis, `accessibility`. This skill holds only the procedure. Everything about a criterion, such as its trigger, thresholds and default Severity, comes from the WCAG criteria Reference Document. Judge from that document and the Design Facts alone, never from what you know of WCAG.
 
@@ -35,7 +35,7 @@ The inputs are settled when the scope, runtime and settings are known, or the ru
 
 Its location is the first of: given at run time or in answer to a question, the profile section's `Criteria reference` unless that's the skill's default, then the skill's default:
 
-`https://raw.githubusercontent.com/Blind3y3Design/design-review-skills/v0.1.0-alpha.4/reference-documents/wcag-2.2-criteria.md` <!-- x-release-please-version -->
+`https://raw.githubusercontent.com/Blind3y3Design/design-review-skills/v0.1.0/reference-documents/wcag-2.2-criteria.md` <!-- x-release-please-version -->
 
 Read the whole document, as Reading a location describes.
 
