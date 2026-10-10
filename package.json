@@ -1,0 +1,9 @@
+{
+  "name": "design-review-skills",
+  "private": true,
+  "version": "0.1.0-alpha.4",
+  "scripts": {
+    "test": "node --test tests/scripts/*.test.mjs tests/smoke/compare.test.mjs",
+    "check": "node scripts/release.mjs check"
+  }
+}

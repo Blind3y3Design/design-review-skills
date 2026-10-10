@@ -1,0 +1,39 @@
+{
+  "release-type": "node",
+  "include-v-in-tag": true,
+  "include-component-in-tag": false,
+  "bump-minor-pre-major": true,
+  "changelog-sections": [
+    { "type": "feat", "section": "Features" },
+    { "type": "fix", "section": "Bug Fixes" },
+    { "type": "perf", "section": "Performance Improvements" },
+    { "type": "deps", "section": "Dependencies" },
+    { "type": "revert", "section": "Reverts" },
+    { "type": "docs", "section": "Documentation", "hidden": true },
+    { "type": "style", "section": "Styles", "hidden": true },
+    { "type": "chore", "section": "Miscellaneous Chores", "hidden": true },
+    { "type": "refactor", "section": "Code Refactoring", "hidden": true },
+    { "type": "test", "section": "Tests", "hidden": true },
+    { "type": "build", "section": "Build System", "hidden": true },
+    { "type": "ci", "section": "Continuous Integration", "hidden": true }
+  ],
+  "packages": {
+    ".": {
+      "extra-files": [
+        { "type": "generic", "path": "skills/design-review/SKILL.md" },
+        { "type": "generic", "path": "skills/design-review-accessibility/SKILL.md" },
+        { "type": "generic", "path": "skills/design-review-figma-writer/SKILL.md" },
+        { "type": "generic", "path": "skills/design-review-library/SKILL.md" },
+        { "type": "generic", "path": "skills/design-review-profile/SKILL.md" },
+        { "type": "generic", "path": "skills/design-review-report-writer/SKILL.md" },
+        { "type": "generic", "path": "skills/design-review-scanner/SKILL.md" },
+        { "type": "generic", "path": "skills/design-review-scanner-annotations/SKILL.md" },
+        { "type": "generic", "path": "skills/design-review-scanner-bindings/SKILL.md" },
+        { "type": "generic", "path": "skills/design-review-scanner-colour-pairs/SKILL.md" },
+        { "type": "generic", "path": "skills/design-review-scanner-components/SKILL.md" },
+        { "type": "generic", "path": "skills/design-review-scanner-structure/SKILL.md" },
+        { "type": "generic", "path": "skills/design-review-scanner-text/SKILL.md" }
+      ]
+    }
+  }
+}

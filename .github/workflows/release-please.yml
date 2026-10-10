@@ -1,0 +1,29 @@
+# release-please opens and maintains the Release PR against the integration staging branch,
+# then tags and creates the GitHub Release when it is merged.
+#
+# This workflow needs RELEASE_PLEASE_TOKEN — a GitHub App / fine-grained PAT token — because a
+# PR opened with the built-in GITHUB_TOKEN does not trigger other workflows, so the required CI
+# check would never run on the Release PR and the merge would sit blocked. Provisioning the App
+# and the secret is a human step; see the checklist in the PR that added this file.
+name: release-please
+
+on:
+  push:
+    branches: [integration]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: googleapis/release-please-action@v4
+        with:
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+          target-branch: integration
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
