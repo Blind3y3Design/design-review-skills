@@ -1,4 +1,4 @@
-// Tests the Design Scanner's fact group scripts (held by two skills), run as the skill gives them, against a small fake of the Figma Plugin API.
+// Tests the Design Scanner's fact group scripts (each held by one scanning skill), run as the skills give them, against a small fake of the Figma Plugin API.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { AsyncFunction, SCANNER_SKILLS, read, scriptUnder } from './skill-script.mjs';
@@ -1071,23 +1071,21 @@ test('annotations: text cut at 500 characters is marked truncated on its entry, 
   assert.deepEqual(unread, [{ what: 'annotation text', reason: 'text longer than 500 characters was cut' }]);
 });
 
-test('the scanner skills each hold the script of every fact group they name, and no group is in both', () => {
+test('each fact group is read by exactly one scanning skill, which holds its script', () => {
   const groupsOf = (skill) => {
     const line = read(skill).split('\n').find((l) => l.startsWith('- **Fact groups:**'));
     return [...line.matchAll(/`(\w+)`, with The ([a-z ]+) script/g)].map(([, group, name]) => ({ group, heading: `The ${name} script` }));
   };
-  const all = [];
+  const named = groupsOf('design-review-scanner');
+  assert.deepEqual(named.map((g) => g.group).sort(), ['annotations', 'bindings', 'colourPairs', 'components', 'structure', 'text']);
+  const held = new Set();
   for (const skill of SCANNER_SKILLS) {
-    const groups = groupsOf(skill);
-    assert.ok(groups.length > 0, `${skill} names no fact groups`);
-    for (const { group, heading } of groups) {
-      assert.ok(scriptUnder(heading, skill), `${skill} names ${group} but holds no "${heading}"`);
-      all.push(group);
-    }
     const headings = [...read(skill).matchAll(/^## (The [a-z ]+ script)$/gm)].map((m) => m[1]);
-    assert.deepEqual(headings.sort(), groups.map((g) => g.heading).sort(), `${skill} holds a script for a group it doesn't name`);
+    assert.equal(headings.length, 1, `${skill} holds exactly one script`);
+    assert.ok(scriptUnder(headings[0]), `${skill} holds "${headings[0]}" but it can't be read`);
+    held.add(headings[0]);
   }
-  assert.deepEqual([...all].sort(), ['annotations', 'bindings', 'colourPairs', 'components', 'structure', 'text']);
+  assert.deepEqual([...held].sort(), named.map((g) => g.heading).sort(), 'the scanning skills cover the group scripts the scanner names');
 });
 
 test('every scanner script states the same factsVersion, 0.5', async () => {

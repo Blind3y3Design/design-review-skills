@@ -21,7 +21,7 @@ The skill that writes a review's Findings and Coverage in the shared report form
 _Avoid_: Documentation skill, formatter, output skill
 
 **Design Scanner**:
-The skills that read a design and return its Design Facts, without judging them. They only read. There are two, because one `SKILL.md` can't hold every script within Figma's 65,536-character limit: `design-review-scanner` reads colour pairs, text, structure and annotations, and `design-review-scanner-assets` reads bindings and components. A caller asks each only for its own fact groups.
+The skills that read a design and return its Design Facts, without judging them. They only read. One skill, `design-review-scanner`, orchestrates the scan and invokes one leaf scanning skill per fact group: `design-review-scanner-colour-pairs` reads colour pairs, `design-review-scanner-text` text, `design-review-scanner-structure` structure, `design-review-scanner-annotations` annotations, `design-review-scanner-bindings` bindings and `design-review-scanner-components` components. A caller asks the orchestrator for the fact groups it needs.
 _Avoid_: Inspector, crawler, collector
 
 **Profile Finder**:

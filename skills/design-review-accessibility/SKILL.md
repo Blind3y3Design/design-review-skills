@@ -13,12 +13,12 @@ A design-stage review of Figma frames along one Review Axis, `accessibility`. Th
 
 ## Required skills
 
-This review MUST use four other skills: `design-review-profile` finds the Review Profile, `design-review-scanner` and `design-review-scanner-assets` read the design, and `design-review-report-writer` writes the report. Before anything else, check that all four are available to you. If any isn't, reply with only the line that fits, and stop:
+This review MUST use three other skills: `design-review-profile` finds the Review Profile, `design-review-scanner` reads the design, and `design-review-report-writer` writes the report. Before anything else, check that all three are available to you. If any isn't, reply with only the line that fits, and stop:
 
 - One missing: "This review can't run: the skill `<name>` isn't installed. Install it, then run the review again."
-- More than one missing, naming each, such as: "This review can't run: the skills `design-review-scanner-assets` and `design-review-report-writer` aren't installed. Install them, then run the review again."
+- More than one missing, naming each, such as: "This review can't run: the skills `design-review-scanner` and `design-review-report-writer` aren't installed. Install them, then run the review again."
 
-These four skills are the review's only way to find the profile, read the design and write a report.
+These three skills are the review's only way to find the profile, read the design and write a report.
 
 ## 1. Settle the inputs
 
@@ -46,7 +46,7 @@ From the document's header, note its name, version and location for the report, 
 
 ## 3. Scan
 
-Use the skills `design-review-scanner` and `design-review-scanner-assets`, which each read their own fact groups: `colourPairs`, `text`, `structure` and `annotations` from `design-review-scanner`, and `components` from `design-review-scanner-assets`. Give each the scope's node ids and the runtime, and give `design-review-scanner` the settings' `Annotation kits`. Ask each only for the fact groups to judge from that it reads: those on the `Facts` lines of the criteria you'll judge in step 4, those holding what each additional requirement is about, and `components`, which says whose a failure is (Whose failure it is). Join the two results for each node: `groups` and `unread` joined, and each group's field from the scanner that read it. Judge from the joined Design Facts.
+Use the skill `design-review-scanner`, which reads every fact group through its scanning skills and joins the results per node. Ask it for the fact groups to judge from: those on the `Facts` lines of the criteria you'll judge in step 4, those holding what each additional requirement is about, and `components`, which says whose a failure is (Whose failure it is). Give it the scope's node ids and the runtime, and the settings' `Annotation kits`. Judge from the Design Facts it returns.
 
 When another skill handed over Design Facts, the design is already scanned: judge from those, as Run by another skill describes.
 
@@ -130,7 +130,7 @@ Only the sampled `nodes` of a group are checked. One Finding per owner: a group 
 
 Another skill, such as `design-review`, can run this review as one part of a larger one. It loads this skill first, for three lines:
 
-- **Fact groups:** `colourPairs`, `text`, `structure` and `annotations` (read by `design-review-scanner`), and `components` (read by `design-review-scanner-assets`): every group a criteria reference's `Facts` lines can name. The caller scans for them once, for every review in the run, giving `design-review-scanner` the `Annotation kits` from the Accessibility section, or from the run-time settings.
+- **Fact groups:** `colourPairs`, `text`, `structure` and `annotations`, and `components`: every group a criteria reference's `Facts` lines can name. The caller scans for them once, for every review in the run, giving `design-review-scanner` the `Annotation kits` from the Accessibility section, or from the run-time settings.
 - **For the caller to ask:** nothing. With no Accessibility section, this review uses its default target, WCAG 2.2 AA, and with no Product context, `Target platforms: Web`, and says so.
 - **Set up:** `Accessibility`: the section this skill writes in `set up` mode (Set up mode).
 

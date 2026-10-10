@@ -2,7 +2,7 @@
 
 The skills are released together, under one version, and published exactly as they stand in the release ([ADR 0007](adr/0007-publish-skills-exactly-as-released.md)). A skill owner follows this checklist for each release. It needs Node 18 or later, the [`gh` CLI](https://cli.github.com/) logged in to this repo, push rights, and publishing rights for skills in the owning team's Figma file.
 
-The first release has eight skills: the Orchestrator `design-review`, the Review Skills `design-review-accessibility` and `design-review-library`, the Report Writer `design-review-report-writer`, the Design Scanner `design-review-scanner` and `design-review-scanner-assets`, the Profile Finder `design-review-profile` and the Figma Writer `design-review-figma-writer`. `design-review-research` joins with research alignment ([#50](https://github.com/Blind3y3Design/design-review-skills/issues/50)): publish it with the other Review Skills, after the Report Writer and before the Orchestrator, when it does.
+The first release has thirteen skills: the Orchestrator `design-review`, the Review Skills `design-review-accessibility` and `design-review-library`, the Report Writer `design-review-report-writer`, the Design Scanner `design-review-scanner` and its six scanning skills `design-review-scanner-colour-pairs`, `design-review-scanner-text`, `design-review-scanner-structure`, `design-review-scanner-annotations`, `design-review-scanner-bindings` and `design-review-scanner-components`, the Profile Finder `design-review-profile` and the Figma Writer `design-review-figma-writer`. `design-review-research` joins with research alignment ([#50](https://github.com/Blind3y3Design/design-review-skills/issues/50)): publish it with the other Review Skills, after the Report Writer and before the Orchestrator, when it does.
 
 ## Where the version lives
 
@@ -36,17 +36,18 @@ A release sets the version in two places in every skill, and pins a third in the
      ```
      git grep -ohE 'https://raw.githubusercontent.com/[^` )]+' v<version> -- skills | sort -u | xargs -n1 curl -sSfLI -o /dev/null -w '%{http_code} %{url_effective}\n'
      ```
-   - **Install check.** `node scripts/release.mjs install-check Blind3y3Design/design-review-skills` runs `npx skills add Blind3y3Design/design-review-skills --all` in a scratch project and fails unless exactly the skills in `skills/` arrive: all eight, and none of the vendored development skills in `.agents/skills/`. The repo's default branch must be at the release commit when it runs, so run it before step 7.
+    - **Install check.** `node scripts/release.mjs install-check Blind3y3Design/design-review-skills` runs `npx skills add Blind3y3Design/design-review-skills --all` in a scratch project and fails unless exactly the skills in `skills/` arrive: all thirteen, and none of the vendored development skills in `.agents/skills/`. The repo's default branch must be at the release commit when it runs, so run it before step 7.
    - **Update check,** from the second release on: in a scratch project installed from the previous release, `npx skills update` brings every skill to the new version. Look at the `Version` line in `.agents/skills/<name>/SKILL.md`.
    - Record the install check's result, and the update check's, in the release notes.
 5. **Publish by hand in Figma.** Use one dedicated file in the owning team, and publish to the organisation. Take each skill's `SKILL.md` from the tag (`git show v<version>:skills/<name>/SKILL.md`), unedited. Publish in dependency order, so a skill is published after the skills it invokes:
-   1. `design-review-figma-writer`, `design-review-profile`, `design-review-scanner` and `design-review-scanner-assets`, which invoke no other skill
-   2. `design-review-report-writer`
-   3. `design-review-library` and `design-review-accessibility`
-   4. `design-review`
+1. `design-review-figma-writer`, `design-review-profile`, and the Design Scanner's six scanning skills `design-review-scanner-colour-pairs`, `design-review-scanner-text`, `design-review-scanner-structure`, `design-review-scanner-annotations`, `design-review-scanner-bindings` and `design-review-scanner-components`, which invoke no other skill
+2. `design-review-scanner`, which invokes the scanning skills
+3. `design-review-report-writer`
+4. `design-review-library` and `design-review-accessibility`
+5. `design-review`
 
    Later releases replace the file's skills and use **Publish changes**. Figma Community publishing waits for a stable 1.0.
-6. **Check the published set.** In Figma Design's agent, ask `/design-review` which versions of the review skills are installed (RUN-05 in the smoke test). It must list the eight skills, each at the new version and no `design-review-research` line (it joins the list in v0.2), and end "All installed skills are at <version>." Then run `/design-review` on a smoke case frame, such as X-01 with the test profile: the report's Skills line must name the new version, and the report must carry no version warning.
+6. **Check the published set.** In Figma Design's agent, ask `/design-review` which versions of the review skills are installed (RUN-05 in the smoke test). It must list the thirteen skills, each at the new version and no `design-review-research` line (it joins the list in v0.2), and end "All installed skills are at <version>." Then run `/design-review` on a smoke case frame, such as X-01 with the test profile: the report's Skills line must name the new version, and the report must carry no version warning.
 7. **Start the next version.** On a branch from `main`:
    ```
    node scripts/release.mjs set <next>-dev
