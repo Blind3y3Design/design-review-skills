@@ -1,0 +1,30 @@
+# Fast-forwards main to the commit a published release tags, so main's tip always mirrors the
+# latest release. Pre-releases tag on integration and are never promoted: a consumer opts in by
+# pinning the pre-release tag.
+#
+# The push runs as RELEASE_PLEASE_TOKEN (the release App), which is on main's ruleset bypass list.
+# It is a plain push with no --force: GitHub rejects anything that is not a fast-forward, so main
+# can never be rewound.
+name: promote-main
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  promote:
+    if: ${{ !github.event.release.prerelease }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+      - name: Fast-forward main to the released tag
+        run: |
+          git fetch --tags origin
+          sha=$(git rev-parse "refs/tags/${{ github.event.release.tag_name }}^{commit}")
+          git push origin "${sha}:main"

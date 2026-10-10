@@ -1,4 +1,6 @@
-// Release tooling for the design review skills (docs/publishing.md): sets and checks the set's version, checks each skill's size, and checks an install.
+// Release tooling for the design review skills (docs/publishing.md). package.json's "version" is the set's source of truth:
+// release-please owns it (and CHANGELOG.md) and stamps every version surface through x-release-please-version markers;
+// `set` stays as a local/emergency writer, `check` and `install-check` only read.
 //   node scripts/release.mjs set <version>
 //   node scripts/release.mjs check [--release] [<version>]
 //   node scripts/release.mjs install-check <source>
@@ -15,16 +17,17 @@ const USAGE = `Usage:
   node scripts/release.mjs install-check <source>
 Add --root <folder> to work on another repo root.`;
 
-const SEMVER = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(-(alpha|beta|rc)\.(0|[1-9]\d*)|-dev)?$/;
-const META_VERSION = /^(  version: ")([^"\n]*)(")$/m;
-const BODY_VERSION = /^(Version )(\S+)( of the design review skills\.)$/m;
+const SEMVER = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(-(alpha|beta|rc)\.(0|[1-9]\d*))?$/;
+// Each version surface carries an x-release-please-version marker, which is how release-please finds it; the regexes accept a line without one so `set` can stamp an unmarked tree.
+const META_VERSION = /^(  version: ")([^"\n]*)("(?: # x-release-please-version)?)$/m;
+const BODY_VERSION = /^(Version )(\S+)( of the design review skills\.)( <!-- x-release-please-version -->)?$/m;
 // Figma rejects a skill longer than this many characters (not bytes). Counted as JavaScript counts, so an emoji is two: the safe side.
 const MAX_SKILL_CHARS = 65536;
 const thousands = (n) => n.toLocaleString('en-US');
 const REF_LINK = /(https:\/\/raw\.githubusercontent\.com\/Blind3y3Design\/design-review-skills\/)([^\s`]+?)(\/reference-documents\/[^\s`)]*)/g;
 
-// A -dev version reads Reference Documents from main, a release from its own tag.
-const refFor = (version) => (version.endsWith('-dev') ? 'main' : `v${version}`);
+// Every version is released, so a default Reference Document link always points at the version's own tag.
+const refFor = (version) => `v${version}`;
 
 const skillFolders = (root) => {
   const dir = join(root, 'skills');
@@ -32,8 +35,30 @@ const skillFolders = (root) => {
 };
 const skillPath = (root, folder) => join(root, 'skills', folder, 'SKILL.md');
 
+// The version's source of truth: package.json. Returns the version, or the problem that keeps it from being read.
+function packageVersion(root) {
+  const file = join(root, 'package.json');
+  if (!existsSync(file)) return { version: null, problem: 'no package.json at the root to read the version from' };
+  let pkg;
+  try {
+    pkg = JSON.parse(readFileSync(file, 'utf8'));
+  } catch (error) {
+    return { version: null, problem: `package.json is not readable as JSON: ${error.message}` };
+  }
+  if (typeof pkg.version !== 'string' || !pkg.version) return { version: null, problem: 'package.json has no version' };
+  return { version: pkg.version, problem: null };
+}
+
 function setVersion(root, version) {
-  if (!SEMVER.test(version)) return { errors: [`${version} is not a semantic version: write it as 1.2.3, 1.2.3-alpha.1 (or beta, rc) for a pre-release, or 1.2.3-dev for a version in development`] };
+  if (!SEMVER.test(version)) return { errors: [`${version} is not a semantic version: write it as 1.2.3, or 1.2.3-alpha.1 (or beta, rc) for a pre-release`] };
+  const pkgFile = join(root, 'package.json');
+  if (!existsSync(pkgFile)) return { errors: ['no package.json at the root: set writes the version there, as its source of truth'] };
+  let pkg;
+  try {
+    pkg = JSON.parse(readFileSync(pkgFile, 'utf8'));
+  } catch (error) {
+    return { errors: [`package.json is not readable as JSON: ${error.message}`] };
+  }
   const updates = [];
   const errors = [];
   for (const folder of skillFolders(root)) {
@@ -45,10 +70,11 @@ function setVersion(root, version) {
     let text = readFileSync(file, 'utf8');
     if (!META_VERSION.test(text)) errors.push(`${folder}: no metadata.version`);
     if (!BODY_VERSION.test(text)) errors.push(`${folder}: no "Version … of the design review skills" line`);
-    text = text.replace(META_VERSION, `$1${version}$3`).replace(BODY_VERSION, `$1${version}$3`).replace(REF_LINK, `$1${refFor(version)}$3`);
+    text = text.replace(META_VERSION, `$1${version}$3`).replace(BODY_VERSION, `$1${version}$3$4`).replace(REF_LINK, `$1${refFor(version)}$3`);
     updates.push([file, text]);
   }
   if (errors.length) return { errors };
+  writeFileSync(pkgFile, JSON.stringify({ ...pkg, version }, null, 2) + '\n');
   for (const [file, text] of updates) writeFileSync(file, text);
   return { errors: [], count: updates.length };
 }
@@ -79,11 +105,13 @@ function checkRelease(root, { release = false, version = null } = {}) {
   }
   if (!skills.length) problems.push('no skills found under skills/');
 
+  // The version to check against: the one given, else package.json's.
   let setAt = version;
   if (!setAt) {
-    const counts = new Map();
-    for (const s of skills) if (s.meta) counts.set(s.meta, (counts.get(s.meta) || 0) + 1);
-    setAt = [...counts].sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1))[0]?.[0] ?? null;
+    const fromPackage = packageVersion(root);
+    if (fromPackage.problem) problems.push(fromPackage.problem);
+    else if (!SEMVER.test(fromPackage.version)) problems.push(`package.json's version ${fromPackage.version} is not a semantic version`);
+    else setAt = fromPackage.version;
   }
   for (const s of skills) {
     if (s.meta && setAt && s.meta !== setAt) problems.push(version ? `${s.folder}: version ${s.meta}, expected ${version}` : `${s.folder}: version ${s.meta}, but the set is at ${setAt}`);
@@ -92,7 +120,6 @@ function checkRelease(root, { release = false, version = null } = {}) {
       if (ref !== refFor(setAt)) problems.push(`${s.folder}: the link …/${ref}${rest} should point at ${refFor(setAt)}`);
     }
   }
-  if (release && !version && setAt?.endsWith('-dev') && !problems.some((p) => p.includes('-dev version'))) problems.push(`the set is at ${setAt}, a -dev version, and a release isn't`);
   return { problems, count: skills.length, setAt };
 }
 
@@ -145,7 +172,7 @@ function main(argv) {
       console.error(result.errors.join('\n'));
       return 2;
     }
-    console.log(`Set ${result.count} skills to ${rest[0]}, with default links pinned to ${refFor(rest[0])}.`);
+    console.log(`Set package.json and ${result.count} skills to ${rest[0]}, with default links pinned to ${refFor(rest[0])}.`);
     return 0;
   }
   if (command === 'check') {

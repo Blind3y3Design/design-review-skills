@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { chmodSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -11,23 +11,25 @@ const script = fileURLToPath(new URL('../../scripts/release.mjs', import.meta.ur
 const BASE = 'https://raw.githubusercontent.com/Blind3y3Design/design-review-skills';
 const run = (root, args, env = {}) => spawnSync(process.execPath, [script, ...args, '--root', root], { encoding: 'utf8', env: { ...process.env, ...env } });
 
-// A skill file as the repo has them. `link` is the ref in a default Reference Document link, or null for a skill with none.
-const skillText = ({ name, version = '0.1.0-dev', bodyVersion = version, link = null }) => `---
+// A skill file as the repo has them, markers included: release-please rewrites each marked line's first semver itself.
+// `link` is the ref in a default Reference Document link, or null for a skill with none.
+const skillText = ({ name, version = '0.1.0-alpha.4', bodyVersion = version, link = null }) => `---
 name: ${name}
 description: A skill.
 metadata:
-  version: "${version}"
+  version: "${version}" # x-release-please-version
 ---
 
 # ${name}
 
-Version ${bodyVersion} of the design review skills.
+Version ${bodyVersion} of the design review skills. <!-- x-release-please-version -->
 
 Steps.
 ${link ? `\nIts default is \`${BASE}/${link}/reference-documents/${name}.md\`, read whole.\n` : ''}`;
 
 // A repo root holding the given skills, each as { name, ...overrides } for skillText, plus any extra files.
-const makeRoot = (skills, extra = {}) => {
+// The root package.json carries the set's version, as the source of truth it now is.
+const makeRoot = (skills, extra = {}, pkgVersion = '0.1.0-alpha.4') => {
   const root = mkdtempSync(join(tmpdir(), 'release-'));
   for (const s of skills) {
     mkdirSync(join(root, 'skills', s.name), { recursive: true });
@@ -37,22 +39,28 @@ const makeRoot = (skills, extra = {}) => {
     mkdirSync(join(root, path, '..'), { recursive: true });
     writeFileSync(join(root, path), text);
   }
+  writeFileSync(join(root, 'package.json'), JSON.stringify({ name: 'design-review-skills', private: true, version: pkgVersion }, null, 2) + '\n');
   return root;
 };
 const read = (root, name) => readFileSync(join(root, 'skills', name, 'SKILL.md'), 'utf8');
+const pkgVersion = (root) => JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).version;
 
-test('set puts a release version in both places and pins the default links to its tag', () => {
+test('set writes the version to package.json and to both skill surfaces, and pins the default links to its tag', () => {
   const root = makeRoot([{ name: 'a', link: 'main' }, { name: 'b' }]);
   const result = run(root, ['set', '0.2.0']);
   assert.equal(result.status, 0, result.stderr);
   assert.equal(read(root, 'a'), skillText({ name: 'a', version: '0.2.0', link: 'v0.2.0' }));
   assert.equal(read(root, 'b'), skillText({ name: 'b', version: '0.2.0' }));
+  assert.equal(pkgVersion(root), '0.2.0');
 });
 
-test('set with a -dev version points the default links back at main', () => {
-  const root = makeRoot([{ name: 'a', version: '0.2.0', link: 'v0.2.0' }]);
-  assert.equal(run(root, ['set', '0.3.0-dev']).status, 0);
-  assert.equal(read(root, 'a'), skillText({ name: 'a', version: '0.3.0-dev', link: 'main' }));
+test('set refuses a -dev version and changes nothing', () => {
+  const root = makeRoot([{ name: 'a', version: '0.2.0', link: 'v0.2.0' }], {}, '0.2.0');
+  const result = run(root, ['set', '0.3.0-dev']);
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /not a semantic version/);
+  assert.equal(read(root, 'a'), skillText({ name: 'a', version: '0.2.0', link: 'v0.2.0' }));
+  assert.equal(pkgVersion(root), '0.2.0');
 });
 
 test('set takes an alpha, beta or rc version, pins its links to the tag, and check --release accepts it', () => {
@@ -69,6 +77,7 @@ test('set refuses a version that is not semantic and changes nothing', () => {
   assert.equal(result.status, 2);
   assert.match(result.stderr, /not a semantic version/);
   assert.equal(read(root, 'a'), skillText({ name: 'a', link: 'main' }));
+  assert.equal(pkgVersion(root), '0.1.0-alpha.4');
 });
 
 test('set stops and changes nothing when a skill has no Version line in its body', () => {
@@ -78,44 +87,62 @@ test('set stops and changes nothing when a skill has no Version line in its body
   assert.equal(result.status, 2);
   assert.match(result.stderr, /b: no "Version … of the design review skills" line/);
   assert.equal(read(root, 'a'), skillText({ name: 'a' }));
+  assert.equal(pkgVersion(root), '0.1.0-alpha.4');
 });
 
-test('check passes for a consistent -dev tree and for a consistent release tree', () => {
-  const dev = makeRoot([{ name: 'a', link: 'main' }, { name: 'b' }]);
-  assert.equal(run(dev, ['check']).status, 0);
-  const released = makeRoot([{ name: 'a', version: '0.2.0', link: 'v0.2.0' }, { name: 'b', version: '0.2.0' }]);
-  const result = run(released, ['check', '--release', '0.2.0']);
+test('check reads the version from package.json, passes a consistent tree, and names what it checked', () => {
+  const root = makeRoot([{ name: 'a', link: 'v0.1.0-alpha.4' }, { name: 'b' }]);
+  const result = run(root, ['check']);
   assert.equal(result.status, 0, result.stdout);
-  assert.match(result.stdout, /^PASS /);
+  assert.match(result.stdout, /^PASS 2 skills at 0\.1\.0-alpha\.4, links pinned to v0\.1\.0-alpha\.4/);
+  const released = makeRoot([{ name: 'a', version: '0.2.0', link: 'v0.2.0' }, { name: 'b', version: '0.2.0' }], {}, '0.2.0');
+  assert.equal(run(released, ['check', '--release', '0.2.0']).status, 0, run(released, ['check']).stdout);
 });
 
-test('check names a skill whose frontmatter and body versions differ', () => {
-  const root = makeRoot([{ name: 'a', version: '0.2.0', bodyVersion: '0.1.0-dev' }, { name: 'b', version: '0.2.0' }]);
+test('check fails skills that disagree with package.json, even when they all agree with each other', () => {
+  const root = makeRoot([{ name: 'a', version: '0.2.0' }, { name: 'b', version: '0.2.0' }]);
   const result = run(root, ['check']);
   assert.equal(result.status, 1);
   assert.match(result.stdout, /^FAIL/);
-  assert.match(result.stdout, /a: metadata.version is 0.2.0 but the body says 0.1.0-dev/);
+  assert.match(result.stdout, /a: version 0\.2\.0, but the set is at 0\.1\.0-alpha\.4/);
+  assert.match(result.stdout, /b: version 0\.2\.0, but the set is at 0\.1\.0-alpha\.4/);
 });
 
-test('check names a skill at a different version from the rest of the set', () => {
-  const root = makeRoot([{ name: 'a', version: '0.2.0' }, { name: 'b', version: '0.2.1' }, { name: 'c', version: '0.2.0' }]);
+test('check fails without a package.json to read the version from, and on one whose version is not semantic', () => {
+  const root = makeRoot([{ name: 'a' }]);
+  rmSync(join(root, 'package.json'));
+  assert.match(run(root, ['check']).stdout, /no package.json at the root to read the version from/);
+  const bad = makeRoot([{ name: 'a' }], {}, '0.1.0-dev');
+  assert.match(run(bad, ['check']).stdout, /package\.json's version 0\.1\.0-dev is not a semantic version/);
+});
+
+test('check names a skill whose frontmatter and body versions differ', () => {
+  const root = makeRoot([{ name: 'a', version: '0.2.0', bodyVersion: '0.1.0' }, { name: 'b', version: '0.2.0' }], {}, '0.2.0');
   const result = run(root, ['check']);
   assert.equal(result.status, 1);
-  assert.match(result.stdout, /b: version 0.2.1, but the set is at 0.2.0/);
+  assert.match(result.stdout, /^FAIL/);
+  assert.match(result.stdout, /a: metadata.version is 0\.2\.0 but the body says 0\.1\.0/);
+});
+
+test('check names a skill at a different version from the one package.json holds', () => {
+  const root = makeRoot([{ name: 'a', version: '0.2.0' }, { name: 'b', version: '0.2.1' }, { name: 'c', version: '0.2.0' }], {}, '0.2.0');
+  const result = run(root, ['check']);
+  assert.equal(result.status, 1);
+  assert.match(result.stdout, /b: version 0\.2\.1, but the set is at 0\.2\.0/);
 });
 
 test('check --release fails a -dev version, and a version other than the one named', () => {
-  const dev = makeRoot([{ name: 'a' }]);
-  assert.match(run(dev, ['check', '--release']).stdout, /a: 0.1.0-dev is a -dev version/);
-  const other = makeRoot([{ name: 'a', version: '0.2.0' }]);
-  assert.match(run(other, ['check', '--release', '0.3.0']).stdout, /a: version 0.2.0, expected 0.3.0/);
+  const dev = makeRoot([{ name: 'a', version: '0.1.0-dev' }]);
+  assert.match(run(dev, ['check', '--release']).stdout, /a: 0\.1\.0-dev is a -dev version/);
+  const other = makeRoot([{ name: 'a', version: '0.2.0' }], {}, '0.2.0');
+  assert.match(run(other, ['check', '--release', '0.3.0']).stdout, /a: version 0\.2\.0, expected 0\.3\.0/);
 });
 
-test('check fails a default link that is not pinned to the version, in either direction', () => {
-  const released = makeRoot([{ name: 'a', version: '0.2.0', link: 'main' }]);
-  assert.match(run(released, ['check']).stdout, /a: .*\/main\/.* should point at v0.2.0/);
-  const dev = makeRoot([{ name: 'a', link: 'v0.1.0' }]);
-  assert.match(run(dev, ['check']).stdout, /a: .*\/v0.1.0\/.* should point at main/);
+test('check fails a default link that is not pinned to the version', () => {
+  const stale = makeRoot([{ name: 'a', version: '0.2.0', link: 'main' }], {}, '0.2.0');
+  assert.match(run(stale, ['check']).stdout, /a: .*\/main\/.* should point at v0\.2\.0/);
+  const old = makeRoot([{ name: 'a', link: 'v0.1.0' }]);
+  assert.match(run(old, ['check']).stdout, /a: .*\/v0\.1\.0\/.* should point at v0\.1\.0-alpha\.4/);
 });
 
 test('check fails a skill folder that holds more than its SKILL.md, and a folder with no SKILL.md', () => {
@@ -147,7 +174,7 @@ test('a version with a leading zero is not semantic, for set and for check', () 
 
 test('a default link whose ref holds a slash is read, pinned by set, and failed by check when it is the wrong one', () => {
   const root = makeRoot([{ name: 'a', link: 'release/0.1.0-alpha.2' }]);
-  assert.match(run(root, ['check']).stdout, /a: .*\/release\/0.1.0-alpha.2\/.* should point at main/);
+  assert.match(run(root, ['check']).stdout, /a: .*\/release\/0.1.0-alpha.2\/.* should point at v0\.1\.0-alpha\.4/);
   assert.equal(run(root, ['set', '0.2.0']).status, 0);
   assert.equal(read(root, 'a'), skillText({ name: 'a', version: '0.2.0', link: 'v0.2.0' }));
   assert.equal(run(root, ['check', '--release', '0.2.0']).status, 0);
@@ -236,9 +263,9 @@ test('a --root without a folder prints the usage', () => {
 });
 
 test('set and check read a SKILL.md saved with Windows line endings', () => {
-  const root = makeRoot([{ name: 'a', link: 'main' }]);
+  const root = makeRoot([{ name: 'a', link: 'v0.1.0-alpha.4' }]);
   const file = join(root, 'skills', 'a', 'SKILL.md');
-  writeFileSync(file, skillText({ name: 'a', link: 'main' }).replace(/\n/g, '\r\n'));
+  writeFileSync(file, skillText({ name: 'a', link: 'v0.1.0-alpha.4' }).replace(/\n/g, '\r\n'));
   assert.equal(run(root, ['check']).status, 0);
   assert.equal(run(root, ['set', '0.2.0']).status, 0);
   assert.equal(read(root, 'a'), skillText({ name: 'a', version: '0.2.0', link: 'v0.2.0' }).replace(/\n/g, '\r\n'));
