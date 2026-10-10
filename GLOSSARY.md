@@ -92,3 +92,25 @@ _Avoid_: Tier, level, theme
 **Locked Rule**:
 A rule set by a Design System Layer that more specific layers may not override.
 _Avoid_: Mandatory rule, hard rule
+
+## Releasing
+
+**Release**:
+One published state of the whole set under a single SemVer version: every skill stamped with that version, tagged `v<version>`, with a GitHub Release and a Figma publish to match. All skills ship together; there is no per-skill version.
+_Avoid_: Drop, ship, publish (publishing to Figma is one step of a release, not the release)
+
+**Release PR**:
+The standing pull request that carries the next version — the bump, the changelog and the stamped skills — and that the owner merges to cut a release. It is the human gate: nothing becomes a release without it.
+_Avoid_: Bump PR, release branch
+
+**Integration Branch**:
+`integration`, the branch where merged-but-unreleased work accumulates so that `main` can hold only the latest release.
+_Avoid_: Staging, develop, trunk
+
+**Public Contract**:
+The invocation surface the set's version covers: the skill names, the required install set, each skill's trigger description and declared inputs and outputs, and the pinned Reference-Document URL scheme. The version is cut against it (see ADR 0009).
+_Avoid_: API, interface, surface
+
+**Pre-release**:
+A release marked alpha, beta or rc, cut on demand for testing and not promoted to `main`; consumers opt in by pinning it.
+_Avoid_: Dev build, snapshot, nightly

@@ -74,7 +74,7 @@ Ask the agent for a review and link the frames, such as "Run `design-review` on 
 ```
 skills/<name>/SKILL.md     The design review skills, one folder each, holding only SKILL.md
 reference-documents/       WCAG 2.2 criteria reference and the Design system baseline
-scripts/release.mjs        Sets and checks the set's version, and checks an install (see docs/publishing.md)
+scripts/release.mjs        Checks the set's version and an install; `set` is the emergency writer (see docs/publishing.md)
 tests/smoke/               Smoke test: case list, expected Findings JSON, comparison script, link to the Figma test file
 tests/scripts/             Tests for the scripts in the skills and for release.mjs, run against a fake of the Figma Plugin API
 docs/adr/                  Architecture decisions
@@ -96,3 +96,7 @@ This repo uses [Matt Pocock's skills](https://github.com/mattpocock/skills) for 
 - **`/writing-for-agents`**: used when writing or editing a `SKILL.md`.
 
 Working through wayfinder tickets requires the [`gh` CLI](https://cli.github.com/), logged in to this repo.
+
+### Releasing
+
+The set ships under one SemVer version against a declared public contract ([ADR 0009](docs/adr/0009-versioning-policy-and-public-contract.md)). Work merges into `integration`; release-please opens a standing Release PR there, the owner merges it, release-please tags the release, and a workflow fast-forwards `main` to the tag — so `main` always mirrors the latest release that unpinned consumers install ([ADR 0010](docs/adr/0010-branching-and-branch-protection.md)). The owner cuts and approves releases, and publishes the skills by hand in Figma afterwards ([ADR 0011](docs/adr/0011-release-governance-and-ownership.md)). The full checklist, including pre-releases, is in [docs/publishing.md](docs/publishing.md).
