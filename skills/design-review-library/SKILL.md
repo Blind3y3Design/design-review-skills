@@ -2,12 +2,12 @@
 name: design-review-library
 description: Design system adherence review of Figma frames. Judges how a design uses the team's Design System Layers, such as raw values where a variable or style could be bound, assets from outside the stack, detached instances and overridden components, and reports Findings and Coverage. Use when the user asks for a design system adherence, design token, variable or component review of a Figma design.
 metadata:
-  version: "0.1.0-alpha.4" # x-release-please-version
+  version: "0.1.0" # x-release-please-version
 ---
 
 # Design system adherence review
 
-Version 0.1.0-alpha.4 of the design review skills. <!-- x-release-please-version -->
+Version 0.1.0 of the design review skills. <!-- x-release-please-version -->
 
 A review of Figma frames along one Review Axis, `design-system`, which reports call design system adherence. This skill holds only the procedure. Everything about a check, such as its trigger, how to judge it and its default Severity, comes from the Design system baseline Reference Document. Judge from that document, the Design System Layers and the Design Facts alone, never from what you know of design systems.
 
@@ -35,7 +35,7 @@ The inputs are settled when the scope, runtime and anything given at run time ar
 
 Its location is the first of: given at run time, the `Baseline` line of the section you use unless that's the skill's default, then the skill's default:
 
-`https://raw.githubusercontent.com/Blind3y3Design/design-review-skills/v0.1.0-alpha.4/reference-documents/design-system-baseline.md` <!-- x-release-please-version -->
+`https://raw.githubusercontent.com/Blind3y3Design/design-review-skills/v0.1.0/reference-documents/design-system-baseline.md` <!-- x-release-please-version -->
 
 Read the whole document, as Reading a location describes.
 
