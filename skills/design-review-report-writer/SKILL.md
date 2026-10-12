@@ -21,6 +21,7 @@ The calling skill hands over:
 - `references[]`: `{ name, version, location }` for each Reference Document used.
 - `findings[]`: each Finding's fields from the table below, with a `rootCause` in place of `id`, and each location without its `url`. A Finding merged from a `json only` report comes with its `id` and urls instead: keep them.
 - `coverage[]`: the Coverage entries.
+- `researchFollows[]`, optional: the `aligned` Insights of a research alignment review, in Coverage order, each `{ id, title, url, date }`. The Markdown lists them under "Research this design follows".
 - `notes[]`, optional: sentences about the run for the reader, such as a Severity Override that wasn't applied or a version warning. They go in the Markdown header only.
 - `reportSettings`: the Report settings section of the Review Profile the run used, as `{ "<key>": "<value>" }`, or null.
 - `saveRequest`: what the user asked for this run's report, `"don't save"` or `"save to <location>"`, or null.
@@ -163,9 +164,10 @@ In this order. Leave out a section that has nothing in it, except Coverage.
    - Evidence
    - Fix
    With no Findings, write "No Findings." under the axis heading.
-5. **Coverage:** a `## Coverage` section with a `###` heading for each axis, then its entries, where entries with the same status and the same note share one line: `<status>: <ref>, <ref>, …`, then the note. A skipped axis gets one line with its reason.
-6. **The design-stage line,** after the Coverage section, in every report whose axes include accessibility, whatever its Findings or Coverage: "This is a design-stage review, not a WCAG conformance evaluation. Criteria marked needs-code or needs-annotation in Coverage were not assessed." When `run.runtime` is `figma-agent`, follow it with: "To cross-check contrast and target sizes, you can also run Figma's accessibility checker. This review doesn't rely on it."
-7. **The report JSON,** in one fenced `json` block, pretty-printed with 2-space indentation.
+5. **Research this design follows,** when `researchFollows` is given and not empty: a `## Research this design follows` section, one line per Insight, `[<title>](<url>) (<id>), <date>`.
+6. **Coverage:** a `## Coverage` section with a `###` heading for each axis, then its entries, where entries with the same status and the same note share one line: `<status>: <ref>, <ref>, …`, then the note. A skipped axis gets one line with its reason.
+7. **The design-stage line,** after the Coverage section, in every report whose axes include accessibility, whatever its Findings or Coverage: "This is a design-stage review, not a WCAG conformance evaluation. Criteria marked needs-code or needs-annotation in Coverage were not assessed." When `run.runtime` is `figma-agent`, follow it with: "To cross-check contrast and target sizes, you can also run Figma's accessibility checker. This review doesn't rely on it."
+8. **The report JSON,** in one fenced `json` block, pretty-printed with 2-space indentation.
 
 ## Writing rules
 

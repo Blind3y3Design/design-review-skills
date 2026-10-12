@@ -41,7 +41,7 @@ The accessibility standard designs are judged against.
 
 Where research alignment finds Research Insights. The topic is asked at each review.
 
-- Source: Dovetail, project "Design review smoke test"
+- Source: Dovetail, project "DRS Test Research: Checkout", tags: checkout
 - Research current for: 12 months
 
 ## Product context
