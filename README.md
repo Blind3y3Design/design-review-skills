@@ -77,6 +77,9 @@ reference-documents/       WCAG 2.2 criteria reference and the Design system bas
 scripts/release.mjs        Checks the set's version and an install; `set` is the emergency writer (see docs/publishing.md)
 tests/smoke/               Smoke test: case list, expected Findings JSON, comparison script, link to the Figma test file
 tests/scripts/             Tests for the scripts in the skills and for release.mjs, run against a fake of the Figma Plugin API
+research/                  Research notes, one named file per topic, the canonical record issues link to
+tasks/                     Hands-on test assets, one folder per test, used by Figma agent tests
+prototypes/                Prototypes, one folder per idea
 docs/adr/                  Architecture decisions
 docs/agents/               Issue tracker, triage labels and domain docs for agents
 docs/publishing.md         Release and publishing checklist
@@ -85,7 +88,7 @@ docs/publishing.md         Release and publishing checklist
 skills-lock.json           Lockfile for the vendored skills
 ```
 
-Research notes, hands-on test assets and prototypes live on their own branches (`research/*`, `task/*`, `prototype/*`).
+Research notes, hands-on test assets and prototypes live in the repo under `research/`, `tasks/` and `prototypes/`; closed issues link to them as the canonical record of that work.
 
 ## Development workflow
 
