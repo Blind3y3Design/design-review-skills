@@ -444,6 +444,37 @@ test('each expected case passes against itself and fails when any compared field
       (r) => { r.findings.push({ id: 'design-system/outside-stack/variable:4eebcb0ed3b44b911ef9fd7c65a57edaeef66fe5', axis: 'design-system', severity: 'moderate', certainty: 'confirmed' }); },
       (r) => { r.findings[0].certainty = 'likely'; },
     ],
+    'DS-10': [
+      (r) => { r.findings[0].id = 'design-system/FS-1/component:33732a6d19dcd570f49c6dae49e669c160b91c27'; },
+      (r) => { r.findings[0].severity = 'moderate'; },
+      (r) => { r.findings[0].certainty = 'likely'; },
+      (r) => { r.findings = []; },
+      (r) => { entry(r, 'FS-1').status = 'not-applicable'; },
+    ],
+    'DS-12': [
+      (r) => { r.findings.push({ id: 'design-system/resize/node:119:105', axis: 'design-system', severity: 'moderate', certainty: 'confirmed' }); },
+      (r) => { r.findings[0].severity = 'serious'; },
+      (r) => { entry(r, 'FS-2').status = 'not-applicable'; },
+      (r) => { entry(r, 'resize').status = 'not-readable'; },
+    ],
+    'DS-15': [
+      (r) => { r.findings.push({ id: 'design-system/override/node:119:75', axis: 'design-system', severity: 'moderate', certainty: 'confirmed' }); },
+      (r) => { entry(r, 'FS-3').status = 'not-applicable'; },
+      (r) => { entry(r, 'override').status = 'not-readable'; },
+    ],
+    'DS-16': [
+      (r) => { r.findings[0].id = 'design-system/raw-value/node:119:113'; },
+      (r) => { r.findings[0].severity = 'minor'; },
+      (r) => { r.findings[0].certainty = 'likely'; },
+      (r) => { r.findings = []; },
+      (r) => { entry(r, 'raw-value').status = 'not-readable'; },
+    ],
+    'DS-17': [
+      (r) => { r.findings[0].severity = 'moderate'; },
+      (r) => { r.findings[0].certainty = 'likely'; },
+      (r) => { r.findings = []; },
+      (r) => { entry(r, 'FS-1').status = 'not-applicable'; },
+    ],
     'DS-04': [
       (r) => { r.findings[0].id = 'design-system/detached-instance/component:33732a6d19dcd570f49c6dae49e669c160b91c27'; },
       (r) => { r.findings[0].certainty = 'likely'; },
