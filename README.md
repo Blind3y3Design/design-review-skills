@@ -2,7 +2,7 @@
 
 Agent skills for reviewing design work in Figma, along several Review Axes, plus an Orchestrator skill that runs several reviews at once and merges their Findings into one report.
 
-> **Status: before the first release.** The set described here is what the repo holds today, working toward v0.1.0. Research alignment follows in v0.2 ([#50](https://github.com/Blind3y3Design/design-review-skills/issues/50)). Planning is tracked as a wayfinder map in this repo's [GitHub Issues](https://github.com/Blind3y3Design/design-review-skills/issues?q=label%3Awayfinder%3Amap).
+> **Status: before the first release.** The set described here is what the repo holds today, working toward v0.1.0. Planning is tracked as a wayfinder map in this repo's [GitHub Issues](https://github.com/Blind3y3Design/design-review-skills/issues?q=label%3Awayfinder%3Amap).
 
 Every skill is a single portable `SKILL.md` that works inside Figma Design's agent and in external agents such as Claude Code, Codex and Cursor. Skills invoke each other rather than copying each other's content. Figma Make isn't supported. Terms are defined in [GLOSSARY.md](GLOSSARY.md); architecture decisions live in [docs/adr/](docs/adr/).
 
@@ -14,6 +14,7 @@ Each Review Skill judges a design along one Review Axis and reports Findings and
 
 - **Design system adherence** (`design-review-library`): how a design uses its Design System Layers. Its Reference Document, the [Design system baseline](reference-documents/design-system-baseline.md), holds six built-in checks: raw values where a variable or style could be bound, assets from outside the stack, assets that can't be attributed, detached instances, direct overrides and resized instances. A team can fork the baseline and point to its copy from its Review Profile, and each layer can point to its own rules document to add rules of its own, including Locked Rules no more specific layer may override.
 - **Accessibility** (`design-review-accessibility`): a design-stage WCAG review (not a conformance evaluation) against the [WCAG 2.2 criteria reference](reference-documents/wcag-2.2-criteria.md), which covers WCAG 2.2 and 2.1 at Levels A and AA. It judges criteria such as contrast, target size and use of colour from measured Design Facts, and others, such as text alternatives and focus order, from the designer's annotations and marked sections. It reports which criteria it couldn't assess and why.
+- **Research alignment** (`design-review-research`): judges a design against the team's Research Insights on a topic the designer names. Its sources live in the profile's Research Sources section and are read at run time from the team's research tool; the skill fetches at most about ten Insights, judges each one, and never falls back on general knowledge of users.
 
 Visual hierarchy, content and UX writing, and interaction states are candidates for later.
 
@@ -42,13 +43,14 @@ A team's Review Profile names the standards a review is judged against: its Desi
 
 ## Installing
 
-The skills are published and versioned together. Install all of them: a review stops and names any skill it needs that isn't installed. The first release has thirteen; research alignment (`design-review-research`) joins in v0.2.
+The skills are published and versioned together. Install all of them: a review stops and names any skill it needs that isn't installed. The first release has fourteen.
 
 | Skill | What it does |
 |---|---|
 | `design-review` | The Orchestrator: runs several reviews and merges them into one report |
 | `design-review-library` | Design system adherence: how a design uses its libraries |
 | `design-review-accessibility` | Accessibility: a design-stage WCAG review |
+| `design-review-research` | Research alignment: judges a design against Research Insights on a topic the designer names |
 | `design-review-report-writer` | Writes every report (used by the other skills) |
 | `design-review-scanner` | Reads the design and returns Design Facts, orchestrating the six scanning skills below and joining their results per node (used by the Orchestrator and the Review Skills) |
 | `design-review-scanner-colour-pairs` | Reads the colour pairs fact group (contrast ratios) for the Design Scanner |
@@ -60,8 +62,8 @@ The skills are published and versioned together. Install all of them: a review s
 | `design-review-profile` | Finds the team's Review Profile (used by the other skills) |
 | `design-review-figma-writer` | Writes into the reviewed Figma file: report frames, layer annotations and the Review Profile page (used by the Report Writer and the Orchestrator) |
 
-- **Figma Design:** an organisation's skill owners publish all thirteen to the organisation, in the order in [docs/publishing.md](docs/publishing.md).
-- **Claude Code, Codex or Cursor:** in your project, run `npx skills add Blind3y3Design/design-review-skills --all`. It installs the thirteen skills into `.agents/skills/`, and links them for agents that read another folder, such as `.claude/skills/`. `npx skills update` brings in a new release. Copying the `skills/` folder works too. The repo's location will change once it moves into Cat's systems.
+- **Figma Design:** an organisation's skill owners publish all fourteen to the organisation, in the order in [docs/publishing.md](docs/publishing.md).
+- **Claude Code, Codex or Cursor:** in your project, run `npx skills add Blind3y3Design/design-review-skills --all`. It installs the fourteen skills into `.agents/skills/`, and links them for agents that read another folder, such as `.claude/skills/`. `npx skills update` brings in a new release. Copying the `skills/` folder works too. The repo's location will change once it moves into Cat's systems.
 
 Nothing is built or edited before publishing: a published skill is the release file as it stands ([ADR 0007](docs/adr/0007-publish-skills-exactly-as-released.md)). To release the set, follow [docs/publishing.md](docs/publishing.md).
 
