@@ -1,0 +1,12 @@
+{
+  "case": "RES-06",
+  "findings": [],
+  "coverage": [
+    {
+      "axis": "research",
+      "status": "skipped",
+      "reasonCode": "no-sources",
+      "reason": "no research source: the Review Profile has no Research Sources section"
+    }
+  ]
+}

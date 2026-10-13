@@ -522,6 +522,17 @@ test('each expected case passes against itself and fails when any compared field
       (r) => { r.findings.pop(); },
       (r) => { r.findings[0].relatedFindings = []; },
     ],
+    'RES-06': [
+      (r) => { r.coverage[0].reasonCode = 'source-unreachable'; },
+      (r) => { r.coverage[0].status = 'judged'; },
+      (r) => { r.coverage = []; },
+      (r) => { r.findings.push({ id: 'research/checkout-doc-b/node:5:3', axis: 'research', severity: 'serious', certainty: 'confirmed' }); },
+    ],
+    'RES-07': [
+      (r) => { r.coverage[0].reasonCode = 'no-sources'; },
+      (r) => { r.coverage[0].status = 'judged'; },
+      (r) => { r.coverage = []; },
+    ],
     'RUN-06': [
       (r) => { r.coverage.find((c) => c.axis === 'design-system').reasonCode = 'reference-unreadable'; },
       (r) => { r.coverage = r.coverage.filter((c) => c.axis !== 'design-system'); },

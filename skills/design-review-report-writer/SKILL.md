@@ -142,6 +142,8 @@ A `component` location's `url` is included when the component is in the reviewed
   | `skill-failed` | its Review Skill failed partway through |
   | `reference-unreadable` | a Reference Document couldn't be read |
   | `no-layers` | there are no Design System Layers to check against |
+  | `no-sources` | there are no Research Sources to read Insights from |
+  | `source-unreachable` | a research source couldn't be reached |
   | `no-topic` | no research topic was given |
 
 ## Markdown layout

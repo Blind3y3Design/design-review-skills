@@ -40,7 +40,7 @@ This is its own step, joined to judging (step 4) only by its hand-off: it reads 
 2. **Find the connected tool.** Look at the tools available to you for one that reads the source's tool, such as Dovetail. Tool names change, so pick by what a tool reads, not by an exact name: in Figma Design's agent it is the Dovetail connector, and in an external agent it is Dovetail's MCP server, or whichever research MCP server is connected. Reading is enough. The portable core every Dovetail surface shares is listing projects, listing data and Docs, and reading one Doc's content as markdown. With no connected tool, or one that can't be reached or authorised, skip the axis (No research).
 3. **Narrow to the source.** Resolve the project, folder or Doc the line names to its id, and read only inside it. Never search a whole workspace.
 4. **Find the Insights, most relevant to the topic first.** Where the tool has search, run keyword queries built from the topic's words, scoped by the source's id, and take the Insights they return. Otherwise, list the Docs in the source and keep those whose title or statement matches the topic. A tool with neither search nor a listing of Docs works only with a source that names one Doc outright.
-5. **Read each Insight's content as markdown.** A Dovetail Doc is the Insight; its highlights are the quotes that support it. Build each Insight as `{ title, id, url, date, statement, highlights[] }`, where `statement` is the Doc's synthesised statement, `date` is the Doc's date, and each highlight is `{ text, url, date }`. Read at most about ten Insights, the most relevant first; when more matched, keep the ten and note it for the report.
+5. **Read each Insight's content as markdown.** A Dovetail Doc is the Insight; its highlights are the quotes that support it. Build each Insight as `{ title, id, url, date, statement, highlights[] }`, where `statement` is the Doc's synthesised statement, `date` is the Doc's date, and each highlight is `{ text, url, date }`. Read at most about ten Insights, the most relevant first; when more matched, keep the ten and note it for the report: "More Insights matched the topic than were read: about ten, the most relevant first."
 6. **Drop identifying details.** No participant's name or contact details go into an Insight, a highlight or a statement: read a highlight's words without its speaker label, and leave out any name or contact detail. This holds for everything handed on and everything in the report.
 
 Fetching is done when the Insight list holds every matching Insight within the budget, or the axis has been skipped.
@@ -62,7 +62,7 @@ Judge each Insight against the Design Facts, one verdict each. Every Insight fet
 | not addressed | The Insight is about something the frames show, and the design does nothing about it | A Finding at `minor`; Coverage `judged` |
 | not applicable | The Insight is about a part of the product this scope doesn't show | Coverage `not-applicable`, its note saying so |
 
-Only an Insight is a standard. A highlight is never the thing judged: it can only support a Finding. An Insight older than `Research current for`, when the profile sets it, is `stale` in Coverage and isn't judged; without it, every Insight is judged and its date is written into the Finding or the follows list.
+Only an Insight is a standard. A highlight is never the thing judged: it can only support a Finding. An Insight older than `Research current for`, when the profile sets it, gets the Coverage entry `{ "axis": "research", "ref": "<Insight id>", "status": "stale" }` and no verdict: it raises no Finding and isn't listed under "Research this design follows". Without the setting, every Insight is judged, and its date is written into the Finding's evidence or the follows list.
 
 Write each Finding's fields this way:
 
@@ -77,9 +77,9 @@ Write each Finding's fields this way:
 
 No participant name or contact detail goes into a Finding, a highlight, a Coverage note or a title.
 
-**Nothing relevant:** when no Insight matches the topic, raise no Finding, and give each source you searched one Coverage entry, `{ "axis": "research", "ref": "<the source as written>", "status": "judged", "note": "no relevant research found for <topic>" }`, so the report says what was searched and found nothing.
+**Nothing relevant:** when no Insight matches the topic, raise no Finding, whatever the design seems to do, and give each source you searched one Coverage entry, `{ "axis": "research", "ref": "<the source as written>", "status": "judged", "note": "no relevant research found for <topic>" }`, so the report says what was searched and found nothing.
 
-Judging is done when every Insight that was fetched and isn't `stale` has one Coverage entry, and every `contradicts` and `not addressed` Insight has a Finding.
+Judging is done when every Insight that was fetched has one Coverage entry, `stale` or the verdict's status, and every `contradicts` and `not addressed` Insight has a Finding.
 
 ## 5. Report
 
@@ -104,10 +104,12 @@ The axis is skipped, and never half-run, when it can't run. Hand the Report Writ
 | Why | `reasonCode` | `reason` |
 |---|---|---|
 | No topic was given, and the user declined one | `no-topic` | "no research topic was given" |
-| The profile has no Research Sources section and none was given | `reference-unreadable` | "no research source: the Review Profile has no Research Sources section" |
-| No research tool is connected, or the source couldn't be reached or read | `reference-unreadable` | "no research tool, or the source couldn't be read: <the source>: <the error>" |
+| The profile has no Research Sources section and no source was given at run time | `no-sources` | "no research source: the Review Profile has no Research Sources section" |
+| No research tool is connected, or the source couldn't be reached or read | `source-unreachable` | "no research tool, or the source couldn't be read: <the source>: <the error>" |
 
 A source that returns no matching Insight isn't skipped: step 4's Nothing relevant covers that, so the report still says what was searched.
+
+**Only read Insights are sources.** Every research verdict, Finding and follows entry cites an Insight from step 2's list, by its id. When no Insight was read, the axis's whole story is its Coverage entry, and the report carries nothing else about users: what you know of the topic or of users is never a standard here.
 
 ## Run by another skill
 

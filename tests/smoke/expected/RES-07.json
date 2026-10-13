@@ -1,0 +1,12 @@
+{
+  "case": "RES-07",
+  "findings": [],
+  "coverage": [
+    {
+      "axis": "research",
+      "status": "skipped",
+      "reasonCode": "source-unreachable",
+      "reason": "no research tool, or the source couldn't be read: Dovetail, project \"DRS Test Research: Checkout\", tags: checkout: the connector isn't authorised"
+    }
+  ]
+}
