@@ -66,7 +66,7 @@ Give each exactly one Coverage entry, `{ "axis": "accessibility", "ref": "<crite
 
 1. `needs-code` when its group is `code`. It's never a Finding.
 2. `not-readable` when a fact group it needs is in the facts' `unread`, by its name or through the id of a node that couldn't be read (a node that isn't there, is hidden or sits under a hidden layer has no `groups`), or none of its measurements could be made. The note gives the scanner's reason.
-3. `not-applicable` when its trigger isn't in the scope. The facts show what a layer is by its name, its type, its prototype `reactions`, and the text in and beside it. The trigger alone decides this: an annotation never brings a criterion in.
+3. `not-applicable` when its trigger isn't in the scope. The facts show what a layer is by its name, its type, its prototype `reactions`, and the text in and beside it. The trigger alone decides this: an annotation never brings a criterion in. When its trigger names a screen and the scope holds none, the note says the frame is under 320 px high, or under 320 px wide when the width is the short dimension, such as `No screen in scope: <frame> is under 320 px high.`
 4. `needs-section` when it has markers and no marked section lets it be judged, as Marked sections describes.
 5. `needs-annotation` or `needs-state` when the annotation or state its Needs line names is missing for one of its triggers, as Annotations and states describes.
 6. `judged` otherwise, following its How to judge.
@@ -155,7 +155,7 @@ An `annotation/prototype` criterion is judged once what its Needs line names exi
 - **An annotation** is one in the facts' `annotations`: a native annotation, or an instance of one of the settings' `Annotation kits`. A free-text note on the canvas (`annotations.notes`) counts too, but a Finding that rests on one is `likely`. Layer names and Figma comments aren't annotations.
 - **Its kind** is what its text gives, whatever its category: a text alternative, a reading order, a page title, a language, and so on. It serves a Needs line of that kind.
 - **A state** is a frame, a variant or a prototype interaction in the facts' `structure` that shows the behaviour, or an annotation that describes it.
-- **Where an annotation belongs:** on the layer that triggers the criterion, such as an image for its text alternative, or on the scanned frame when the trigger is the frame as a whole, such as its reading order, title or language. An annotation serves a layer when it's attached to that layer or to a frame holding it, or when it names the layer or sits beside it.
+- **Where an annotation belongs:** on the layer that triggers the criterion, such as an image for its text alternative, or on the scanned frame when the annotation describes the frame as a whole, such as its headings and structure, reading order, page title or language. An annotation serves a layer when it's attached to that layer or to a frame holding it, or when it names the layer or sits beside it.
 
 A missing state gives `needs-state` and no Finding. A missing annotation gives `needs-annotation` and, unless the settings say `Missing annotations: coverage only`, a missing-annotation Finding:
 
