@@ -26,6 +26,7 @@
         { "type": "generic", "path": "skills/design-review-library/SKILL.md" },
         { "type": "generic", "path": "skills/design-review-profile/SKILL.md" },
         { "type": "generic", "path": "skills/design-review-report-writer/SKILL.md" },
+        { "type": "generic", "path": "skills/design-review-research/SKILL.md" },
         { "type": "generic", "path": "skills/design-review-scanner/SKILL.md" },
         { "type": "generic", "path": "skills/design-review-scanner-annotations/SKILL.md" },
         { "type": "generic", "path": "skills/design-review-scanner-bindings/SKILL.md" },
