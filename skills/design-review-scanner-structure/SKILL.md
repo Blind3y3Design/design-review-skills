@@ -2,12 +2,12 @@
 name: design-review-scanner-structure
 description: Reads a Figma frame and returns one group of Design Facts, `structure`, the top-level frame and every visible layer in it, for design-review-scanner, which invokes it and joins its result with the other groups. To read a design, use /design-review or a single review such as /design-review-accessibility.
 metadata:
-  version: "0.1.0-alpha.4" # x-release-please-version
+  version: "0.1.0" # x-release-please-version
 ---
 
 # Design Scanner: Structure
 
-Version 0.1.0-alpha.4 of the design review skills. <!-- x-release-please-version -->
+Version 0.1.0 of the design review skills. <!-- x-release-please-version -->
 
 Returns the `structure` Design Facts group, the top-level frame and every visible layer in it: what was read or measured, never a judgement. This is one of six scanning skills, each of which reads one fact group. `design-review-scanner` invokes the ones for the groups a caller asks for and joins their results. This skill holds no thresholds and no criteria, and only reads.
 
