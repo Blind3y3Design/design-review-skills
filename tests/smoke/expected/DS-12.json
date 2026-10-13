@@ -1,0 +1,23 @@
+{
+  "case": "DS-12",
+  "findings": [
+    {
+      "id": "design-system/resize/node:119:104",
+      "axis": "design-system",
+      "severity": "moderate",
+      "certainty": "confirmed",
+      "relatedFindings": []
+    }
+  ],
+  "coverage": [
+    { "axis": "design-system", "ref": "raw-value", "status": "judged" },
+    { "axis": "design-system", "ref": "outside-stack", "status": "judged" },
+    { "axis": "design-system", "ref": "unattributed", "status": "judged" },
+    { "axis": "design-system", "ref": "detached-instance", "status": "judged" },
+    { "axis": "design-system", "ref": "override", "status": "judged" },
+    { "axis": "design-system", "ref": "resize", "status": "judged" },
+    { "axis": "design-system", "ref": "FS-1", "status": "judged" },
+    { "axis": "design-system", "ref": "FS-2", "status": "judged" },
+    { "axis": "design-system", "ref": "FS-3", "status": "judged" }
+  ]
+}

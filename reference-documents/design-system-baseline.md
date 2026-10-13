@@ -1,11 +1,11 @@
 # Design system baseline
 
 - Name: Design system baseline
-- Version: 0.3
+- Version: 0.4
 
 A Reference Document for `design-review-library`. It holds the built-in design system adherence checks: what triggers each one, how to judge it, and where its Findings start. The review skill holds only the procedure. Everything specific to a check lives here.
 
-A team can fork this document to adjust the built-in checks, and point to its copy from the `Baseline` line of its Review Profile's Design System Layers section. A layer's rules document adds rules of its own on top of these.
+A team can fork this document to adjust the built-in checks, and point to its copy from the `Baseline` line of its Review Profile's Design System Layers section. A layer's rules document adds rules of its own on top of these; the skill's Layer rules describes how those are read and judged.
 
 This version holds six checks: `raw-value`, `outside-stack`, `unattributed`, `detached-instance`, `override` and `resize`.
 
@@ -91,7 +91,7 @@ An asset attributed **outside the stack** is a Finding: one from a library that 
 - it has no `through` and isn't `carried`: a change made through a component property (a variant, text, boolean or instance swap property), or one Figma carried over in a swap, is how the component is meant to be used;
 - its entry has no `detached`: changes inside a detached frame belong to that frame's `detached-instance` Finding.
 
-Any other change isn't part of this check. Text content and swaps are ordinary use of a component, and a size is the `resize` check's.
+Any other change isn't part of this check. Text content and swaps are ordinary use of a component, and a size is the `resize` check's. A change a layer's rules document lists in its `Allowed overrides` isn't part of a Finding either, from this check or from that rule.
 
 - **Root Cause:** the changed layer, `node:<id>`. Give one Finding per layer, covering each of its changes that's part of a Finding. A raw value the bindings facts' `raw` list gives on that layer, for the same property, is part of this Finding, and not a `raw-value` Finding.
 - **Certainty:** `confirmed`. When every change in the Finding has `uncertain`, or is to `variables`, and the Finding holds no raw value, it's `likely`, and the evidence gives the reason from `uncertain`.
@@ -105,7 +105,7 @@ Any other change isn't part of this check. Text content and swaps are ordinary u
 - Default Severity: moderate
 - Certainty: confirmed
 
-**How to judge.** A `size` change in the components facts' `overrides` is a Finding only when a layer's rules document sets that component's size, and the layer's size now (its `values`) breaks it. This document sets no sizes, so on its own a resize is never a Finding: Coverage gives `judged`, with no Findings.
+**How to judge.** A `size` change in the components facts' `overrides` is a Finding only when a layer's rules document sets that component's size, and the layer's size now (its `values`) breaks it. This document sets no sizes, so on its own a resize is never a Finding: Coverage gives `judged`, with no Findings. When the rule that sets the size is locked, the Finding starts at serious.
 
 A hugging instance takes a new size whenever its content changes, such as through a text property, so the facts list a `size` change for it too. Judge a size rule against the layer's size now, never against the change being listed.
 

@@ -1,6 +1,6 @@
 ---
 name: design-review-library
-description: Design system adherence review of Figma frames. Judges how a design uses the team's Design System Layers, such as raw values where a variable or style could be bound, assets from outside the stack, detached instances and overridden components, and reports Findings and Coverage. Use when the user asks for a design system adherence, design token, variable or component review of a Figma design.
+description: Design system adherence review of Figma frames. Judges how a design uses the team's Design System Layers, such as raw values where a variable or style could be bound, assets from outside the stack, detached instances, overridden components and each layer's own rules, and reports Findings and Coverage. Use when the user asks for a design system adherence, design token, variable or component review of a Figma design.
 metadata:
   version: "0.1.0-alpha.4" # x-release-please-version
 ---
@@ -54,7 +54,7 @@ If the Design System Layers are still to be asked, ask now, as What to check aga
 
 ## 4. Judge
 
-Judge every check in the baseline, and give each exactly one Coverage entry, `{ "axis": "design-system", "ref": "<check id>", "status": "<status>" }`. The status is the first that fits:
+Read every layer's rules document, as Layer rules describes, then judge every check in the baseline and every rule, and give each exactly one Coverage entry, `{ "axis": "design-system", "ref": "<check id or rule id>", "status": "<status>" }`. The status is the first that fits:
 
 1. `not-readable` when a fact group it needs is in the facts' `unread`, by its name or through the id of a node that couldn't be read (a node that isn't there, is hidden or sits under a hidden layer has no `groups`). Add a `note` with the scanner's reason.
 2. `not-applicable` when its trigger isn't in the scope. Add a `note` saying so.
@@ -70,7 +70,7 @@ Each Finding its How to judge calls for is written this way:
 - **Title:** one line naming the layer or component and what's wrong.
 - **Fix:** as the check's How to judge says, with tokens only from Token suggestions below.
 - **Locations:** `{ "kind": "node", "fileKey", "nodeId", "layerPath" }` for each layer in the facts. A library asset or local asset that the Finding is about goes first, unless the check's How to judge orders them otherwise: a component as `{ "kind": "component", "key", "name", "library" }` (for a set, the set's key and name), a style as `{ "kind": "style", "key", "name", "library" }`, or a variable as `{ "kind": "variable", "collection", "name", "library" }`, with `collection` its collection's name. Its `library` is as Attributing an asset gives it.
-- **Standard:** `{ "source": "Design system baseline", "ref": "<check id>", "url": "<the baseline's location>" }`, leaving out `url` when the location isn't a link.
+- **Standard:** `{ "source": "Design system baseline", "ref": "<check id>", "url": "<the baseline's location>" }`, leaving out `url` when the location isn't a link. A rule's Finding takes the rules document's name and the rule's `id` instead.
 
 Judging is done when every check in the baseline has one Coverage entry, and every Finding that each check's How to judge calls for is written.
 
@@ -143,6 +143,38 @@ Attribution goes only by a library's name as the scanner found it by key, or by 
 
 In a location, an asset's `library` is the library it was attributed to: its `library` in the facts; for a local asset, the name of the layer's library that links to this file; by match hint, the layer's library, or its libraries joined by " or " when it lists several. It's null for a local asset no layer covers, and for an unattributed one. When a location's library comes from a match hint, the Finding's evidence says so.
 
+## Layer rules
+
+A layer's `Rules document` names a Reference Document its owner wrote. Read each one, as Reading a location describes. When it can't be read, that layer is judged by the baseline alone, and the run notes it: "The rules document for <layer> (<location>) couldn't be read, so only the built-in checks judged it."
+
+A rules document opens with `# <name>` and a `Layer:` line, then one `### <id>: <name>` heading per rule. Under a heading, these lines:
+
+- `Statement:` the rule's test in prose. Required.
+- `Locked:` `yes` or `no`. Required.
+- `Applies to:` what it governs, as asset names, name prefixes or a description. Optional; with none it governs the layer's assets and every more specific layer's.
+- `Allowed overrides:` the overrides it permits, by property (`fill`, `radius`, `size`, …) or asset name. Optional.
+- `Preferred tokens:` tokens a fix prefers, most preferred first. Optional.
+- `Size:` a size it sets for the assets it applies to, as `<dimension> <value>`, such as `height 36`. Optional.
+
+Everything else is free text, cited in evidence where it helps.
+
+Judge each rule's Statement the way a criterion is judged, from the facts, and give each rule one Coverage entry with its `id` as the `ref`. A breach is a Finding:
+
+- **Root Cause:** the asset that breaks the rule, `component:<key>`, `style:<key>`, `variable:<key>` or `node:<id>`. A more specific layer's asset breaking a more general layer's locked rule is blamed on that asset's own layer: the locations name that layer's libraries, and the fix names that layer's owner when the profile gives one.
+- **Severity:** serious when the rule is locked, moderate when it isn't.
+- **Standard:** the rules document's name and the rule's `id`, as step 4's Standard gives.
+- **Evidence** and **fix,** as the Statement and the rest of the rule give.
+
+**Between layers.** A more specific layer overrides a more general one unless the rule is locked. So a more specific layer's breach of an unlocked rule isn't a Finding, while a locked rule's breach is a Finding whatever layer makes it. An override a rule's `Allowed overrides` names isn't a Finding, from that rule or from the `override` check.
+
+**Size rules.** A rule's `Size:` line is judged by the `resize` check, not written as a rule breach of its own: that check reports a resized asset whose new size breaks it, whether the rule is locked or not. When the rule is locked, that Finding starts at serious.
+
+**Preferred tokens.** A token a rule's `Preferred tokens` names is named first in Token suggestions.
+
+**Deprecated and look-alike assets.** Report a deprecated asset, or a local look-alike of a library component, only when a rule names it.
+
+A layer's rules are judged when every rule has one Coverage entry and every breach that fits these lines is written.
+
 ## Token suggestions
 
 A fix names a token only when one was found in the design: a variable or style in the bindings facts' `variables` or `styles`, including one reached only through an alias. A suggestion never changes a Finding's Certainty.
@@ -153,7 +185,7 @@ A fix names a token only when one was found in the design: a variable or style i
    - a radius or spacing: a number variable of the same number
    - text: a text style of the same value, such as `Inter Regular 16/24`
    - an effect: an effect style of the same value
-3. **Name what's left.** Name each match with its library, as Attributing an asset gives it, such as "`color/surface/muted` (Foundation Tokens)".
+3. **Name what's left.** Name each match with its library, as Attributing an asset gives it, such as "`color/surface/muted` (Foundation Tokens)". When several match, name a token a rule's `Preferred tokens` names first.
 
 ## Review Profile
 
@@ -192,7 +224,7 @@ The design systems this work is checked against, most general first. A more spec
   - `Owner`: optional.
   - `Libraries`: each library's name as Figma shows it, separated by commas, with its file link in brackets when it has one. Library assets are matched to a library by that name, and local assets by the file key in a link, so a team can list its working file, with its link, to cover its local variables, styles and components. A library needs no link.
   - `Match hints`: name prefixes for components and styles, each written prefix `<prefix>`, separated by commas, or `none`.
-  - `Rules document`: the location of the layer owner's rules, or `none`. This version judges the baseline only. When a layer names a rules document, keep a note for the report: "This version judges the Design system baseline only, so the rules document for <layer> wasn't read."
+  - `Rules document`: the location of the layer owner's rules, or `none`. Read it as Layer rules describes; without one, only the baseline judges the layer's assets.
   - `Docs`: optional guideline links.
 
 ### What to check against
@@ -207,10 +239,11 @@ Layers given at run time or in an answer have the libraries they name, and match
 
 ### Severity Overrides
 
-A profile's **Severity Overrides** section sets the starting Severity for a type of rule, one `<type of rule>: <Severity>` per line, such as `Detached instance: serious`. Apply the lines about design system adherence: a line's type of rule is the id (`detached-instance`) or the name (`Detached instance`) of a check in the baseline you read, matched on the whole value, ignoring case. It sets the Severity of that check's Findings. When two lines name one check, the later one wins. Lines about WCAG, those starting `WCAG` or with a criterion number such as `1.4.3`, are for `design-review-accessibility`.
+A profile's **Severity Overrides** section sets the starting Severity for a type of rule, one `<type of rule>: <Severity>` per line, such as `Detached instance: serious`. Apply the lines about design system adherence: a line's type of rule is the id (`detached-instance`) or the name (`Detached instance`) of a check in the baseline you read, or the id or name of a rule in a layer's rules document, matched on the whole value, ignoring case. It sets the Severity of that check's or rule's Findings. When two lines name one check, the later one wins. Lines about WCAG, those starting `WCAG` or with a criterion number such as `1.4.3`, are for `design-review-accessibility`.
 
-- **Say when a line can't be matched.** A line that names no check in the baseline, or sets a Severity other than critical, serious, moderate or minor, applies to nothing here: keep a note for the report: "The Severity Override "<line>" wasn't applied here: it names no check in the <baseline's name>, or sets no Severity this review applies." This includes a line meant for another axis's skill, since only WCAG lines can be told apart.
+- **Say when a line can't be matched.** A line that names no check or rule in the documents you read, or sets a Severity other than critical, serious, moderate or minor, applies to nothing here: keep a note for the report: "The Severity Override "<line>" wasn't applied here: it names no check in the <baseline's name>, or sets no Severity this review applies." This includes a line meant for another axis's skill, since only WCAG lines can be told apart.
 - **Critical needs a core task.** A line that sets critical names the core task it's tied to, such as `detached-instance: critical, core task: paying for an order`, and the evidence of each Finding it changes gives that task. Refuse a line that names none: treat it as absent, so the Default Severity applies, and keep a note for the report: "The Severity Override "<line>" wasn't applied: it sets critical without naming a core task."
+- **A Locked Rule holds.** A line that would lower a Locked Rule breach below serious doesn't apply: the breach stays at serious, and keep a note for the report: "The Severity Override "<line>" wasn't applied: a Locked Rule breach is never below serious." A line may still raise it above serious.
 - **Say so in the evidence.** When an override changes a Finding's Severity, its evidence says so, whether it raised or lowered the Severity, such as "Severity raised from moderate to serious by the Review Profile's Severity Override "Detached instance: serious"."
 
 ## Reading a location

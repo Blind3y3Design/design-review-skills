@@ -1,0 +1,23 @@
+{
+  "case": "DS-10",
+  "findings": [
+    {
+      "id": "design-system/FS-1/component:aa95deb6d97b371aeff754d5c1c562029a368709",
+      "axis": "design-system",
+      "severity": "serious",
+      "certainty": "confirmed",
+      "relatedFindings": []
+    }
+  ],
+  "coverage": [
+    { "axis": "design-system", "ref": "raw-value", "status": "judged" },
+    { "axis": "design-system", "ref": "outside-stack", "status": "judged" },
+    { "axis": "design-system", "ref": "unattributed", "status": "judged" },
+    { "axis": "design-system", "ref": "detached-instance", "status": "judged" },
+    { "axis": "design-system", "ref": "override", "status": "judged" },
+    { "axis": "design-system", "ref": "resize", "status": "judged" },
+    { "axis": "design-system", "ref": "FS-1", "status": "judged" },
+    { "axis": "design-system", "ref": "FS-2", "status": "not-applicable" },
+    { "axis": "design-system", "ref": "FS-3", "status": "not-applicable" }
+  ]
+}

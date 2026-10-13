@@ -93,6 +93,10 @@ _Avoid_: Tier, level, theme
 A rule set by a Design System Layer that more specific layers may not override.
 _Avoid_: Mandatory rule, hard rule
 
+**Rules Document**:
+A Reference Document written by a Design System Layer's owner, holding that layer's own rules: each with an `id`, a prose `statement`, `Locked: yes/no`, and optional `applies to`, `allowed overrides`, `preferred tokens` and a size. A layer's `Rules document` line in the Review Profile points to it.
+_Avoid_: Layer rules file, guidelines doc
+
 ## Releasing
 
 **Release**:
