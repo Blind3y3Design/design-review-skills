@@ -118,7 +118,7 @@ Linking is done when every pair of Findings with the same Root Cause has been ch
 | `title` | yes | One line |
 | `severity` | yes | A Severity level |
 | `certainty` | yes | A Certainty level |
-| `locations` | yes | Each has a `kind`. `node`: `fileKey`, `nodeId`, `layerPath`, `url`. `component` or `style`: `key`, `name`, `library`, `url`. `variable`: `collection`, `name`, `library`. A Finding blamed on the design system lists the library asset first |
+| `locations` | yes | Each has a `kind`. `node`: `fileKey`, `nodeId`, `layerPath`, `url`. `component` or `style`: `key`, `name`, `library`, `url` (when the component is in the reviewed file). `variable`: `collection`, `name`, `library`. A Finding blamed on the design system lists the library asset first |
 | `standard` | yes, except advisory | `{ source, ref, url }`, such as `{ "source": "WCAG 2.2", "ref": "1.4.3", "url": "https://www.w3.org/TR/WCAG22/#contrast-minimum" }`. `url` is left out when the standard has no link, such as a requirement given at run time |
 | `evidence` | yes | What was read or measured, with the measurement's inputs and result |
 | `fix` | no | What to change |
@@ -128,6 +128,8 @@ Linking is done when every pair of Findings with the same Root Cause has been ch
 Leave out an optional field that has nothing in it.
 
 A `node` location's `url` is `https://www.figma.com/design/<fileKey>/?node-id=<node id>`, with each `:` in the node id written as `-` and each `;` as `%3B`. With no file key, leave `url` out.
+
+A `component` location's `url` is included when the component is in the reviewed file, and built from the file key and node id with the same rule as a `node` location: `https://www.figma.com/design/<fileKey>/?node-id=<node id>`, with `:` → `-` and `;` → `%3B`. It is omitted when the library's file isn't known.
 
 **Coverage entries**
 
@@ -159,7 +161,7 @@ In this order. Leave out a section that has nothing in it, except Coverage.
 3. **Fixes by Root Cause:** one numbered item per group of Findings that one fix clears: its fix and the short ids of those Findings. A group is the Findings joined to each other, as Linking Findings describes, on any axes. Findings that share a Root Cause but no Property are separate items. When a group's Findings are on several axes, give each axis's fix. Order them by how many Findings each clears, most first, then by their highest Severity.
 4. **Findings, one `##` section per axis,** headed with the axis's name in the report. List its Findings from the most severe down, `confirmed` before `likely` before `needs-review`. Each is a `###` heading with its short id and title, then:
    - Severity and Certainty
-   - Where: each location as a link, `[<layerPath>](<url>)`
+   - Where: each location as a link, `[<layerPath>](<url>)`. A `component` location is linked with its `url` when it is in the reviewed file (built from the file key and node id with the same URL rule as a node location: `https://www.figma.com/design/<fileKey>/?node-id=<node id>`, `:` → `-`, `;` → `%3B`); otherwise it is shown by name without a link, when the library's file isn't known.
    - Standard, when the Finding has one: the source and ref as one link to the standard's `url`, `[<source> <ref>](<url>)`, such as `[WCAG 2.2 1.4.3](https://www.w3.org/TR/WCAG22/#contrast-minimum)`. With no `url`, the source and ref as plain text.
    - Evidence
    - Fix
