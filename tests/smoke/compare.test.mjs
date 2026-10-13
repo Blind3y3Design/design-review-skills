@@ -59,6 +59,23 @@ test('a Finding with a different fingerprint id fails as one missing and one une
   ]);
 });
 
+// The RUN-10 case: a 360 × 208 frame (175:29) holding the "Checkout" text (175:30). Its 1.3.1
+// missing-annotation Finding once landed on either layer, so the id changed between runs. The
+// accessibility skill pins the annotation to the scanned frame, so only the frame id passes.
+test('a missing-annotation id is pinned to the scanned frame, and a child-layer id fails the comparison', () => {
+  const missing = (id) => ({
+    schemaVersion: '0.2',
+    findings: [{ id, axis: 'accessibility', severity: 'serious', certainty: 'needs-review' }],
+    coverage: [{ axis: 'accessibility', ref: '1.3.1', status: 'needs-annotation' }],
+  });
+  const pinned = 'accessibility/1.3.1/node:175:29';
+  assert.equal(compareReports(missing(pinned), missing(pinned)).pass, true);
+  assert.deepEqual(compareReports(missing(pinned), missing('accessibility/1.3.1/node:175:30')).differences, [
+    'Missing Finding accessibility/1.3.1/node:175:29',
+    'Unexpected Finding accessibility/1.3.1/node:175:30 (accessibility, serious, needs-review)',
+  ]);
+});
+
 test('a Finding with a different axis or Certainty fails', () => {
   const actual = report();
   actual.findings[0].axis = 'design-system';
