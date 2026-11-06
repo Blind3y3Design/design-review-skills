@@ -33,11 +33,11 @@ The calling skill hands over:
 2. **Give each Finding its id** from its `rootCause`, as Finding ids below describes, and each `node` location its `url`. The `rootCause` itself stays out of the report.
 3. **Write the prose** as Writing rules below describes, so the JSON and the Markdown carry the same words.
 4. **Link Findings across axes,** as Linking Findings below describes.
-5. **Write the report JSON** as described below. In `json only` mode, stop here, and hand back only the `notes`, if any, as a list headed "Notes:", then the report JSON in one fenced `json` block.
+5. **Write the report JSON** as described below. In `json only` mode, stop here, and hand back only the `notes`, if any, as a list headed "Notes:", then `researchFollows`, when it was handed over and isn't empty, under the heading "Research follows:" in one fenced `json` block, then the report JSON in one fenced `json` block, last.
 6. **Write the Markdown,** in the layout below, ending with the JSON in one fenced `json` block.
 7. **Deliver** the report, as Delivery below describes: mark its Findings on their layers when annotations are on, save it, then show the whole report in the chat.
 
-A `json only` report is done when its prose follows the Writing rules, its JSON holds every Finding and Coverage entry handed over, and it's been handed back. A full report is done when its prose follows the Writing rules, the chat shows the Markdown and its JSON block, every Finding and Coverage entry handed over is in both, the report is saved where Delivery says or the Saved line says why it isn't, and, with annotations on, the Annotated line says what was marked or why nothing was.
+A `json only` report is done when its prose follows the Writing rules, its JSON holds every Finding and Coverage entry handed over, and it's been handed back with its `researchFollows`, if any. A full report is done when its prose follows the Writing rules, the chat shows the Markdown and its JSON block, every Finding and Coverage entry handed over is in both, the report is saved where Delivery says or the Saved line says why it isn't, and, with annotations on, the Annotated line says what was marked or why nothing was.
 
 ## Axes
 

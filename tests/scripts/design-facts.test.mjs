@@ -839,15 +839,16 @@ const canvas = (frameChildren, others = [], frameProps = {}) => ({ children: [
   { type: 'FRAME', id: '5:1', name: 'A11Y-99', x: 100, y: 200, width: 360, height: 240, fills: [solid(white)], children: frameChildren, ...frameProps },
   ...others,
 ] });
-const categories = [{ id: 'c:a11y', label: 'Accessibility' }, { id: 'c:review', label: 'Design review: Accessibility' }, { id: 'c:team', label: 'Design reviews' }];
+const categories = [{ id: 'c:a11y', label: 'Accessibility' }, { id: 'c:review', label: 'Design review: Accessibility' }, { id: 'c:team', label: 'Design reviews' }, { id: 'c:notes', label: 'Design review: notes' }];
 
-test('annotations: gives the native annotations on the scanned node, its layers and the frames holding it, leaving out the review\'s own categories', async () => {
+test('annotations: gives the native annotations on the scanned node, its layers and the frames holding it, leaving out the review\'s own categories but not a designer\'s category that starts like one', async () => {
   const figma = fakeFigma(canvas([
     { type: 'FRAME', id: '5:2', name: 'Card', x: 124, y: 224, width: 312, height: 160, annotations: [{ labelMarkdown: 'Reading order: title, then price', categoryId: 'c:a11y' }], children: [
       { type: 'RECTANGLE', id: '5:3', name: 'Photo', x: 132, y: 232, width: 100, height: 60, annotations: [
         { label: 'Alt: a lake at sunrise', categoryId: 'c:a11y' },
         { labelMarkdown: 'Raise the contrast', categoryId: 'c:review' },
         { labelMarkdown: 'Checked in the design review', categoryId: 'c:team' },
+        { labelMarkdown: 'Copy signed off', categoryId: 'c:notes' },
         { labelMarkdown: 'Width', properties: [{ type: 'width' }] },
       ] },
     ] },
@@ -861,6 +862,7 @@ test('annotations: gives the native annotations on the scanned node, its layers 
       { node: { id: '5:2', path: 'A11Y-99 / Card', type: 'FRAME' }, category: 'Accessibility', text: 'Reading order: title, then price' },
       { node: { id: '5:3', path: 'A11Y-99 / Card / Photo', type: 'RECTANGLE' }, category: 'Accessibility', text: 'Alt: a lake at sunrise' },
       { node: { id: '5:3', path: 'A11Y-99 / Card / Photo', type: 'RECTANGLE' }, category: 'Design reviews', text: 'Checked in the design review' },
+      { node: { id: '5:3', path: 'A11Y-99 / Card / Photo', type: 'RECTANGLE' }, category: 'Design review: notes', text: 'Copy signed off' },
       { node: { id: '5:3', path: 'A11Y-99 / Card / Photo', type: 'RECTANGLE' }, category: null, text: 'Width', properties: ['width'] },
     ],
     kits: [],
