@@ -1,3 +1,9 @@
+---
+status: partly superseded by ADR-0012
+---
+
+> **Partly superseded.** Design review in Figma moves to Cat's Design review plugin, a standalone system that shares no code with this set (ADR 0012). For this set's own reviews, Design Facts still come from the scanning skills, as ADR 0008 shapes them.
+
 # Design Facts come from a scanning skill; a plugin is never the delivery path
 
 Design review is delivered by the Orchestrator and Review Skills, not by a custom Figma plugin. Two independent reviews ([issue #20](https://github.com/Blind3y3Design/design-review-skills/issues/20)) reached this for the same reasons. The review's value is judgement, and a plugin can only reach an LLM through an org-run proxy, because plugin source is readable and can't hold a key, so design data would leave Figma. A plugin also runs only inside Figma, can't use Figma's connectors or read other Figma files, and would drop research alignment. What a plugin does better is read the design the same way every time. We keep that by running all Plugin API code as fixed, tested scripts, each in the one skill whose single job it serves. The Design Scanner reads the scope, measures what code measures well (such as contrast against the computed background), and returns Design Facts, which the Review Skills judge against their Reference Documents. The Profile Finder reads the "Review Profile" page, and the Figma Writer writes into the reviewed Figma file: report frames and layer annotations for the Report Writer, and the Review Profile page for the Orchestrator. The scanner only reads.
