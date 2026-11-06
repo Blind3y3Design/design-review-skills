@@ -37,7 +37,7 @@ What might annotate the scanned node, read as it is, without deciding what any o
 - `native[]`: Figma's own annotations on the scanned node, the layers inside it and the frames holding it. Each has `node` (`{ id, path, type }`), `category` (its label, or null), `text` and, when it pins properties, `properties`.
 - `kits[]`: instances of the annotation kits the caller named, in the scope (nested in other instances too) or on the canvas beside it. Each has `kit`, `component`, `node`, `text` (the text inside it) and `where`. With no kits named, none are looked for.
 - `notes[]`: free-text notes on the canvas: text layers outside every frame, nearest to this node's frame and within 200 px of it. Each has `node`, `text` and `gap` in px.
-- `excluded`: how many annotations in the review's own categories were left out. The review's categories are named `Design review: <axis>`, such as `Design review: Accessibility`.
+- `excluded`: how many annotations in the review's own categories were left out. The review's categories are the three the Figma Writer creates: `Design review: Design system adherence`, `Design review: Accessibility` and `Design review: Research alignment`, matched ignoring case and trailing spaces. A designer's own category, even one named `Design review: notes`, is read like any other.
 
 A `text` is cut to 500 characters, or to 150 over the output limit, and its entry then has `truncated: true` and `unread` says so.
 
@@ -110,8 +110,9 @@ try {
   out.unread.push({ what: 'annotations', reason: `annotations can't be read here: ${String((e && e.message) || e)}` });
   return out;
 }
-// The review's own categories are named "Design review: <axis>", and are left out.
-const reviewCategory = (label) => /^design review: /i.test(label || '');
+// The review's own categories, one per axis, are left out. They match the Figma Writer's labels, ignoring case and trailing spaces.
+const REVIEW_LABELS = ['design review: design system adherence', 'design review: accessibility', 'design review: research alignment'];
+const reviewCategory = (label) => REVIEW_LABELS.includes((label || '').trimEnd().toLowerCase());
 
 // An instance's component, and the kit it belongs to. Only looked up when the caller names kits, since lookups are slow.
 const componentOf = async (n) => {
