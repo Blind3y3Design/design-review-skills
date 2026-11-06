@@ -2,12 +2,12 @@
 name: design-review-research
 description: Research alignment review of Figma frames. Judges a design on one topic against the team's Research Insights, read from the connected research tools, and reports Findings and Coverage. Use when the user asks for a research alignment review of a Figma design, or to check a design against user research.
 metadata:
-  version: "0.1.0-alpha.4" # x-release-please-version
+  version: "0.1.0" # x-release-please-version
 ---
 
 # Research alignment review
 
-Version 0.1.0-alpha.4 of the design review skills. <!-- x-release-please-version -->
+Version 0.1.0 of the design review skills. <!-- x-release-please-version -->
 
 A review of Figma frames along one Review Axis, `research`, which reports call research alignment. This skill holds only the procedure. Everything it judges by comes from the Research Insights it reads, on one topic, from the team's research tools: an **Insight** is the standard here, as a criterion is for accessibility. Judge the design from those Insights and the Design Facts alone, never from what you know of the topic or of users.
 
