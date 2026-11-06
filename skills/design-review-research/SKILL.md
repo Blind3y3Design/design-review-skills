@@ -66,12 +66,12 @@ Only an Insight is a standard. A highlight is never the thing judged: it can onl
 
 Write each Finding's fields this way:
 
-- **Title:** one line naming the Insight and what the design does.
+- **Title:** one line naming the Insight by its title and what the design does.
 - **Severity:** `moderate` for a `contradicts` verdict, or `serious` when the Insight reports users failing at or abandoning a task; `minor` for `not addressed`, moved one level either way with the reason in the evidence.
 - **Certainty:** `confirmed` only when the Insight states a concrete, observable requirement and the design clearly fails it; `likely` by default; `needs-review` when the Insight's relevance depends on something the frames don't show.
 - **Root Cause:** `node:<id>` of the frame or layer the Finding is about.
 - **Evidence:** the Insight's key sentence, quoted, its date, and what the design does in the frames.
-- **Standard:** `{ "source": "<the research tool, such as Dovetail>", "ref": "<Insight title> (<Insight id>)", "url": "<the Insight's url>" }`.
+- **Standard:** `{ "source": "<the research tool, such as Dovetail>", "ref": "<Insight id>", "url": "<the Insight's url>" }`. The `ref` is the id alone, the same as its Coverage entry's, because the Finding's id is built from it and must stay the same when someone renames the Insight.
 - **Supporting Evidence:** up to three of the Insight's highlights, each an excerpt, a link and its date.
 - **Locations:** `{ "kind": "node", "fileKey", "nodeId", "layerPath" }` for each frame or layer the Finding is about.
 
@@ -95,7 +95,7 @@ Use the skill `design-review-report-writer`, handing over:
 - `reportSettings`: the profile's Report settings you noted, as `{ "<key>": "<value>" }`, or null.
 - `saveRequest` and `annotateRequest`: as the user said, otherwise null.
 
-The review is done when the Report Writer has delivered the report. In `json only` mode, it's done when you've handed the Report Writer's reply, its notes and JSON block, back to the skill that ran this review.
+The review is done when the Report Writer has delivered the report. In `json only` mode, it's done when you've handed the Report Writer's reply, its notes, its "Research follows:" block and its report JSON, back to the skill that ran this review.
 
 ## No research
 

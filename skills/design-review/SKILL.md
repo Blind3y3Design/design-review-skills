@@ -80,7 +80,7 @@ Run each runnable Review Skill in `json only` mode, handing over what its Run by
 
 Where your runtime can run subagents, run each Review Skill in its own subagent, all at the same time, and wait for every one to hand back. Tell each: "You MUST use the skill `<Review Skill>` in json only mode, with the inputs below. Reply with only what it hands back, or with only the error if it can't finish." Otherwise run them yourself in turn.
 
-Each hands back its notes, if any, and a report JSON, which may hold no Findings and one `skipped` Coverage entry for its axis, such as when a Reference Document can't be read. Keep it as it came.
+Each hands back its notes, if any, research alignment its `researchFollows` list, if any, and a report JSON, which may hold no Findings and one `skipped` Coverage entry for its axis, such as when a Reference Document can't be read. Keep it as it came.
 
 A Review Skill **fails** when it ends without a report JSON: it errored, your runtime reports its subagent as timed out or stopped, or it replied with only a message. Keep the others running, and leave the failed skill's axis to its Coverage entry: you never run its review yourself. The axis is skipped, with the Coverage entry `{ "axis": "<key>", "status": "skipped", "reasonCode": "skill-failed", "reason": "the skill <name> failed: <its error, or its reply>" }`, and a note: "<Review Skill's axis name> wasn't assessed. Run it on its own with `/<name>`."
 
@@ -95,6 +95,7 @@ Use the skill `design-review-report-writer` in `full report` mode, handing over 
 - `references`: every report's references, each once.
 - `findings`: every report's Findings, each as it came, keeping its axis and id. The Report Writer links those on different axes that share a Root Cause and a Property.
 - `coverage`: every report's Coverage entries, and the entry for each skipped axis, whether step 3 or step 5 skipped it.
+- `researchFollows`: the `researchFollows` list research alignment handed back, as it came, or none.
 - `notes`: every report's notes, and your own, such as an axis left out because it isn't set up, the note for a failed Review Skill, and the version warning, if Versions below gives one.
 - `reportSettings`: the profile's Report settings section, as `{ "<key>": "<value>" }`, or null.
 - `saveRequest`: "don't save" or "save to <location>" when the user said so, otherwise null.
